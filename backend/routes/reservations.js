@@ -5,10 +5,15 @@ const prisma = new PrismaClient();
 const { z } = require('zod');
 const { validate } = require('../middlewares/validate');
 const { requireAuth } = require('../middlewares/auth');
+const cache = require('../utils/cache');
 
 // Get Event Availability (Koltuklu & Koltuksuz destekli - Faz 6 Algoritması)
 router.get('/availability/:eventId', async (req, res) => {
   try {
+    const cacheKey = `availability_${req.params.eventId}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json(cached);
+
     const event = await prisma.event.findUnique({
       where: { id: req.params.eventId },
       include: { hall: true }
@@ -21,37 +26,42 @@ router.get('/availability/:eventId', async (req, res) => {
       where: { eventId: event.id, status: { in: ['Onaylı', 'Beklemede'] } }
     });
 
+    let responseData;
+
     // 1. Koltuksuz (Genel Giriş) Algoritması
     if (!event.isSeated) {
       const totalSold = reservations.length;
       const availableCount = event.capacity - totalSold;
-      return res.json({ 
+      responseData = { 
         isSeated: false, 
         capacity: event.capacity, 
         sold: totalSold, 
         available: Math.max(0, availableCount),
         paymentType: event.paymentType
-      });
+      };
+    } else {
+      // 2. Koltuklu Algoritması
+      if (!event.hall) return res.status(400).json({ error: "Salon bilgisi eksik" });
+      
+      // String olarak saklanan layout JSON'u parse et (Faz 1 SQLite kararı)
+      const layout = JSON.parse(event.hall.layoutJson || "{\"chairs\":[]}");
+      const takenSeatIds = new Set(reservations.map(r => r.seatId));
+      
+      // Boş koltukları bul
+      const availableSeats = layout.chairs?.filter((chair) => !takenSeatIds.has(chair.id)) || [];
+
+      responseData = {
+        isSeated: true,
+        hallName: event.hall.name,
+        totalSeats: event.hall.seatCount,
+        sold: takenSeatIds.size,
+        availableSeats,
+        paymentType: event.paymentType
+      };
     }
 
-    // 2. Koltuklu Algoritması
-    if (!event.hall) return res.status(400).json({ error: "Salon bilgisi eksik" });
-    
-    // String olarak saklanan layout JSON'u parse et (Faz 1 SQLite kararı)
-    const layout = JSON.parse(event.hall.layoutJson || "{\"chairs\":[]}");
-    const takenSeatIds = new Set(reservations.map(r => r.seatId));
-    
-    // Boş koltukları bul
-    const availableSeats = layout.chairs?.filter((chair) => !takenSeatIds.has(chair.id)) || [];
-
-    res.json({
-      isSeated: true,
-      hallName: event.hall.name,
-      totalSeats: event.hall.seatCount,
-      sold: takenSeatIds.size,
-      availableSeats,
-      paymentType: event.paymentType
-    });
+    cache.set(cacheKey, responseData, 5 * 60 * 1000);
+    res.json(responseData);
 
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
@@ -74,31 +84,57 @@ router.post('/', validate(resSchema), async (req, res) => {
     });
     if (!event) return res.status(404).json({ error: "Etkinlik bulunamadı." });
 
-    // Fikir: Koltuk satılmış mı kontrolü
-    if (req.body.seatId) {
-      const existing = await prisma.reservation.findFirst({
-        where: {
-          eventId: req.body.eventId,
-          seatId: req.body.seatId,
-          status: { in: ['Onaylı', 'Beklemede'] }
+    let reservation;
+    
+    // Perform seat/capacity check and creation inside a transaction
+    try {
+      reservation = await prisma.$transaction(async (tx) => {
+        // 1. Double Booking Check for seated events
+        if (req.body.seatId) {
+          const existing = await tx.reservation.findFirst({
+            where: {
+              eventId: req.body.eventId,
+              seatId: req.body.seatId,
+              status: { in: ['Onaylı', 'Beklemede'] }
+            }
+          });
+          if (existing) {
+            throw new Error("Bu koltuk daha önce rezerve edilmiştir.");
+          }
         }
+
+        // 2. Capacity Check for seatless events
+        if (!event.isSeated) {
+          const reservationsCount = await tx.reservation.count({
+            where: {
+              eventId: req.body.eventId,
+              status: { in: ['Onaylı', 'Beklemede'] }
+            }
+          });
+          if (reservationsCount >= event.capacity) {
+            throw new Error("Etkinlik kapasitesi dolmuştur.");
+          }
+        }
+
+        // Generate paymentReference format: PAYMENT-YYYY-MM-DD-RANDOM
+        const dateStr = new Date().toISOString().split('T')[0];
+        const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const paymentReference = `PAYMENT-${dateStr}-${randomStr}`;
+
+        return tx.reservation.create({
+          data: {
+            ...req.body,
+            paymentReference
+          }
+        });
       });
-      if (existing) {
-        return res.status(400).json({ error: "Bu koltuk daha önce rezerve edilmiştir." });
-      }
+    } catch (transactionErr) {
+      return res.status(400).json({ error: transactionErr.message });
     }
 
-    // Generate paymentReference format: PAYMENT-YYYY-MM-DD-RANDOM
-    const dateStr = new Date().toISOString().split('T')[0];
-    const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const paymentReference = `PAYMENT-${dateStr}-${randomStr}`;
-
-    const reservation = await prisma.reservation.create({
-      data: {
-        ...req.body,
-        paymentReference
-      }
-    });
+    // Evict availability and reservation list caches
+    cache.clearEventCache(req.body.eventId);
+    cache.del('admin_reservations');
 
     // Soket Yayını: Sadece o etkinliğe (room) bağlı müşterilere seat_booked mesajı yolla
     const io = req.app.get('io');
@@ -125,7 +161,7 @@ router.post('/', validate(resSchema), async (req, res) => {
               `*Etkinlik:* ${event.name}\n` +
               `*Koltuk:* ${reservation.seatName || 'Genel Giriş'}\n` +
               `*Tutar:* ${event.price} ₺\n` +
-              `*Referans:* \`${paymentReference}\`\n\n` +
+              `*Referans:* \`${reservation.paymentReference}\`\n\n` +
               `Lütfen ödemeyi kontrol edip admin panelinden onaylayın.`;
 
             const https = require('https');
@@ -179,6 +215,10 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
     });
 
     if (!reservation) return res.status(404).json({ error: "Bulunamadı" });
+
+    // Evict availability and reservation list caches
+    cache.clearEventCache(reservation.eventId);
+    cache.del('admin_reservations');
 
     // Fikir #6: QR Kodu Base64 formatında oluştur
     const QRCode = require('qrcode');
@@ -245,10 +285,14 @@ router.post('/checkin', requireAuth, async (req, res) => {
 // Admin: Tüm Rezervasyonları Listele
 router.get('/', requireAuth, async (req, res) => {
   try {
+    const cached = cache.get('admin_reservations');
+    if (cached) return res.json(cached);
+
     const reservations = await prisma.reservation.findMany({
       include: { event: true },
       orderBy: { createdAt: 'desc' }
     });
+    cache.set('admin_reservations', reservations, 10 * 1000); // 10 seconds cache
     res.json(reservations);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
@@ -348,6 +392,10 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
         })
       }
     });
+
+    // Evict availability and reservation list caches
+    cache.clearEventCache(reservation.eventId);
+    cache.del('admin_reservations');
 
     // Soket Yayını: Koltuğun serbest bırakıldığını bildir (Real-time seat release)
     const io = req.app.get('io');

@@ -5,6 +5,7 @@ const prisma = new PrismaClient();
 const { z } = require('zod');
 const { validate } = require('../middlewares/validate');
 const { requireAuth } = require('../middlewares/auth');
+const cache = require('../utils/cache');
 
 // Validation Schema
 const hallSchema = z.object({
@@ -19,6 +20,7 @@ const hallSchema = z.object({
 router.post('/', requireAuth, validate(hallSchema), async (req, res) => {
   try {
     const hall = await prisma.hall.create({ data: req.body });
+    cache.del('halls');
     res.status(201).json(hall);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
@@ -42,6 +44,7 @@ router.post('/:id/clone', requireAuth, async (req, res) => {
         isGlobal: false
       }
     });
+    cache.del('halls');
     res.status(201).json(clone);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
@@ -51,7 +54,11 @@ router.post('/:id/clone', requireAuth, async (req, res) => {
 // Get all Halls
 router.get('/', async (req, res) => {
   try {
+    const cached = cache.get('halls');
+    if (cached) return res.json(cached);
+
     const halls = await prisma.hall.findMany();
+    cache.set('halls', halls, 5 * 60 * 1000);
     res.json(halls);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -61,10 +68,15 @@ router.get('/', async (req, res) => {
 // Get Hall by ID
 router.get('/:id', async (req, res) => {
   try {
+    const cacheKey = `hall_${req.params.id}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json(cached);
+
     const hall = await prisma.hall.findUnique({
       where: { id: req.params.id }
     });
     if (!hall) return res.status(404).json({ error: "Salon bulunamadı" });
+    cache.set(cacheKey, hall, 5 * 60 * 1000);
     res.json(hall);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -78,6 +90,8 @@ router.put('/:id', requireAuth, validate(hallSchema), async (req, res) => {
       where: { id: req.params.id },
       data: req.body
     });
+    cache.del('halls');
+    cache.del(`hall_${req.params.id}`);
     res.json(hall);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });

@@ -97,7 +97,11 @@ export default function EventsPage() {
     }
   };
 
-  const nowString = new Date().toISOString().slice(0, 16);
+  const getLocalNowString = () => {
+    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+    return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 16);
+  };
+  const nowString = getLocalNowString();
 
   return (
     <div className="space-y-6">

@@ -2,9 +2,14 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
+const { PrismaClient } = require('@prisma/client');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com"; 
+const prisma = new PrismaClient();
+
+// Short-term cache for verified Google tokens (15 min TTL) to avoid redundant HTTP requests
+const tokenCache = new Map();
 
 router.post('/google', async (req, res) => {
   const { token } = req.body;
@@ -24,56 +29,72 @@ router.post('/google', async (req, res) => {
       payload = { email: 'kullanici@example.com', name: 'Local Kullanıcı' };
       mockRole = 'CUSTOMER';
     } else {
-      const ticket = await client.verifyIdToken({
-        idToken: token,
-        audience: process.env.GOOGLE_CLIENT_ID,
-      });
-      payload = ticket.getPayload();
-    }
-    
-    // Kullanıcıyı veritabanında bul veya oluştur
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-    
-    let user = await prisma.user.findUnique({ where: { email: payload.email } });
-    
-    // Rol belirleme
-    let role = mockRole;
-    if (!role) {
-      if (user) {
-        role = user.role;
+      // Check token cache first
+      if (tokenCache.has(token)) {
+        payload = tokenCache.get(token);
       } else {
-        role = (payload.email === ADMIN_EMAIL) ? 'ADMIN' : 'CUSTOMER';
+        try {
+          const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: process.env.GOOGLE_CLIENT_ID,
+          });
+          payload = ticket.getPayload();
+          tokenCache.set(token, payload);
+          // Auto cleanup from cache after 15 minutes
+          setTimeout(() => tokenCache.delete(token), 15 * 60 * 1000);
+        } catch (verifyErr) {
+          console.error("Google Token Verification Error:", verifyErr.message);
+          return res.status(401).json({ error: 'Geçersiz veya süresi dolmuş Google Token' });
+        }
       }
     }
     
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          email: payload.email,
-          role: role
+    // Database operations separated into its own try-catch
+    try {
+      let user = await prisma.user.findUnique({ where: { email: payload.email } });
+      
+      // Rol belirleme
+      let role = mockRole;
+      if (!role) {
+        if (user) {
+          role = user.role;
+        } else {
+          role = (payload.email === ADMIN_EMAIL) ? 'ADMIN' : 'CUSTOMER';
         }
-      });
-    } else if (user.role !== role) {
-      // Eğer rol değiştiyse veya güncellendiyse güncelle
-      user = await prisma.user.update({
-        where: { email: payload.email },
-        data: { role: role }
-      });
+      }
+      
+      if (!user) {
+        user = await prisma.user.create({
+          data: {
+            email: payload.email,
+            role: role
+          }
+        });
+      } else if (user.role !== role) {
+        // Eğer rol değiştiyse veya güncellendiyse güncelle
+        user = await prisma.user.update({
+          where: { email: payload.email },
+          data: { role: role }
+        });
+      }
+
+      // Başarılıysa JWT üret
+      const jwtToken = jwt.sign(
+        { email: payload.email, role: role },
+        process.env.JWT_SECRET || 'super-secret-key',
+        { expiresIn: '12h' }
+      );
+
+      res.json({ success: true, token: jwtToken, user: { email: payload.email, name: payload.name, role: role } });
+    } catch (dbErr) {
+      console.error("Auth Database Error:", dbErr.message);
+      res.status(500).json({ error: 'Veritabanı işlemi gerçekleştirilemedi.' });
     }
-
-    // Başarılıysa JWT üret
-    const jwtToken = jwt.sign(
-      { email: payload.email, role: role },
-      process.env.JWT_SECRET || 'super-secret-key',
-      { expiresIn: '12h' }
-    );
-
-    res.json({ success: true, token: jwtToken, user: { email: payload.email, name: payload.name, role: role } });
   } catch (err) {
-    console.error("Auth Error:", err.message);
-    res.status(401).json({ error: 'Geçersiz Token' });
+    console.error("Auth Unexpected Error:", err.message);
+    res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
 
 module.exports = router;
+

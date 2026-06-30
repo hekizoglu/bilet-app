@@ -367,7 +367,7 @@ class LoadBalancer {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function main() {
-  const roadmapPath = path.join(__dirname, '../../docs/Roadmap.md');
+  const roadmapPath = path.join(__dirname, '../../ROADMAP.md');
   
   const balancer = new LoadBalancer();
   const decision = balancer.decide(roadmapPath);

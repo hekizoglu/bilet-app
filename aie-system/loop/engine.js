@@ -92,7 +92,7 @@ function rotatePhase() {
 }
 
 function addCriticalIdeasToRoadmap(highScoreIdeas) {
-  const roadmapPath = path.join(BASE_DIR, '..', 'docs', 'Roadmap.md');
+  const roadmapPath = path.join(BASE_DIR, '..', 'ROADMAP.md');
   const rulesPath = path.join(BASE_DIR, 'config', 'roadmap_rules.json');
   
   if (!fs.existsSync(rulesPath)) return;

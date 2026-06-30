@@ -160,7 +160,7 @@ class SolutionEngine {
    * Roadmap'tan çözülmemiş görevleri oku
    */
   extractUnsolvedTasks() {
-    const roadmapPath = path.join(__dirname, '../../docs/Roadmap.md');
+    const roadmapPath = path.join(__dirname, '../../ROADMAP.md');
     const roadmapContent = fs.readFileSync(roadmapPath, 'utf8');
     const lines = roadmapContent.split('\n');
     
@@ -634,7 +634,7 @@ class SolutionEngine {
    * Roadmap'ı güncelle
    */
   async updateRoadmap(task) {
-    const roadmapPath = path.join(__dirname, '../../docs/Roadmap.md');
+    const roadmapPath = path.join(__dirname, '../../ROADMAP.md');
     let content = fs.readFileSync(roadmapPath, 'utf8');
     
     // [ ] → [x] değişikliğini yap
