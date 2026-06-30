@@ -350,6 +350,45 @@ router.get('/:id/payment-status', async (req, res) => {
   }
 });
 
+// GET /api/reservations/public/:id
+router.get('/public/:id', async (req, res) => {
+  try {
+    const reservation = await prisma.reservation.findUnique({
+      where: { id: req.params.id },
+      include: { event: { include: { hall: true } } }
+    });
+    if (!reservation) return res.status(404).json({ error: "Rezervasyon bulunamadı" });
+    
+    // Admin bilgilerini çek
+    const admin = await prisma.user.findFirst({
+      where: { role: 'ADMIN' }
+    });
+
+    res.json({
+      id: reservation.id,
+      customer: reservation.customer,
+      email: reservation.email,
+      paymentReference: reservation.paymentReference,
+      paymentStatus: reservation.paymentStatus,
+      status: reservation.status,
+      seatName: reservation.seatName || reservation.seatId,
+      event: {
+        name: reservation.event.name,
+        date: reservation.event.date,
+        price: reservation.event.price,
+        isSeated: reservation.event.isSeated
+      },
+      adminPayment: admin ? {
+        iban: admin.iban,
+        telegramUsername: admin.telegramUsername,
+        email: admin.email
+      } : null
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
 // Admin: İade Başlatma (Refund)
 // POST /api/reservations/:id/refund
 router.post('/:id/refund', requireAuth, async (req, res) => {

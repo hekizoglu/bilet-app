@@ -1,7 +1,84 @@
-# 📱 Ürün İyileştirme Fikirleri - Hepsi Çözüldü
+# 📱 Ürün İyileştirme Fikirleri
 
-Tüm ürün ve UX iyileştirme fikirleri başarıyla gerçek kod tabanına entegre edilmiş ve çözülmüştür.
+Son Güncelleme: 2026-06-30T12:45:50.494Z
 
-## ✅ Çözülen Fikirler Listesi
-- **[x] IDEA-MQQL1XXS-IA56** | Ödeme akışı sadeleştirme
-- **[x] IDEA-MQQL1XXT-LO4X** | Arama ve filtreleme UX iyileştirme
+## IDEA-MR0N3ZMO-5SZK | 🔴 YÜKSEK | Puan: 61
+
+**Tarih:** 2026-06-30T12:45:50.496Z
+**Faz:** ux
+**Tür:** 📱 Ürün
+**Kaynak:** behavior_analytics
+**Zorluk:** medium
+
+### Başlık
+Ödeme akışı sadeleştirme
+
+### Açıklama
+Kullanıcıların %22'i ödeme adımında çıkıyor.
+
+### Puanlama Detayı
+| Kriter | Puan |
+|--------|------|
+| Etki | 9/10 |
+| Güvenlik | 6/10 |
+| Kullanıcı Dostu | 10/10 |
+| Demografik | 7/10 |
+| Basitlik | 5/10 |
+
+**Formül:** (9×2.5) + (6×2.0) + (10×1.5) + (7×1.0) + (5×1.5) − 3 = **61**
+
+---
+
+## IDEA-MR0N3ZMP-BGEC | 🔴 YÜKSEK | Puan: 51.5
+
+**Tarih:** 2026-06-30T12:45:50.497Z
+**Faz:** ux
+**Tür:** 📱 Ürün
+**Kaynak:** behavior_analytics
+**Zorluk:** easy
+
+### Başlık
+Arama ve filtreleme UX iyileştirme
+
+### Açıklama
+Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi revize edilmeli.
+
+### Puanlama Detayı
+| Kriter | Puan |
+|--------|------|
+| Etki | 8/10 |
+| Güvenlik | 2/10 |
+| Kullanıcı Dostu | 9/10 |
+| Demografik | 8/10 |
+| Basitlik | 6/10 |
+
+**Formül:** (8×2.5) + (2×2.0) + (9×1.5) + (8×1.0) + (6×1.5) − 3 = **51.5**
+
+---
+
+## IDEA-MR0N3ZMR-0UUB | 🔴 YÜKSEK | Puan: 49
+
+**Tarih:** 2026-06-30T12:45:50.499Z
+**Faz:** ux
+**Tür:** 📱 Ürün
+**Kaynak:** phase_rule
+**Zorluk:** easy
+
+### Başlık
+Mobil responsive kontrolü
+
+### Açıklama
+Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+
+### Puanlama Detayı
+| Kriter | Puan |
+|--------|------|
+| Etki | 7/10 |
+| Güvenlik | 2/10 |
+| Kullanıcı Dostu | 9/10 |
+| Demografik | 8/10 |
+| Basitlik | 6/10 |
+
+**Formül:** (7×2.5) + (2×2.0) + (9×1.5) + (8×1.0) + (6×1.5) − 3 = **49**
+
+---

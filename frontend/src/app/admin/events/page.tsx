@@ -8,6 +8,10 @@ export default function EventsPage() {
   const [halls, setHalls] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
+  // Search & Filter State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  
   // Form State
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
@@ -103,6 +107,12 @@ export default function EventsPage() {
   };
   const nowString = getLocalNowString();
 
+  const filteredEvents = events.filter(event => {
+    const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'All' || event.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -119,6 +129,31 @@ export default function EventsPage() {
         </button>
       </div>
 
+      {/* Search and Filter bar */}
+      <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <div className="flex-1">
+          <input 
+            type="text" 
+            placeholder="Etkinlik adına göre ara..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full p-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="w-full sm:w-48">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full p-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+          >
+            <option value="All">Tüm Durumlar</option>
+            <option value="Aktif">Aktif</option>
+            <option value="Taslak">Taslak</option>
+            <option value="Pasif">Pasif</option>
+          </select>
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
         <table className="w-full text-left border-collapse min-w-[600px]">
           <thead>
@@ -133,7 +168,7 @@ export default function EventsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {events.map((event) => (
+            {filteredEvents.map((event) => (
               <tr key={event.id} className="hover:bg-gray-50 transition">
                 <td className="p-4 font-medium text-gray-900">{event.name}</td>
                 <td className="p-4 text-gray-600">{new Date(event.date).toLocaleString('tr-TR')}</td>

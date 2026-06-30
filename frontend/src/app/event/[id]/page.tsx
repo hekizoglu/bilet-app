@@ -125,9 +125,19 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
             </div>
           )}
 
-          <button onClick={() => window.location.reload()} className="mt-8 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-            Yeni Bilet Al
-          </button>
+          <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center items-center">
+            {data.paymentType === 'cardless' && (
+              <a 
+                href={`/payment/mobile?id=${reservationSuccess.id}`}
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition inline-block text-sm"
+              >
+                📲 Kolay Mobil Ödeme Sayfası
+              </a>
+            )}
+            <button onClick={() => window.location.reload()} className="px-6 py-2.5 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition text-sm">
+              Yeni Bilet Al
+            </button>
+          </div>
         </div>
       </div>
     );

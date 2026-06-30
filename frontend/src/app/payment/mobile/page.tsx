@@ -1,16 +1,24 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { QrCode, Copy, CheckCircle, Smartphone, CreditCard, ArrowLeft, Share2, Wallet } from "lucide-react";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { QrCode, Copy, CheckCircle, Smartphone, CreditCard, ArrowLeft, Share2, Wallet, Loader2 } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
-// Phase 13.8 — Mobil Ödeme Ekranı
-// Özellikler: QR ile IBAN gösterimi, One-Tap kopyalama, Mobil-first tasarım
+// Phase 13.8 — Mobil Ödeme Ekranı (Dynamic Refactoring)
+// Özellikler: API Entegrasyonu, QR ile IBAN gösterimi, One-Tap kopyalama, Mobil-first tasarım
 
-export default function MobilePaymentPage() {
+function MobilePaymentContent() {
+  const searchParams = useSearchParams();
+  const id = searchParams.get("id");
+
   const [copied, setCopied] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"iban" | "qr">("iban");
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const deferredPromptRef = useRef<any>(null);
+
+  const [reservation, setReservation] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // PWA: Ana ekrana ekle butonu için install prompt yönetimi
   useEffect(() => {
@@ -22,6 +30,29 @@ export default function MobilePaymentPage() {
     window.addEventListener("beforeinstallprompt", handler);
     return () => window.removeEventListener("beforeinstallprompt", handler);
   }, []);
+
+  // Fetch reservation details dynamically if ID is provided
+  useEffect(() => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
+
+    fetch(`http://localhost:5000/api/reservations/public/${id}`)
+      .then((r) => {
+        if (!r.ok) throw new Error("Bilet detayları yüklenemedi.");
+        return r.json();
+      })
+      .then((data) => {
+        setReservation(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setError(err.message);
+        setLoading(false);
+      });
+  }, [id]);
 
   const handleInstall = async () => {
     if (!deferredPromptRef.current) return;
@@ -50,9 +81,29 @@ export default function MobilePaymentPage() {
     }
   };
 
+  const ibanNumber = (reservation && reservation.adminPayment?.iban) 
+    ? reservation.adminPayment.iban 
+    : "TR33 0006 2000 1000 0006 2978 02";
+    
+  const recipient = (reservation && reservation.adminPayment?.email) 
+    ? reservation.adminPayment.email 
+    : "Bilet Organizasyon A.Ş.";
+    
+  const reference = reservation 
+    ? reservation.paymentReference 
+    : "PAYMENT-2026-06-29-001-ABC123";
+    
+  const amount = reservation 
+    ? `${reservation.event.price},00 TL` 
+    : "350,00 TL";
+
+  const eventTitle = reservation 
+    ? `${reservation.event.name} · ${reservation.seatName ? `Koltuk: ${reservation.seatName}` : "Genel Giriş"}`
+    : "Yaz Konseri 2026 · Koltuk A12";
+
   // Paylaşım API — Mobil için native share sheet
   const sharePaymentInfo = async () => {
-    const text = `💳 Ödeme Bilgileri\nIBAN: TR33 0006 2000 1000 0006 2978 02\nAlıcı: Bilet Organizasyon A.Ş.\nAçıklama: PAYMENT-2026-06-29-001-ABC123`;
+    const text = `💳 Ödeme Bilgileri\nIBAN: ${ibanNumber}\nAlıcı: ${recipient}\nAçıklama: ${reference}\nTutar: ${amount}`;
     if (navigator.share) {
       await navigator.share({ title: "Ödeme Bilgileri", text });
     } else {
@@ -60,13 +111,32 @@ export default function MobilePaymentPage() {
     }
   };
 
-  const ibanNumber = "TR33 0006 2000 1000 0006 2978 02";
-  const recipient = "Bilet Organizasyon A.Ş.";
-  const reference = "PAYMENT-2026-06-29-001-ABC123";
-  const amount = "350,00 TL";
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400">
+        <Loader2 className="animate-spin text-blue-500 mb-3" size={32} />
+        <p>Bilet ödeme detayları yükleniyor...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-red-400 p-6 text-center">
+        <p className="text-lg font-bold mb-2">Hata Oluştu</p>
+        <p className="text-sm text-slate-500 mb-6">{error}</p>
+        <button 
+          onClick={() => window.history.back()}
+          className="px-6 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition"
+        >
+          Geri Dön
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-white">
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 text-white font-sans">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-slate-900/90 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center gap-3">
         <button
@@ -96,7 +166,7 @@ export default function MobilePaymentPage() {
         <div className="bg-blue-600 rounded-3xl p-6 text-center shadow-2xl shadow-blue-900/50">
           <p className="text-sm text-blue-200 mb-1">Ödenecek Tutar</p>
           <p className="text-5xl font-black tracking-tight">{amount}</p>
-          <p className="text-sm text-blue-200 mt-2">Yaz Konseri 2026 · Koltuk A12</p>
+          <p className="text-sm text-blue-200 mt-2">{eventTitle}</p>
         </div>
 
         {/* Tab geçiş */}
@@ -192,9 +262,12 @@ export default function MobilePaymentPage() {
         {paymentMethod === "qr" && (
           <div className="space-y-4">
             <div className="bg-white rounded-3xl p-6 flex flex-col items-center gap-4">
-              {/* QR placeholder — gerçek uygulamada qrcode kütüphanesi ile üretilir */}
-              <div className="w-48 h-48 bg-slate-800 rounded-2xl flex items-center justify-center">
-                <QrCode size={80} className="text-white" />
+              <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center p-3">
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=iban:${ibanNumber.replace(/\s/g, "")}?amount=${amount.split(',')[0]}`} 
+                  alt="QR Code" 
+                  className="w-full h-full rounded"
+                />
               </div>
               <div className="text-center text-slate-900">
                 <p className="font-bold">QR kodu taratın</p>
@@ -243,5 +316,18 @@ export default function MobilePaymentPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function MobilePaymentPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400">
+        <Loader2 className="animate-spin text-blue-500 mb-3" size={32} />
+        <p>Bilet ödeme detayları yükleniyor...</p>
+      </div>
+    }>
+      <MobilePaymentContent />
+    </Suspense>
   );
 }
