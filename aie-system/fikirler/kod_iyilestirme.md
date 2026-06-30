@@ -1,30 +1,30 @@
 # 💻 Kod İyileştirme Fikirleri
 
-Son Güncelleme: 2026-06-30T18:07:56.410Z
+Son Güncelleme: 2026-06-30T18:22:59.060Z
 
-## IDEA-MR0YM7LQ-2AQR | 🔴 YÜKSEK | Puan: 51
+## IDEA-MR0Z5K3C-PWWJ | 🔴 YÜKSEK | Puan: 61
 
-**Tarih:** 2026-06-30T18:07:56.414Z
-**Faz:** stabilization
+**Tarih:** 2026-06-30T18:22:59.064Z
+**Faz:** security
 **Tür:** 💻 Kod
 **Kaynak:** phase_rule
-**Zorluk:** hard
+**Zorluk:** medium
 
 ### Başlık
-Hata yakalama ve retry mekanizması
+Input validation katmanı
 
 ### Açıklama
-Kritik endpointler için circuit breaker pattern uygulanmalı.
+Tüm kullanıcı girişleri için merkezi validasyon katmanı.
 
 ### Puanlama Detayı
 | Kriter | Puan |
 |--------|------|
-| Etki | 9/10 |
-| Güvenlik | 7/10 |
-| Kullanıcı Dostu | 6/10 |
-| Demografik | 5/10 |
-| Basitlik | 5/10 |
+| Etki | 8/10 |
+| Güvenlik | 10/10 |
+| Kullanıcı Dostu | 5/10 |
+| Demografik | 6/10 |
+| Basitlik | 7/10 |
 
-**Formül:** (9×2.5) + (7×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 7 = **51**
+**Formül:** (8×2.5) + (10×2.0) + (5×1.5) + (6×1.0) + (7×1.5) − 3 = **61**
 
 ---
