@@ -4,6 +4,16 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { requireAuth } = require('../middlewares/auth');
 const { encrypt, decrypt } = require('../utils/encryption');
+const { z } = require('zod');
+const { validate } = require('../middlewares/validate');
+
+const profileSchema = z.object({
+  iban: z.string().optional().nullable(),
+  telegramUsername: z.string().optional().nullable(),
+  telegramBotToken: z.string().optional().nullable(),
+  telegramChatId: z.string().optional().nullable(),
+  paymentMethod: z.string().optional().nullable()
+});
 
 // GET /api/users/admin-payment-info
 // Public endpoint to get admin's payment details for checkout
@@ -67,7 +77,7 @@ router.get('/profile', requireAuth, async (req, res) => {
 
 // PUT /api/users/profile
 // Update user's profile and payment settings
-router.put('/profile', requireAuth, async (req, res) => {
+router.put('/profile', requireAuth, validate(profileSchema), async (req, res) => {
   try {
     const userEmail = req.user.email;
     const { iban, telegramUsername, telegramBotToken, telegramChatId, paymentMethod } = req.body;
