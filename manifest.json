@@ -1,0 +1,259 @@
+{
+  "version": "1.0.0",
+  "purpose": "Machine-readable map of the AI Operating System documentation layers, constraints, and dependencies.",
+  "files": [
+    {
+      "name": "00_CONTEXT_GRAPH.md",
+      "layer": 0,
+      "responsibility": "Master map and entry point guidance.",
+      "depends_on": [],
+      "used_by": ["*"],
+      "read_priority": "CRITICAL",
+      "update_frequency": "LOW",
+      "can_be_modified_by_agent": false,
+      "notes": "Must be read first in every session."
+    },
+    {
+      "name": "manifest.json",
+      "layer": 0,
+      "responsibility": "Machine-readable registry of system files.",
+      "depends_on": ["00_CONTEXT_GRAPH.md"],
+      "used_by": ["*"],
+      "read_priority": "CRITICAL",
+      "update_frequency": "LOW",
+      "can_be_modified_by_agent": false,
+      "notes": "Keeps the system structure parseable."
+    },
+    {
+      "name": "CLAUDE.md",
+      "layer": 1,
+      "responsibility": "Main AI Agent constitution and behavior guidelines.",
+      "depends_on": ["00_CONTEXT_GRAPH.md"],
+      "used_by": ["*"],
+      "read_priority": "HIGH",
+      "update_frequency": "LOW",
+      "can_be_modified_by_agent": false,
+      "notes": "Defines agent constraints and project command patterns."
+    },
+    {
+      "name": "PRODUCT.md",
+      "layer": 1,
+      "responsibility": "Product vision, definition, and constraints.",
+      "depends_on": ["00_CONTEXT_GRAPH.md"],
+      "used_by": ["ROADMAP.md", "LOOP.md"],
+      "read_priority": "HIGH",
+      "update_frequency": "MEDIUM",
+      "can_be_modified_by_agent": true,
+      "notes": "Determines feature scope and acceptance."
+    },
+    {
+      "name": "ARCHITECTURE.md",
+      "layer": 1,
+      "responsibility": "System architecture, tech stack, and modularity principles.",
+      "depends_on": ["00_CONTEXT_GRAPH.md"],
+      "used_by": ["DECISIONS.md", "LOOP.md"],
+      "read_priority": "HIGH",
+      "update_frequency": "MEDIUM",
+      "can_be_modified_by_agent": true,
+      "notes": "Defines modular boundaries and architecture rules."
+    },
+    {
+      "name": "SECURITY.md",
+      "layer": 1,
+      "responsibility": "Security controls, credential policies, and vulnerability gates.",
+      "depends_on": ["00_CONTEXT_GRAPH.md"],
+      "used_by": ["RISK_REGISTER.md", "LOOP.md", "RELEASE.md"],
+      "read_priority": "CRITICAL",
+      "update_frequency": "MEDIUM",
+      "can_be_modified_by_agent": false,
+      "notes": "Highest authority after user instructions. Blocks builds."
+    },
+    {
+      "name": "ROADMAP.md",
+      "layer": 2,
+      "responsibility": "Strategic feature pipeline (Now/Next/Later) and milestone tracking.",
+      "depends_on": ["PRODUCT.md"],
+      "used_by": ["LOOP.md"],
+      "read_priority": "MEDIUM",
+      "update_frequency": "HIGH",
+      "can_be_modified_by_agent": true,
+      "notes": "Defines current and future milestones."
+    },
+    {
+      "name": "PROJECT_MEMORY.md",
+      "layer": 2,
+      "responsibility": "Active state summary and short-term memory block.",
+      "depends_on": ["ROADMAP.md"],
+      "used_by": ["*"],
+      "read_priority": "HIGH",
+      "update_frequency": "HIGH",
+      "can_be_modified_by_agent": true,
+      "notes": "Updated at the end of every agent task."
+    },
+    {
+      "name": "DECISIONS.md",
+      "layer": 2,
+      "responsibility": "Architecture decision records (ADR).",
+      "depends_on": ["ARCHITECTURE.md"],
+      "used_by": ["LOOP.md"],
+      "read_priority": "MEDIUM",
+      "update_frequency": "MEDIUM",
+      "can_be_modified_by_agent": true,
+      "notes": "Stores historical architectural decisions."
+    },
+    {
+      "name": "RISK_REGISTER.md",
+      "layer": 2,
+      "responsibility": "Risk assessment and mitigation plans.",
+      "depends_on": ["SECURITY.md", "PRODUCT.md"],
+      "used_by": ["LOOP.md", "REVIEW.md"],
+      "read_priority": "MEDIUM",
+      "update_frequency": "HIGH",
+      "can_be_modified_by_agent": true,
+      "notes": "Maintains a running list of project risks."
+    },
+    {
+      "name": "LOOP.md",
+      "layer": 3,
+      "responsibility": "Core development cycle and control flow.",
+      "depends_on": ["CLAUDE.md", "00_CONTEXT_GRAPH.md"],
+      "used_by": ["*"],
+      "read_priority": "HIGH",
+      "update_frequency": "LOW",
+      "can_be_modified_by_agent": false,
+      "notes": "Guides execution steps of every task."
+    },
+    {
+      "name": "BUILD_TEST_FIX.md",
+      "layer": 3,
+      "responsibility": "Automated build, test, and repair loop.",
+      "depends_on": ["LOOP.md", "ERRORS.md"],
+      "used_by": ["QA.md"],
+      "read_priority": "MEDIUM",
+      "update_frequency": "LOW",
+      "can_be_modified_by_agent": false,
+      "notes": "Standardized command executions and recovery."
+    },
+    {
+      "name": "QA.md",
+      "layer": 3,
+      "responsibility": "Quality gates, checklists, and definition of done.",
+      "depends_on": ["BUILD_TEST_FIX.md"],
+      "used_by": ["REVIEW.md"],
+      "read_priority": "MEDIUM",
+      "update_frequency": "LOW",
+      "can_be_modified_by_agent": false,
+      "notes": "Defines quality expectations, not the run commands."
+    },
+    {
+      "name": "REVIEW.md",
+      "layer": 3,
+      "responsibility": "Deliberate human-style review process and quality gates.",
+      "depends_on": ["QA.md", "RISK_REGISTER.md"],
+      "used_by": ["RELEASE.md"],
+      "read_priority": "MEDIUM",
+      "update_frequency": "LOW",
+      "can_be_modified_by_agent": false,
+      "notes": "Handles judgment checks after automation passes."
+    },
+    {
+      "name": "RELEASE.md",
+      "layer": 3,
+      "responsibility": "Release prep, changelog creation, and rollback procedures.",
+      "depends_on": ["REVIEW.md"],
+      "used_by": ["OBSERVABILITY.md"],
+      "read_priority": "MEDIUM",
+      "update_frequency": "MEDIUM",
+      "can_be_modified_by_agent": true,
+      "notes": "Enforces pre-release and rollback checklists."
+    },
+    {
+      "name": "OBSERVABILITY.md",
+      "layer": 3,
+      "responsibility": "Monitoring, logging, and crash-reporting architectures.",
+      "depends_on": ["RELEASE.md"],
+      "used_by": ["ERRORS.md"],
+      "read_priority": "LOW",
+      "update_frequency": "LOW",
+      "can_be_modified_by_agent": true,
+      "notes": "Ensures post-release health tracking."
+    },
+    {
+      "name": "AGENTS.md",
+      "layer": 4,
+      "responsibility": "Multi-agent coordination and role descriptions.",
+      "depends_on": ["00_CONTEXT_GRAPH.md"],
+      "used_by": ["PROMPTS.md", "TOKEN_OPTIMIZATION.md"],
+      "read_priority": "LOW",
+      "update_frequency": "LOW",
+      "can_be_modified_by_agent": false,
+      "notes": "Distributes work tasks among different agent profiles."
+    },
+    {
+      "name": "PROMPTS.md",
+      "layer": 4,
+      "responsibility": "Reusable agent prompts library.",
+      "depends_on": ["AGENTS.md"],
+      "used_by": ["*"],
+      "read_priority": "LOW",
+      "update_frequency": "MEDIUM",
+      "can_be_modified_by_agent": true,
+      "notes": "Standardized prompt templates."
+    },
+    {
+      "name": "TOKEN_OPTIMIZATION.md",
+      "layer": 4,
+      "responsibility": "Token/cost reduction strategies and context size guidelines.",
+      "depends_on": ["AGENTS.md"],
+      "used_by": ["*"],
+      "read_priority": "HIGH",
+      "update_frequency": "LOW",
+      "can_be_modified_by_agent": false,
+      "notes": "Critical for minimizing execution overhead."
+    },
+    {
+      "name": "IDEAS.md",
+      "layer": 5,
+      "responsibility": "Raw idea backlog and initial capture.",
+      "depends_on": ["00_CONTEXT_GRAPH.md"],
+      "used_by": ["HIGH_SCORE_IDEAS.md"],
+      "read_priority": "LOW",
+      "update_frequency": "HIGH",
+      "can_be_modified_by_agent": true,
+      "notes": "Unfiltered collection of enhancement options."
+    },
+    {
+      "name": "HIGH_SCORE_IDEAS.md",
+      "layer": 5,
+      "responsibility": "Prioritized ideas evaluated using the project scoring formula.",
+      "depends_on": ["IDEAS.md"],
+      "used_by": ["ROADMAP.md"],
+      "read_priority": "LOW",
+      "update_frequency": "HIGH",
+      "can_be_modified_by_agent": true,
+      "notes": "Filter gate to promote items to the roadmap."
+    },
+    {
+      "name": "ERRORS.md",
+      "layer": 5,
+      "responsibility": "Registry of known exceptions, build errors, and resolved issues.",
+      "depends_on": ["BUILD_TEST_FIX.md"],
+      "used_by": ["LOOP.md"],
+      "read_priority": "MEDIUM",
+      "update_frequency": "HIGH",
+      "can_be_modified_by_agent": true,
+      "notes": "Prevents repeating similar bad fixes."
+    },
+    {
+      "name": "BOOTSTRAP_PROMPT.md",
+      "layer": 5,
+      "responsibility": "Fresh clone setup guidance for newly instantiated agents.",
+      "depends_on": ["00_CONTEXT_GRAPH.md"],
+      "used_by": ["*"],
+      "read_priority": "HIGH",
+      "update_frequency": "LOW",
+      "can_be_modified_by_agent": false,
+      "notes": "Bootstraps a fresh session."
+    }
+  ]
+}

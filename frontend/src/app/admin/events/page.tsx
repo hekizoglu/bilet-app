@@ -1,0 +1,283 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { Calendar, Plus, X } from 'lucide-react';
+
+export default function EventsPage() {
+  const [events, setEvents] = useState<any[]>([]);
+  const [halls, setHalls] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Form State
+  const [name, setName] = useState('');
+  const [date, setDate] = useState('');
+  const [price, setPrice] = useState('');
+  const [status, setStatus] = useState('Taslak');
+  const [isSeated, setIsSeated] = useState(true);
+  const [capacity, setCapacity] = useState('');
+  const [hallId, setHallId] = useState('');
+  const [paymentType, setPaymentType] = useState('free');
+
+  const fetchEvents = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/events');
+      if (res.ok) {
+        const data = await res.json();
+        setEvents(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const fetchHalls = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/halls');
+      if (res.ok) {
+        const data = await res.json();
+        setHalls(data);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchEvents();
+    fetchHalls();
+  }, []);
+
+  const getCookie = (name: string) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(';').shift();
+    return null;
+  };
+
+  const handleCreateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const token = getCookie('token');
+
+    const payload = {
+      name,
+      date: new Date(date).toISOString(),
+      price: Number(price),
+      status,
+      isSeated,
+      paymentType,
+      ...(isSeated ? { hallId } : { capacity: Number(capacity) })
+    };
+
+    try {
+      const res = await fetch('http://localhost:5000/api/events', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}` 
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        setIsModalOpen(false);
+        fetchEvents();
+        // Formu temizle
+        setName(''); setDate(''); setPrice(''); setStatus('Taslak'); setIsSeated(true); setCapacity(''); setHallId(''); setPaymentType('free');
+      } else {
+        const errData = await res.json();
+        let errMsg = errData.error || errData.message || "Bilinmeyen hata";
+        if (errData.details && Array.isArray(errData.details)) {
+          errMsg += ":\n" + errData.details.map((d: any) => `- ${d.message}`).join("\n");
+        }
+        alert(`Hata: ${errMsg}`);
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Sunucuya bağlanılamadı');
+    }
+  };
+
+  const nowString = new Date().toISOString().slice(0, 16);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+          <Calendar className="text-blue-600" />
+          Etkinlikler
+        </h1>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition"
+        >
+          <Plus size={20} />
+          Yeni Etkinlik Ekle
+        </button>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+        <table className="w-full text-left border-collapse min-w-[600px]">
+          <thead>
+            <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm">
+              <th className="p-4 font-medium">Etkinlik Adı</th>
+              <th className="p-4 font-medium">Tarih</th>
+              <th className="p-4 font-medium">Fiyat (₺)</th>
+              <th className="p-4 font-medium">Ödeme</th>
+              <th className="p-4 font-medium">Tür</th>
+              <th className="p-4 font-medium">Durum</th>
+              <th className="p-4 font-medium text-right">İşlemler</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {events.map((event) => (
+              <tr key={event.id} className="hover:bg-gray-50 transition">
+                <td className="p-4 font-medium text-gray-900">{event.name}</td>
+                <td className="p-4 text-gray-600">{new Date(event.date).toLocaleString('tr-TR')}</td>
+                <td className="p-4 text-gray-600">{event.price} ₺</td>
+                <td className="p-4 text-gray-600">
+                  {event.paymentType === 'free' && 'Ücretsiz'}
+                  {event.paymentType === 'creditcard' && 'Şimdi Ödeme'}
+                  {event.paymentType === 'cardless' && 'Kartsız Ödeme'}
+                </td>
+                <td className="p-4 text-gray-600">
+                  {event.isSeated ? (
+                    <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                      Koltuklu ({event.hall?.name})
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Ayakta ({event.capacity} Kişi)
+                    </span>
+                  )}
+                </td>
+                <td className="p-4">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    event.status === 'Aktif' ? 'bg-blue-100 text-blue-800' :
+                    event.status === 'Pasif' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {event.status}
+                  </span>
+                </td>
+                <td className="p-4 text-right">
+                  <div className="flex justify-end gap-2">
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${window.location.origin}/event/${event.id}`);
+                        alert('Etkinlik linki kopyalandı! Müşterilerinize gönderebilirsiniz.');
+                      }}
+                      className="text-sm px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 font-medium rounded transition"
+                      title="Müşteri Linkini Kopyala"
+                    >
+                      Linki Kopyala
+                    </button>
+                    <a 
+                      href={`/event/${event.id}`}
+                      target="_blank"
+                      className="text-sm px-3 py-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium rounded transition"
+                      title="Müşteri Sayfasına Git"
+                    >
+                      Sayfayı Gör
+                    </a>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {events.length === 0 && (
+              <tr>
+                <td colSpan={6} className="p-8 text-center text-gray-500">
+                  Henüz etkinlik bulunmuyor.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+              <h2 className="text-xl font-bold text-gray-800">Yeni Etkinlik Ekle</h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto">
+              <form id="event-form" onSubmit={handleCreateEvent} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Etkinlik Adı</label>
+                  <input required type="text" value={name} onChange={e => setName(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tarih ve Saat</label>
+                    <input required type="datetime-local" min={nowString} value={date} onChange={e => setDate(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fiyat (₺)</label>
+                    <input required type="number" min="0" value={price} onChange={e => setPrice(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Durum</label>
+                    <select value={status} onChange={e => setStatus(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                      <option value="Taslak">Taslak</option>
+                      <option value="Aktif">Aktif</option>
+                      <option value="Pasif">Pasif</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Oturma Düzeni</label>
+                    <select value={isSeated ? "true" : "false"} onChange={e => setIsSeated(e.target.value === "true")} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                      <option value="true">Koltuklu Seçimli</option>
+                      <option value="false">Ayakta (Genel Giriş)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Ödeme Türü</label>
+                    <select value={paymentType} onChange={e => setPaymentType(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                      <option value="free">Ücretsiz</option>
+                      <option value="creditcard">Şimdi Ödeme (Kredi Kartı)</option>
+                      <option value="cardless">Kartsız Ödeme (Banka/WhatsApp)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {isSeated ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Salon Seçin</label>
+                    <select required value={hallId} onChange={e => setHallId(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                      <option value="">-- Salon Seçin --</option>
+                      {halls.map(hall => (
+                        <option key={hall.id} value={hall.id}>{hall.name} ({hall.seatCount} Koltuk)</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Kapasite (Kişi)</label>
+                    <input required type="number" min="1" value={capacity} onChange={e => setCapacity(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  </div>
+                )}
+              </form>
+            </div>
+
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg font-medium transition">İptal</button>
+              <button type="submit" form="event-form" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm transition">Kaydet</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

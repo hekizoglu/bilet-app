@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Admin Paneli — Bilet Sistemi</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#1d2129;min-height:100vh}
+
+/* Top Bar */
+#topbar{background:#1a73e8;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+#topbar h1{font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px}
+#topbar .tb-right{display:flex;align-items:center;gap:12px;font-size:13px}
+
+/* Tabs */
+#tabs{background:#fff;border-bottom:1px solid #e4e6ea;display:flex;padding:0 24px}
+.tab{padding:14px 20px;font-size:14px;font-weight:500;color:#606770;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s}
+.tab:hover{color:#1a73e8}
+.tab.active{color:#1a73e8;border-color:#1a73e8}
+
+/* Content */
+#content{padding:24px;max-width:1400px;margin:0 auto}
+.page{display:none}.page.active{display:block}
+
+/* Stats row */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px}
+.stat-card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08);text-align:center}
+.stat-card .val{font-size:32px;font-weight:700;color:#1a73e8}
+.stat-card .lbl{font-size:12px;color:#606770;margin-top:4px}
+
+/* Cards */
+.card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,.08);margin-bottom:16px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-header h2{font-size:16px;font-weight:600}
+
+/* Buttons */
+.btn{padding:8px 16px;border-radius:8px;border:1px solid transparent;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#1a73e8;color:#fff;border-color:#1a73e8}.btn-primary:hover{background:#1557b0}
+.btn-success{background:#0f9d58;color:#fff;border-color:#0f9d58}.btn-success:hover{background:#0b7a45}
+.btn-danger{background:#d93025;color:#fff;border-color:#d93025}.btn-danger:hover{background:#b31412}
+.btn-warn{background:#f9ab00;color:#fff;border-color:#f9ab00}.btn-warn:hover{background:#e09b00}
+.btn-outline{background:#fff;color:#3c4043;border-color:#dadce0}.btn-outline:hover{background:#f1f3f4}
+.btn-sm{padding:4px 10px;font-size:12px}
+
+/* Table */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{background:#f8f9fa;padding:10px 12px;text-align:left;font-weight:600;color:#3c4043;border-bottom:2px solid #e4e6ea;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #f1f3f4;vertical-align:middle}
+tr:hover td{background:#f8f9fa}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-aktif{background:#e6f4ea;color:#1e7e34}
+.badge-pasif{background:#fce8e6;color:#c62828}
+.badge-taslak{background:#fef7e0;color:#e37400}
+.badge-tamamlandi{background:#e8f0fe;color:#1a73e8}
+.badge-bekleme{background:#fef7e0;color:#e37400}
+.badge-onayli{background:#e6f4ea;color:#1e7e34}
+.badge-iptal{background:#fce8e6;color:#c62828}
+.badge-iade{background:#f3e8fd;color:#6a1b9a}
+
+/* Modal */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal h2{font-size:18px;margin-bottom:20px;color:#1d2129}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid #e4e6ea}
+
+/* Form */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:#3c4043;margin-bottom:5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:9px 12px;border:1px solid #dadce0;border-radius:8px;font-size:13px;transition:border .15s;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:#1a73e8;box-shadow:0 0 0 2px rgba(26,115,232,.15)}
+.form-group textarea{resize:vertical;min-height:70px}
+.form-group .hint{font-size:11px;color:#80868b;margin-top:3px}
+
+/* Search / filter bar */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.filter-bar input,.filter-bar select{padding:8px 12px;border:1px solid #dadce0;border-radius:8px;font-size:13px}
+
+/* Link copy */
+.link-box{display:flex;align-items:center;gap:8px;background:#f8f9fa;border-radius:8px;padding:8px 12px}
+.link-box input{flex:1;border:none;background:transparent;font-size:12px;color:#3c4043;font-family:monospace}
+.link-box input:focus{outline:none}
+
+/* Empty state */
+.empty{text-align:center;padding:48px 24px;color:#80868b}
+.empty svg{opacity:.3;margin-bottom:12px}
+.empty p{font-size:15px}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;right:24px;background:#323232;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;z-index:9999;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2);max-width:340px}
+#toast.show{display:block}
+#toast.success{background:#0f9d58}
+#toast.error{background:#d93025}
+
+/* Responsive */
+@media(max-width:640px){.form-row{grid-template-columns:1fr}.stats{grid-template-columns:1fr 1fr}}
+
+/* Login overlay */
+#loginOverlay{position:fixed;inset:0;background:#f0f2f5;z-index:9999;display:flex;align-items:center;justify-content:center}
+#loginOverlay.hidden{display:none}
+.login-box{background:#fff;border-radius:16px;padding:40px 36px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,.12);text-align:center}
+.login-box h2{font-size:22px;margin-bottom:6px;color:#1d2129}
+.login-box p{font-size:13px;color:#80868b;margin-bottom:28px}
+.login-box input{width:100%;padding:11px 14px;border:1px solid #dadce0;border-radius:8px;font-size:14px;margin-bottom:14px;text-align:center;letter-spacing:2px}
+.login-box input:focus{outline:none;border-color:#1a73e8;box-shadow:0 0 0 2px rgba(26,115,232,.15)}
+.login-box .err{font-size:12px;color:#d93025;margin-bottom:10px;min-height:18px}
+</style>
+</head>
+<body>
+
+<!-- ═══ GİRİŞ EKRANI ═══ -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <h2>Admin Paneli</h2>
+    <p>Devam etmek için şifrenizi girin</p>
+    <input type="password" id="loginPw" placeholder="Şifre" onkeydown="if(event.key==='Enter')loginAdmin()">
+    <div class="err" id="loginErr"></div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px" onclick="loginAdmin()">Giriş Yap</button>
+  </div>
+</div>
+
+<div id="topbar">
+  <h1>Bilet Sistemi <span style="font-weight:300;font-size:14px;opacity:.8">Admin Paneli</span></h1>
+  <div class="tb-right">
+    <span id="webAppUrl" style="font-size:11px;opacity:.7;max-width:200px;overflow:hidden;text-overflow:ellipsis"></span>
+    <button class="btn btn-outline btn-sm" onclick="logoutAdmin()" style="margin-left:8px">Çıkış</button>
+  </div>
+</div>
+
+<div id="tabs">
+  <div class="tab active" onclick="showPage('events')">📅 Etkinlikler</div>
+  <div class="tab" onclick="showPage('layouts')">🏛️ Salonlar</div>
+  <div class="tab" onclick="showPage('reservations')">📋 Rezervasyonlar</div>
+  <div class="tab" onclick="showPage('settings')">⚙️ Ayarlar</div>
+</div>
+
+<div id="content">
+
+  <!-- ═══ ETKİNLİKLER ═══ -->
+  <div id="page-events" class="page active">
+    <div class="stats" id="statsRow">
+      <div class="stat-card"><div class="val" id="st-total">—</div><div class="lbl">Toplam Etkinlik</div></div>
+      <div class="stat-card"><div class="val" id="st-active">—</div><div class="lbl">Aktif</div></div>
+      <div class="stat-card"><div class="val" id="st-seats">—</div><div class="lbl">Toplam Koltuk</div></div>
+      <div class="stat-card"><div class="val" id="st-res">—</div><div class="lbl">Rezervasyon</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <h2>Etkinlik Listesi</h2>
+        <button class="btn btn-primary" onclick="openEventModal()">➕ Yeni Etkinlik</button>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="evSearch" placeholder="Ara..." oninput="renderEvents()" style="width:200px">
+        <select id="evStatusFilter" onchange="renderEvents()">
+          <option value="">Tüm Durumlar</option>
+          <option>Aktif</option><option>Pasif</option><option>Taslak</option><option>Tamamlandı</option>
+        </select>
+      </div>
+      <div class="tbl-wrap">
+        <table id="evTable">
+          <thead><tr>
+            <th>Etkinlik</th><th>Tarih / Saat</th><th>Salon</th>
+            <th>Durum</th><th>Koltuk</th><th>Rezervasyon Linki</th><th>İşlemler</th>
+          </tr></thead>
+          <tbody id="evBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ SALONLAR ═══ -->
+  <div id="page-layouts" class="page">
+    <div class="card">
+      <div class="card-header">
+        <h2>Salon Listesi</h2>
+        <a id="newLayoutBtn" class="btn btn-primary" href="#" target="_blank">🖊️ Yeni Salon Tasarla</a>
+      </div>
+      <div class="tbl-wrap">
+        <table id="layTable">
+          <thead><tr><th>ID</th><th>Salon Adı</th><th>Koltuk</th><th>Güncelleme</th><th>İşlemler</th></tr></thead>
+          <tbody id="layBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ AYARLAR ═══ -->
+  <div id="page-settings" class="page">
+    <div class="card" style="max-width:720px">
+      <div class="card-header">
+        <h2>⚙️ Sistem Ayarları</h2>
+        <button class="btn btn-primary" onclick="saveSettings()">💾 Kaydet</button>
+      </div>
+
+      <!-- Genel -->
+      <div style="margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;color:#1a73e8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #e8f0fe">Genel</div>
+        <div class="form-row">
+          <div class="form-group"><label>Uygulama Adı</label><input id="s-appName" placeholder="Bilet Rezervasyon Sistemi"></div>
+          <div class="form-group"><label>Admin E-posta</label><input id="s-adminEmail" type="email" placeholder="admin@email.com"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Admin Şifresi</label>
+            <input id="s-adminPw" type="password" placeholder="Yeni şifre (boş = değiştirme)">
+            <div class="hint">Boş bırakırsanız mevcut şifre korunur.</div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Logo Başlığı</label><input id="s-logoTitle" placeholder="BİLET SİSTEMİ"></div>
+          <div class="form-group"><label>Tema Rengi</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="s-themeColor" type="color" value="#1a73e8" style="width:48px;height:36px;padding:2px;border:1px solid #dadce0;border-radius:6px;cursor:pointer">
+              <input id="s-themeColorHex" placeholder="#1a73e8" style="flex:1" oninput="document.getElementById('s-themeColor').value=this.value">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ödeme Bilgileri -->
+      <div style="margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;color:#0f9d58;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #e6f4ea">Ödeme Bilgileri</div>
+        <div class="form-row">
+          <div class="form-group"><label>Banka Adı</label><input id="s-bankName" placeholder="Örn: Ziraat Bankası"></div>
+          <div class="form-group"><label>Hesap Sahibi</label><input id="s-accountHolder" placeholder="Ad Soyad / Kurum"></div>
+        </div>
+        <div class="form-group"><label>IBAN</label><input id="s-iban" placeholder="TR00 0000 0000 0000 0000 0000 00" style="font-family:monospace;letter-spacing:1px"></div>
+      </div>
+
+      <!-- İletişim -->
+      <div style="margin-bottom:24px">
+        <div style="font-size:12px;font-weight:700;color:#e64a19;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #fbe9e7">İletişim Numaraları</div>
+        <div class="form-row">
+          <div class="form-group"><label>Telefon 1</label><input id="s-phone1" type="tel" placeholder="05xx xxx xx xx"></div>
+          <div class="form-group"><label>Telefon 2 (opsiyonel)</label><input id="s-phone2" type="tel" placeholder="05xx xxx xx xx"></div>
+        </div>
+        <div class="form-group" style="max-width:340px"><label>Telefon 3 (opsiyonel)</label><input id="s-phone3" type="tel" placeholder="05xx xxx xx xx"></div>
+      </div>
+
+      <!-- Ödeme sayfası metni -->
+      <div style="margin-bottom:8px">
+        <div style="font-size:12px;font-weight:700;color:#6a1b9a;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #f3e8fd">Ödeme Sayfası Açıklaması</div>
+        <div class="form-group">
+          <label>Kullanıcıya gösterilecek metin</label>
+          <textarea id="s-payDesc" rows="4" placeholder="Ödeme açıklaması..."></textarea>
+          <div style="font-size:11px;color:#80868b;margin-top:4px">Bu metin rezervasyon tamamlama ekranında görünür.</div>
+        </div>
+      </div>
+
+      <!-- Preview -->
+      <div style="background:#f8f9fa;border-radius:10px;padding:16px;margin-top:8px">
+        <div style="font-size:12px;font-weight:600;color:#3c4043;margin-bottom:10px">Kullanıcı Ödeme Ekranı Önizlemesi</div>
+        <div id="payPreview" style="background:#fff;border-radius:8px;padding:14px;border:1px solid #e4e6ea;font-size:13px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ REZERVASYONLAR ═══ -->
+  <div id="page-reservations" class="page">
+    <div class="card">
+      <div class="card-header">
+        <h2>Rezervasyonlar</h2>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary btn-sm" onclick="openManualResModal()">+ Manuel Rezervasyon</button>
+          <button class="btn btn-outline btn-sm" onclick="exportReservations()">⬇️ Dışa Aktar</button>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <input type="text" id="resSearch" placeholder="Ara (ad, email, telefon)..." oninput="renderReservations()" style="width:240px">
+        <select id="resEvFilter" onchange="renderReservations()">
+          <option value="">Tüm Etkinlikler</option>
+        </select>
+        <select id="resStatusFilter" onchange="renderReservations()">
+          <option value="">Tüm Durumlar</option>
+          <option>Beklemede</option><option>Onaylı</option><option>İptal</option><option>İade</option>
+        </select>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th style="width:36px"><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" title="Tümünü Seç"></th>
+            <th>ID</th><th>Etkinlik</th><th>Koltuk</th>
+            <th>Ad Soyad</th><th>İletişim</th><th>Durum</th><th>Tarih</th><th>İşlemler</th>
+          </tr></thead>
+          <tbody id="resBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- ═══ ETKİNLİK MODAL ═══ -->
+<div class="modal-bg" id="evModal">
+  <div class="modal">
+    <h2 id="evModalTitle">Yeni Etkinlik</h2>
+    <input type="hidden" id="evId">
+    <div class="form-group">
+      <label>Etkinlik Adı *</label>
+      <input id="evName" placeholder="Örn: Bahar Konseri 2026">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Tarih *</label>
+        <input id="evDate" type="date">
+      </div>
+      <div class="form-group">
+        <label>Saat *</label>
+        <input id="evTime" type="time" value="20:00">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Salon *</label>
+        <select id="evLayout">
+          <option value="">— Salon Seçin —</option>
+        </select>
+        <div class="hint">Salon yoksa önce Salonlar > Yeni Salon Tasarla</div>
+      </div>
+      <div class="form-group">
+        <label>Bilet Fiyatı (₺)</label>
+        <input id="evPrice" type="number" min="0" value="0" placeholder="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Durum</label>
+      <select id="evStatus">
+        <option>Taslak</option><option>Aktif</option><option>Pasif</option><option>Tamamlandı</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Açıklama</label>
+      <textarea id="evDesc" placeholder="Etkinlik hakkında kısa bilgi..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('evModal')">İptal</button>
+      <button class="btn btn-primary" onclick="saveEvent()">💾 Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ REZERVASYON DETAY MODAL ═══ -->
+<div class="modal-bg" id="resModal">
+  <div class="modal">
+    <h2>Rezervasyon İşlemi</h2>
+    <input type="hidden" id="resActionId">
+    <div id="resDetail" style="background:#f8f9fa;border-radius:8px;padding:14px;margin-bottom:16px;font-size:13px;line-height:2"></div>
+    <div class="form-group">
+      <label>Durum Güncelle</label>
+      <select id="resNewStatus">
+        <option>Beklemede</option><option>Onaylı</option><option>İptal</option><option>İade</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Not (opsiyonel)</label>
+      <textarea id="resNote" placeholder="Ödeme notu, açıklama..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('resModal')">İptal</button>
+      <button class="btn btn-primary" onclick="confirmResUpdate()">✅ Güncelle</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ETKİNLİK KOPYALAMA MODAL ═══ -->
+<div class="modal-bg" id="copyEvModal">
+  <div class="modal" style="max-width:360px">
+    <h2>Etkinliği Kopyala</h2>
+    <input type="hidden" id="copyEvId">
+    <p style="font-size:13px;color:#606770;margin-bottom:16px">
+      Kopya "Taslak" olarak oluşturulur. Sadece tarihi değiştirin, kalanlar aynı kalır.
+    </p>
+    <div class="form-group">
+      <label>Yeni Etkinlik Tarihi *</label>
+      <input type="date" id="copyEvDate">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('copyEvModal')">İptal</button>
+      <button class="btn btn-primary" onclick="doCopyEvent()">Kopyala</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MANUEL REZERVASYON MODAL ═══ -->
+<div class="modal-bg" id="manualResModal">
+  <div class="modal" style="max-width:560px">
+    <h2>Manuel Rezervasyon</h2>
+    <p style="font-size:13px;color:#606770;margin-bottom:16px">
+      Telefon / yüz yüze gelen rezervasyonlar için. Sistem üzerinden doğrudan oluşturulur.
+    </p>
+    <div class="form-group">
+      <label>Etkinlik *</label>
+      <select id="mr-event" onchange="loadAvailableSeats()">
+        <option value="">— Etkinlik Seçin —</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Koltuk / Masa *</label>
+      <select id="mr-seat">
+        <option value="">— Önce etkinlik seçin —</option>
+      </select>
+      <div class="hint" id="mr-seatHint"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Ad Soyad *</label>
+        <input id="mr-name" placeholder="Müşteri adı soyadı">
+      </div>
+      <div class="form-group">
+        <label>E-posta</label>
+        <input id="mr-email" type="email" placeholder="ornek@email.com">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Telefon</label>
+        <input id="mr-phone" type="tel" placeholder="05xx xxx xx xx">
+      </div>
+      <div class="form-group">
+        <label>İlk Durum</label>
+        <select id="mr-status">
+          <option value="Beklemede">Beklemede</option>
+          <option value="Onaylı">Onaylı (bilet emaili gider)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Not</label>
+      <textarea id="mr-note" rows="2" placeholder="İç not (isteğe bağlı)..."></textarea>
+    </div>
+    <div style="background:#fff9c4;border-radius:8px;padding:10px 12px;font-size:12px;color:#795548;margin-bottom:4px">
+      Aynı e-posta ile tekrar rezervasyon kontrolü bu formda atlanır.
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('manualResModal')">İptal</button>
+      <button class="btn btn-primary" onclick="saveManualReservation()">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOPLU İŞLEM ÇUBUĞU ═══ -->
+<div id="bulkBar" style="display:none;position:fixed;bottom:0;left:0;right:0;
+     background:#1d2129;color:#fff;padding:14px 24px;z-index:800;
+     box-shadow:0 -4px 16px rgba(0,0,0,.25)">
+  <div style="max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <span id="bulkCount" style="font-size:13px;font-weight:600;min-width:80px"></span>
+    <button class="btn btn-success btn-sm" onclick="bulkAction('Onaylı')">Onayla + Bilet Gönder</button>
+    <button class="btn btn-warn btn-sm" onclick="bulkAction('İptal')">İptal Et</button>
+    <button class="btn btn-outline btn-sm" onclick="clearBulkSelect()" style="color:#fff;border-color:#555">Vazgeç</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ─── Data ────────────────────────────────────────────────────
+let _events = [], _layouts = [], _reservations = [];
+let _webUrl  = '';
+
+// ─── Auth ─────────────────────────────────────────────────────
+let _lockCountdown = null;
+
+function loginAdmin() {
+  const pw  = document.getElementById('loginPw').value;
+  const err = document.getElementById('loginErr');
+  if (!pw) { err.textContent = 'Şifre boş bırakılamaz.'; return; }
+  err.textContent = 'Kontrol ediliyor...';
+
+  const btn = document.querySelector('#loginOverlay .btn');
+  btn.disabled = true;
+
+  google.script.run
+    .withSuccessHandler(res => {
+      btn.disabled = false;
+      if (res.success) {
+        sessionStorage.setItem('adminAuth', '1');
+        document.getElementById('loginOverlay').classList.add('hidden');
+        err.textContent = '';
+        loadAll();
+      } else if (res.locked) {
+        document.getElementById('loginPw').value = '';
+        _startLockCountdown(res.secondsLeft);
+      } else {
+        document.getElementById('loginPw').value = '';
+        const left = res.attemptsLeft != null ? res.attemptsLeft : '?';
+        err.textContent = 'Şifre yanlış. Kalan deneme hakkı: ' + left;
+      }
+    })
+    .withFailureHandler(() => {
+      btn.disabled = false;
+      err.textContent = 'Bağlantı hatası. Tekrar deneyin.';
+    })
+    .clientVerifyAdminPassword(pw);
+}
+
+function _startLockCountdown(secs) {
+  clearInterval(_lockCountdown);
+  const err = document.getElementById('loginErr');
+  const btn = document.querySelector('#loginOverlay .btn');
+  btn.disabled = true;
+  document.getElementById('loginPw').disabled = true;
+
+  let remaining = secs;
+  const tick = () => {
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    err.textContent = 'Çok fazla hatalı deneme. ' + m + ' dk ' + s + ' sn sonra tekrar deneyin.';
+    if (remaining <= 0) {
+      clearInterval(_lockCountdown);
+      err.textContent = 'Tekrar deneyebilirsiniz.';
+      btn.disabled = false;
+      document.getElementById('loginPw').disabled = false;
+      document.getElementById('loginPw').focus();
+    }
+    remaining--;
+  };
+  tick();
+  _lockCountdown = setInterval(tick, 1000);
+}
+
+function logoutAdmin() {
+  sessionStorage.removeItem('adminAuth');
+  document.getElementById('loginPw').value = '';
+  document.getElementById('loginErr').textContent = '';
+  document.getElementById('loginOverlay').classList.remove('hidden');
+}
+
+// ─── Init ─────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  google.script.run.withSuccessHandler(u => {
+    _webUrl = u;
+    document.getElementById('webAppUrl').textContent = u;
+    document.getElementById('newLayoutBtn').href = u + '?page=designer';
+  }).getScriptUrl();
+
+  // Oturum kontrolü — session varsa direkt yükle
+  if (sessionStorage.getItem('adminAuth') === '1') {
+    document.getElementById('loginOverlay').classList.add('hidden');
+    loadAll();
+  }
+  // Yoksa login ekranı zaten görünüyor, load bekle
+});
+
+function loadAll() {
+  loadEvents();
+  loadLayouts();
+  loadReservations();
+  loadSettings();
+}
+
+function loadEvents() {
+  google.script.run
+    .withSuccessHandler(data => {
+      _events = data || [];
+      renderEvents();
+      updateStats();
+      fillEventFilter();
+    })
+    .withFailureHandler(err => toast('Etkinlikler yüklenemedi: '+err.message,'error'))
+    .clientGetEvents();
+}
+
+function loadLayouts() {
+  google.script.run
+    .withSuccessHandler(data => {
+      _layouts = data || [];
+      renderLayouts();
+      fillLayoutDropdown();
+    })
+    .withFailureHandler(err => toast('Salonlar yüklenemedi: '+err.message,'error'))
+    .clientGetLayouts();
+}
+
+function loadReservations() {
+  google.script.run
+    .withSuccessHandler(data => {
+      _reservations = data || [];
+      renderReservations();
+      updateStats();
+    })
+    .withFailureHandler(err => toast('Rezervasyonlar yüklenemedi: '+err.message,'error'))
+    .clientGetReservations();
+}
+
+// ─── Stats ────────────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('st-total').textContent  = _events.length;
+  document.getElementById('st-active').textContent = _events.filter(e=>e.status==='Aktif').length;
+  document.getElementById('st-seats').textContent  = _events.reduce((s,e)=>s+(+e.totalSeats||0),0);
+  document.getElementById('st-res').textContent    = _reservations.filter(r=>r.status!=='İptal'&&r.status!=='İade').length;
+}
+
+// ─── Tab navigation ──────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ─── Render Events ───────────────────────────────────────────
+function renderEvents() {
+  const q  = (document.getElementById('evSearch').value||'').toLowerCase();
+  const sf = document.getElementById('evStatusFilter').value;
+  const list = _events.filter(e =>
+    (!q || e.name.toLowerCase().includes(q)) &&
+    (!sf || e.status === sf)
+  );
+
+  const tbody = document.getElementById('evBody');
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty"><p>Etkinlik bulunamadı</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map(ev => {
+    const link = ev.link || '';
+    const avail  = +ev.available || 0;
+    const occ    = +ev.occupied  || 0;
+    const total  = +ev.totalSeats|| 0;
+    const pct    = total ? Math.round(occ/total*100) : 0;
+    return `
+    <tr>
+      <td><strong>${esc(ev.name)}</strong><br><span style="color:#80868b;font-size:11px">${ev.id}</span></td>
+      <td>${ev.dateDisplay||ev.date}<br><span style="color:#80868b">${ev.time||''}</span></td>
+      <td>${esc(ev.layoutName||'—')}</td>
+      <td><span class="badge badge-${badgeClass(ev.status)}">${ev.status}</span></td>
+      <td>
+        <span style="color:#0f9d58;font-weight:600">${avail}</span> boş /
+        <span style="color:#d93025">${occ}</span> dolu
+        <div style="margin-top:3px;height:4px;background:#e4e6ea;border-radius:2px;width:100px">
+          <div style="height:4px;width:${pct}%;background:#1a73e8;border-radius:2px"></div>
+        </div>
+      </td>
+      <td>
+        ${link ? `<div class="link-box"><input readonly value="${esc(link)}"><button class="btn btn-outline btn-sm" onclick="copyLink('${esc(link)}')">📋</button><a href="${esc(link)}" target="_blank" class="btn btn-outline btn-sm">🔗</a></div>` : '—'}
+      </td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="openEventModal('${ev.id}')" title="Düzenle">✏️</button>
+          <button class="btn btn-outline btn-sm" onclick="openCopyModal('${ev.id}')" title="Kopyala">⧉</button>
+          <button class="btn btn-${ev.status==='Aktif'?'warn':'success'} btn-sm"
+            onclick="toggleStatus('${ev.id}','${ev.status}')">
+            ${ev.status==='Aktif'?'Durdur':'Aktifleştir'}
+          </button>
+          <button class="btn btn-danger btn-sm" onclick="deleteEvent('${ev.id}','${esc(ev.name)}')">🗑</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── Render Layouts ──────────────────────────────────────────
+function renderLayouts() {
+  const tbody = document.getElementById('layBody');
+  if (!_layouts.length) {
+    tbody.innerHTML = `<tr><td colspan="5"><div class="empty"><p>Salon bulunamadı. Yeni Salon Tasarla'ya tıklayın.</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = _layouts.map(l => `
+    <tr>
+      <td style="font-size:11px;color:#80868b;font-family:monospace">${l.id}</td>
+      <td><strong>${esc(l.name)}</strong>${l.description?`<br><span style="color:#80868b;font-size:11px">${esc(l.description)}</span>`:''}
+      </td>
+      <td><strong>${l.seatCount}</strong> koltuk</td>
+      <td style="font-size:12px;color:#80868b">${l.updatedAt||l.createdAt||'—'}</td>
+      <td>
+        <div style="display:flex;gap:4px">
+          <a href="${_webUrl}?page=designer&layoutId=${l.id}&layoutName=${encodeURIComponent(l.name)}" target="_blank" class="btn btn-outline btn-sm">🖊️ Düzenle</a>
+          <button class="btn btn-danger btn-sm" onclick="deleteLayout('${l.id}','${esc(l.name)}')">🗑</button>
+        </div>
+      </td>
+    </tr>`).join('');
+}
+
+// ─── Render Reservations ─────────────────────────────────────
+function renderReservations() {
+  const q  = (document.getElementById('resSearch').value||'').toLowerCase();
+  const ef = document.getElementById('resEvFilter').value;
+  const sf = document.getElementById('resStatusFilter').value;
+  const list = _reservations.filter(r =>
+    (!q || r.name.toLowerCase().includes(q) || (r.email||'').toLowerCase().includes(q) || (r.phone||'').includes(q)) &&
+    (!ef || r.eventId === ef) &&
+    (!sf || r.status === sf)
+  );
+
+  const tbody = document.getElementById('resBody');
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><p>Rezervasyon bulunamadı</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(r => `
+    <tr>
+      <td><input type="checkbox" class="res-chk" value="${r.id}" onchange="updateBulkBar()"></td>
+      <td style="font-size:10px;color:#80868b;font-family:monospace">${r.id}</td>
+      <td style="font-size:12px">${esc(r.eventName||r.eventId)}</td>
+      <td><strong>${esc(r.seatName||r.seatId)}</strong></td>
+      <td>${esc(r.name)}</td>
+      <td style="font-size:12px">${r.email||''}<br><span style="color:#80868b">${r.phone||''}</span></td>
+      <td><span class="badge badge-${resClass(r.status)}">${r.status}</span></td>
+      <td style="font-size:11px;color:#80868b">${r.reservedAt}</td>
+      <td>
+        <button class="btn btn-outline btn-sm" onclick="openResModal(${JSON.stringify(r).replace(/"/g,'&quot;')})">İşlem</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ─── Event Modal ─────────────────────────────────────────────
+function openEventModal(id) {
+  const ev = id ? _events.find(e => e.id === id) : null;
+  document.getElementById('evModalTitle').textContent = ev ? 'Etkinlik Düzenle' : 'Yeni Etkinlik';
+  document.getElementById('evId').value    = ev ? ev.id : '';
+  document.getElementById('evName').value  = ev ? ev.name : '';
+  document.getElementById('evDate').value  = ev ? ev.date : '';
+  document.getElementById('evTime').value  = ev ? ev.time : '20:00';
+  document.getElementById('evLayout').value = ev ? ev.layoutId : '';
+  document.getElementById('evPrice').value = ev ? ev.price : '0';
+  document.getElementById('evStatus').value = ev ? ev.status : 'Taslak';
+  document.getElementById('evDesc').value  = ev ? ev.description : '';
+  openModal('evModal');
+}
+
+function saveEvent() {
+  const name = document.getElementById('evName').value.trim();
+  const date = document.getElementById('evDate').value;
+  const lay  = document.getElementById('evLayout').value;
+  if (!name) { toast('Etkinlik adı zorunlu','error'); return; }
+  if (!date) { toast('Tarih zorunlu','error'); return; }
+  if (!lay)  { toast('Salon seçimi zorunlu','error'); return; }
+
+  const evId = document.getElementById('evId').value;
+  const data = {
+    name, date,
+    time:        document.getElementById('evTime').value,
+    layoutId:    lay,
+    price:       +document.getElementById('evPrice').value || 0,
+    status:      document.getElementById('evStatus').value,
+    description: document.getElementById('evDesc').value,
+  };
+
+  const handler = res => {
+    if (res && res.success === false) { toast('Hata: '+(res.error||'?'),'error'); return; }
+    toast('Etkinlik kaydedildi!','success');
+    closeModal('evModal');
+    loadEvents();
+  };
+
+  if (evId) {
+    // Mevcut etkinliği güncelle
+    google.script.run
+      .withSuccessHandler(handler)
+      .withFailureHandler(err => toast('Hata: '+err.message,'error'))
+      .clientUpdateEvent(evId, data);
+  } else {
+    // Yeni etkinlik oluştur
+    google.script.run
+      .withSuccessHandler(handler)
+      .withFailureHandler(err => toast('Hata: '+err.message,'error'))
+      .clientCreateEvent(data);
+  }
+}
+
+function toggleStatus(id, current) {
+  const next = current === 'Aktif' ? 'Pasif' : 'Aktif';
+  if (!confirm(`Durum "${next}" olarak güncellensin mi?`)) return;
+  google.script.run
+    .withSuccessHandler(() => { toast('Durum güncellendi','success'); loadEvents(); })
+    .withFailureHandler(err => toast('Hata: '+err.message,'error'))
+    .clientUpdateEventStatus(id, next);
+}
+
+function deleteEvent(id, name) {
+  if (!confirm(`"${name}" etkinliği silinsin mi? Bu işlem geri alınamaz.`)) return;
+  google.script.run
+    .withSuccessHandler(() => { toast('Etkinlik silindi','success'); loadEvents(); })
+    .withFailureHandler(err => toast('Hata: '+err.message,'error'))
+    .clientDeleteEvent(id);
+}
+
+// ─── Layout actions ──────────────────────────────────────────
+function deleteLayout(id, name) {
+  if (!confirm(`"${name}" salonu silinsin mi?`)) return;
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res && res.success === false) { toast(res.error || 'Silinemedi', 'error'); return; }
+      toast('Salon silindi', 'success');
+      loadLayouts();
+    })
+    .withFailureHandler(err => toast('Hata: '+err.message,'error'))
+    .clientDeleteLayout(id);
+}
+
+// ─── Reservation Modal ───────────────────────────────────────
+function openResModal(r) {
+  document.getElementById('resActionId').value  = r.id;
+  document.getElementById('resNewStatus').value = r.status;
+  document.getElementById('resNote').value = r.notes||'';
+  document.getElementById('resDetail').innerHTML = `
+    <strong>${esc(r.name)}</strong><br>
+    📧 ${r.email||'—'} &nbsp; 📞 ${r.phone||'—'}<br>
+    🎫 <strong>${esc(r.seatName||r.seatId)}</strong> — ${esc(r.eventName||r.eventId)}<br>
+    📅 Rezervasyon: ${r.reservedAt}<br>
+    💰 Tutar: <strong>${r.amount||0} ₺</strong>
+  `;
+  openModal('resModal');
+}
+
+function confirmResUpdate() {
+  const id     = document.getElementById('resActionId').value;
+  const status = document.getElementById('resNewStatus').value;
+  const note   = document.getElementById('resNote').value;
+  google.script.run
+    .withSuccessHandler(() => { toast('Rezervasyon güncellendi','success'); closeModal('resModal'); loadReservations(); loadEvents(); })
+    .withFailureHandler(err => toast('Hata: '+err.message,'error'))
+    .clientUpdateReservation(id, status, note);
+}
+
+// ─── Helpers ─────────────────────────────────────────────────
+function fillLayoutDropdown() {
+  const sel = document.getElementById('evLayout');
+  const val = sel.value;
+  sel.innerHTML = '<option value="">— Salon Seçin —</option>';
+  _layouts.forEach(l => sel.insertAdjacentHTML('beforeend', `<option value="${l.id}">${esc(l.name)} (${l.seatCount} koltuk)</option>`));
+  sel.value = val;
+}
+
+function fillEventFilter() {
+  const sel = document.getElementById('resEvFilter');
+  const val = sel.value;
+  sel.innerHTML = '<option value="">Tüm Etkinlikler</option>';
+  _events.forEach(e => sel.insertAdjacentHTML('beforeend', `<option value="${e.id}">${esc(e.name)}</option>`));
+  sel.value = val;
+}
+
+function copyLink(url) {
+  navigator.clipboard.writeText(url).then(() => toast('Link kopyalandı ✓','success'));
+}
+
+function exportReservations() {
+  const rows  = [['ID','Etkinlik','Koltuk','Ad Soyad','Email','Telefon','Durum','Tarih']];
+  _reservations.forEach(r => rows.push([r.id,r.eventName,r.seatName,r.name,r.email,r.phone,r.status,r.reservedAt]));
+  const csv   = rows.map(r=>r.map(c=>'"'+(c||'').toString().replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a     = document.createElement('a');
+  a.href      = 'data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download  = 'rezervasyonlar_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); }));
+
+function badgeClass(s) { return {Aktif:'aktif',Pasif:'pasif',Taslak:'taslak','Tamamlandı':'tamamlandi'}[s]||''; }
+function resClass(s)   { return {Beklemede:'bekleme',Onaylı:'onayli','İptal':'iptal','İade':'iade'}[s]||''; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ─── Settings ────────────────────────────────────────────────
+let _settings = {};
+
+function loadSettings() {
+  google.script.run
+    .withSuccessHandler(data => {
+      _settings = data || {};
+      fillSettingsForm(_settings);
+    })
+    .withFailureHandler(err => toast('Ayarlar yüklenemedi: ' + err.message, 'error'))
+    .clientGetSettings();
+}
+
+function fillSettingsForm(s) {
+  const f = (id, key) => { const el = document.getElementById(id); if (el) el.value = s[key] || ''; };
+  f('s-appName',       'Uygulama Adı');
+  f('s-adminEmail',    'Admin E-posta');
+  f('s-logoTitle',     'Logo Başlığı');
+  f('s-bankName',      'Banka Adı');
+  f('s-accountHolder', 'Hesap Sahibi');
+  f('s-iban',          'IBAN');
+  f('s-phone1',        'Telefon 1');
+  f('s-phone2',        'Telefon 2');
+  f('s-phone3',        'Telefon 3');
+  f('s-payDesc',       'Ödeme Açıklaması');
+  const color = s['Tema Rengi'] || '#1a73e8';
+  const cc = document.getElementById('s-themeColor');
+  const ch = document.getElementById('s-themeColorHex');
+  if (cc) cc.value = color;
+  if (ch) ch.value = color;
+  updatePayPreview();
+}
+
+function saveSettings() {
+  const g  = id => (document.getElementById(id) || {}).value || '';
+  const payload = {
+    'Uygulama Adı':      g('s-appName'),
+    'Admin E-posta':     g('s-adminEmail'),
+    'Logo Başlığı':      g('s-logoTitle'),
+    'Tema Rengi':        g('s-themeColorHex') || g('s-themeColor'),
+    'Banka Adı':         g('s-bankName'),
+    'Hesap Sahibi':      g('s-accountHolder'),
+    'IBAN':              g('s-iban'),
+    'Telefon 1':         g('s-phone1'),
+    'Telefon 2':         g('s-phone2'),
+    'Telefon 3':         g('s-phone3'),
+    'Ödeme Açıklaması':  g('s-payDesc'),
+  };
+  // Şifre alanı doluysa güncelle, boşsa dokunma
+  const newPw = g('s-adminPw');
+  if (newPw) payload['Admin Şifresi'] = newPw;
+  google.script.run
+    .withSuccessHandler(() => { toast('✅ Ayarlar kaydedildi', 'success'); loadSettings(); })
+    .withFailureHandler(err => toast('Hata: ' + err.message, 'error'))
+    .clientSaveSettings(payload);
+}
+
+function updatePayPreview() {
+  const g   = id => (document.getElementById(id) || {}).value || '';
+  const bank = g('s-bankName');
+  const iban = g('s-iban');
+  const holder = g('s-accountHolder');
+  const phones = [g('s-phone1'), g('s-phone2'), g('s-phone3')].filter(Boolean);
+  const desc = g('s-payDesc');
+  const prev = document.getElementById('payPreview');
+  if (!prev) return;
+  prev.innerHTML = `
+    ${desc ? `<p style="color:#3c4043;margin-bottom:12px">${esc(desc)}</p>` : ''}
+    ${bank ? `<div style="background:#f8f9fa;border-radius:8px;padding:12px;margin-bottom:10px;font-size:13px">
+      <div style="font-weight:600;margin-bottom:6px">🏦 Ödeme Bilgileri</div>
+      ${bank ? `<div>Banka: <strong>${esc(bank)}</strong></div>` : ''}
+      ${holder ? `<div>Hesap Sahibi: <strong>${esc(holder)}</strong></div>` : ''}
+      ${iban ? `<div style="font-family:monospace;margin-top:4px;font-size:12px;letter-spacing:1px;color:#1a73e8">${esc(iban)}</div>` : ''}
+    </div>` : ''}
+    ${phones.length ? `<div style="font-size:13px">📞 ${phones.map(p => `<strong>${esc(p)}</strong>`).join(' &nbsp;|&nbsp; ')}</div>` : ''}
+  `;
+}
+
+// Live preview güncelle
+['s-bankName','s-accountHolder','s-iban','s-phone1','s-phone2','s-phone3','s-payDesc'].forEach(id => {
+  document.addEventListener('input', e => { if (e.target.id === id) updatePayPreview(); });
+});
+document.getElementById('s-themeColor') && document.getElementById('s-themeColor').addEventListener('input', e => {
+  const hex = document.getElementById('s-themeColorHex');
+  if (hex) hex.value = e.target.value;
+});
+
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = 'show ' + (type||'');
+  clearTimeout(t._to);
+  t._to = setTimeout(() => t.className = '', 3500);
+}
+
+// ─── Etkinlik Kopyalama ───────────────────────────────────────
+function openCopyModal(id) {
+  document.getElementById('copyEvId').value  = id;
+  document.getElementById('copyEvDate').value = '';
+  openModal('copyEvModal');
+}
+
+function doCopyEvent() {
+  const id   = document.getElementById('copyEvId').value;
+  const date = document.getElementById('copyEvDate').value;
+  if (!date) { toast('Lütfen yeni bir tarih seçin.', 'error'); return; }
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res && res.success) {
+        toast('Etkinlik kopyalandı! Taslak olarak oluşturuldu.', 'success');
+        closeModal('copyEvModal');
+        loadEvents();
+      } else {
+        toast('Hata: ' + (res && res.error ? res.error : '?'), 'error');
+      }
+    })
+    .withFailureHandler(err => toast('Hata: ' + err.message, 'error'))
+    .clientCopyEvent(id, date);
+}
+
+// ─── Toplu İşlem ─────────────────────────────────────────────
+function getCheckedIds() {
+  return [...document.querySelectorAll('.res-chk:checked')].map(c => c.value);
+}
+
+function updateBulkBar() {
+  const ids  = getCheckedIds();
+  const bar  = document.getElementById('bulkBar');
+  const cnt  = document.getElementById('bulkCount');
+  bar.style.display = ids.length ? 'block' : 'none';
+  cnt.textContent   = ids.length + ' rezervasyon seçili';
+  // sayfa alt kısmına boşluk bırak
+  document.getElementById('content').style.paddingBottom = ids.length ? '72px' : '0';
+}
+
+function toggleSelectAll(chk) {
+  document.querySelectorAll('.res-chk').forEach(c => c.checked = chk.checked);
+  updateBulkBar();
+}
+
+function clearBulkSelect() {
+  document.querySelectorAll('.res-chk').forEach(c => c.checked = false);
+  const all = document.getElementById('selectAll');
+  if (all) all.checked = false;
+  updateBulkBar();
+}
+
+function bulkAction(status) {
+  const ids = getCheckedIds();
+  if (!ids.length) return;
+  const label = status === 'Onaylı'
+    ? ids.length + ' rezervasyon onaylanacak ve bilet emaili gönderilecek.'
+    : ids.length + ' rezervasyon "' + status + '" yapılacak ve müşterilere bildirim gönderilecek.';
+  if (!confirm(label + '\n\nDevam edilsin mi?')) return;
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res && res.success) {
+        toast(res.updated + ' rezervasyon güncellendi.', 'success');
+        clearBulkSelect();
+        loadReservations();
+        loadEvents();
+      } else {
+        toast('Hata: ' + (res && res.error ? res.error : '?'), 'error');
+      }
+    })
+    .withFailureHandler(err => toast('Hata: ' + err.message, 'error'))
+    .clientBulkUpdateReservations(ids, status);
+}
+
+// ─── Manuel Rezervasyon ───────────────────────────────────────
+let _availableSeats = [];
+
+function openManualResModal() {
+  // Event dropdown'ı doldur (sadece aktif etkinlikler)
+  const sel = document.getElementById('mr-event');
+  sel.innerHTML = '<option value="">— Etkinlik Seçin —</option>';
+  _events.filter(e => e.status === 'Aktif').forEach(e => {
+    sel.insertAdjacentHTML('beforeend',
+      `<option value="${e.id}">${esc(e.name)} — ${e.dateDisplay || e.date}</option>`);
+  });
+  document.getElementById('mr-seat').innerHTML = '<option value="">— Önce etkinlik seçin —</option>';
+  document.getElementById('mr-seatHint').textContent = '';
+  document.getElementById('mr-name').value  = '';
+  document.getElementById('mr-email').value = '';
+  document.getElementById('mr-phone').value = '';
+  document.getElementById('mr-note').value  = '';
+  document.getElementById('mr-status').value = 'Beklemede';
+  openModal('manualResModal');
+}
+
+function loadAvailableSeats() {
+  const eventId = document.getElementById('mr-event').value;
+  const seatSel = document.getElementById('mr-seat');
+  const hint    = document.getElementById('mr-seatHint');
+  if (!eventId) {
+    seatSel.innerHTML = '<option value="">— Önce etkinlik seçin —</option>';
+    hint.textContent  = '';
+    return;
+  }
+  seatSel.innerHTML = '<option value="">Yükleniyor...</option>';
+  hint.textContent  = '';
+  google.script.run
+    .withSuccessHandler(seats => {
+      _availableSeats = seats || [];
+      seatSel.innerHTML = '<option value="">— Koltuk Seçin —</option>';
+      if (!seats.length) {
+        seatSel.innerHTML += '<option value="" disabled>Tüm koltuklar dolu</option>';
+        hint.textContent = 'Bu etkinlikte müsait koltuk yok.';
+        return;
+      }
+      // Masa bazlı gruplama
+      const tables = {};
+      seats.forEach(s => {
+        if (!tables[s.table]) tables[s.table] = { numbered: [], unnumbered: [] };
+        if (s.unnumbered) tables[s.table].unnumbered.push(s);
+        else              tables[s.table].numbered.push(s);
+      });
+      Object.entries(tables).forEach(([table, { numbered, unnumbered }]) => {
+        const og = document.createElement('optgroup');
+        og.label = table || 'Diğer';
+        // Numaralı koltuklar — tek tek
+        numbered.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value       = s.id;
+          opt.textContent = s.name;
+          og.appendChild(opt);
+        });
+        // Numarasız masa — tek seçenek (ilk müsait slot)
+        if (unnumbered.length > 0) {
+          const opt = document.createElement('option');
+          opt.value       = unnumbered[0].id; // İlk müsait slot
+          opt.textContent = (table || 'Masa') + ' (Numarasız) — ' + unnumbered.length + ' boş';
+          og.appendChild(opt);
+        }
+        seatSel.appendChild(og);
+      });
+      hint.textContent = seats.length + ' koltuk müsait.';
+    })
+    .withFailureHandler(err => {
+      seatSel.innerHTML = '<option value="">— Yükleme hatası —</option>';
+      hint.textContent  = 'Koltuklar yüklenemedi: ' + err.message;
+    })
+    .clientGetAvailableSeats(eventId);
+}
+
+function saveManualReservation() {
+  const eventId = document.getElementById('mr-event').value;
+  const seatId  = document.getElementById('mr-seat').value;
+  const name    = document.getElementById('mr-name').value.trim();
+  const email   = document.getElementById('mr-email').value.trim();
+  const phone   = document.getElementById('mr-phone').value.trim();
+  const status  = document.getElementById('mr-status').value;
+  const note    = document.getElementById('mr-note').value.trim();
+
+  if (!eventId) { toast('Etkinlik seçin.', 'error'); return; }
+  if (!seatId)  { toast('Koltuk seçin.', 'error'); return; }
+  if (!name)    { toast('Ad Soyad zorunlu.', 'error'); return; }
+
+  const seat = _availableSeats.find(s => s.id === seatId);
+  const seatNames = {};
+  seatNames[seatId] = seat ? seat.name : seatId;
+
+  const data = {
+    eventId,
+    seatIds:             [seatId],
+    seatNames,
+    name, email, phone,
+    notes:               note,
+    initialStatus:       status,
+    skipDuplicateCheck:  true,
+    skipEmailNotification: status !== 'Onaylı', // Onaylı ise bilet emaili gider
+  };
+
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res && res.success) {
+        toast('Manuel rezervasyon oluşturuldu!', 'success');
+        closeModal('manualResModal');
+        loadReservations();
+        loadEvents();
+      } else {
+        toast('Hata: ' + (res && res.error ? res.error : '?'), 'error');
+      }
+    })
+    .withFailureHandler(err => toast('Hata: ' + err.message, 'error'))
+    .clientCreateReservation(data);
+}
+</script>
+</body>
+</html>

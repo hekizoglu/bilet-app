@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Salon Tasarımcısı</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#1e1e2e;color:#cdd6f4;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* Toolbar */
+#toolbar{display:flex;align-items:center;gap:6px;padding:7px 10px;background:#181825;border-bottom:1px solid #313244;flex-wrap:wrap}
+#toolbar h2{font-size:14px;color:#cba6f7;margin-right:6px;white-space:nowrap}
+.tb-sep{width:1px;height:28px;background:#313244;margin:0 2px;flex-shrink:0}
+.btn{padding:5px 10px;border:1px solid #45475a;border-radius:6px;background:#313244;color:#cdd6f4;cursor:pointer;font-size:12px;white-space:nowrap;transition:all .15s}
+.btn:hover{background:#45475a;border-color:#7f849c}
+.btn.primary{background:#1a73e8;border-color:#1a73e8;color:#fff}
+.btn.primary:hover{background:#1557b0}
+.btn.danger{background:#f38ba8;border-color:#f38ba8;color:#1e1e2e}
+.btn.active{background:#a6e3a1;border-color:#a6e3a1;color:#1e1e2e}
+.btn.warn{background:#fab387;border-color:#fab387;color:#1e1e2e}
+.btn.zoom-btn{padding:4px 8px;min-width:30px;text-align:center}
+#zoomPct{font-size:11px;color:#a6adc8;min-width:38px;text-align:center;cursor:default;user-select:none}
+#layoutName{padding:5px 8px;border:1px solid #45475a;border-radius:6px;background:#313244;color:#cdd6f4;font-size:13px;width:160px}
+
+/* Main layout */
+#main{display:flex;flex:1;overflow:hidden}
+
+/* Sidebar */
+#sidebar{width:232px;background:#181825;border-right:1px solid #313244;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.panel{background:#313244;border-radius:8px;padding:10px}
+.panel h3{font-size:11px;font-weight:600;color:#89b4fa;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+.field{margin-bottom:7px}
+.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:11px;color:#a6adc8;margin-bottom:3px}
+.field input,.field select{width:100%;padding:5px 7px;border:1px solid #45475a;border-radius:5px;background:#1e1e2e;color:#cdd6f4;font-size:12px}
+.field input[type=color]{height:28px;padding:2px}
+.field input[type=checkbox]{width:auto;margin-right:5px}
+.dim-row{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.dim-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
+#propPanel{display:none}
+#propPanel.visible{display:block}
+.info-box{font-size:11px;color:#6c7086;line-height:1.7}
+
+/* Canvas area */
+#canvasWrap{flex:1;overflow:auto;background:#11111b;position:relative}
+#zoomOuter{position:relative;display:inline-block;padding:20px}
+#zoomInner{position:absolute;top:0;left:0;transform-origin:0 0}
+
+/* Ruler */
+#rulerX,#rulerY{position:absolute;background:#181825;z-index:10;pointer-events:none;font-size:9px;color:rgba(255,255,255,.35)}
+#rulerX{top:0;left:20px;height:20px;overflow:hidden}
+#rulerY{top:20px;left:0;width:20px;overflow:hidden}
+.ruler-corner{position:absolute;top:0;left:0;width:20px;height:20px;background:#181825;z-index:11}
+
+/* Canvas */
+#canvas{position:relative;background:#1e1e2e;border:2px solid #313244;border-radius:4px;overflow:hidden;margin-top:20px;margin-left:20px}
+
+/* Elements on canvas */
+.c-element{position:absolute;cursor:move;user-select:none;touch-action:none}
+.c-element.selected .el-body{outline:2px solid #89b4fa;outline-offset:2px}
+.c-element.selected.solo-el > div{outline:3px solid #89b4fa;outline-offset:2px}
+
+/* Stage */
+.el-stage{background:#2a2a40;border:2px dashed #7f849c;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#7f849c;letter-spacing:2px;cursor:move;resize:both;overflow:auto;min-width:60px;min-height:30px}
+
+/* Table */
+.table-wrap{position:relative}
+.table-body{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#cdd6f4;cursor:move}
+.round .table-body{border-radius:50%;background:#6c4a2a;border:3px solid #8b6340}
+.square .table-body{border-radius:6px;background:#2a4a6c;border:3px solid #3a6a8b}
+.chair-el{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;cursor:pointer;border:2px solid rgba(255,255,255,.3);transition:background .2s}
+.chair-el.avail{background:#a6e3a1;color:#1e1e2e}
+.chair-el.unnumbered-ch{background:#7287fd;opacity:.7;font-size:11px}
+
+/* Solo Chair */
+.solo-chair-el{position:absolute;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#1e1e2e;background:#a6e3a1;border:2px solid rgba(255,255,255,.4);cursor:move;transition:background .15s;user-select:none}
+
+/* Lasso */
+#lasso{position:absolute;border:1px dashed #89b4fa;background:rgba(137,180,250,.08);pointer-events:none;display:none;z-index:100}
+
+/* Metre etiketleri */
+.m-lbl{position:absolute;font-size:9px;color:rgba(255,255,255,.3);pointer-events:none;line-height:1;z-index:1}
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div id="toolbar">
+  <h2>🏛️ Salon Tasarımcısı</h2>
+  <input id="layoutName" type="text" placeholder="Salon adı..." value="<?= layoutName ?>">
+  <div class="tb-sep"></div>
+
+  <button class="btn" onclick="addStage()">🎭 Sahne</button>
+
+  <div class="tb-sep"></div>
+  <span style="font-size:11px;color:#6c7086">Etiket:</span>
+  <input id="initLabel" type="text" placeholder="M1" value=""
+         style="width:50px;padding:4px;border:1px solid #45475a;border-radius:5px;background:#313244;color:#cdd6f4;font-size:12px"
+         title="Masa Etiketi (A1 vb). Boş ise otomatik verilir.">
+
+  <span style="font-size:11px;color:#6c7086">🪑 Sandalye:</span>
+  <input id="chairCount" type="number" min="0" max="30" value="6"
+         style="width:40px;padding:4px;border:1px solid #45475a;border-radius:5px;background:#313244;color:#cdd6f4;font-size:12px"
+         title="Sandalye sayısı">
+
+  <span style="font-size:11px;color:#6c7086">📏 Boyut (m):</span>
+  <input id="initSize" type="number" min="0.30" max="3.00" step="0.05" value="0.75"
+         style="width:50px;padding:4px;border:1px solid #45475a;border-radius:5px;background:#313244;color:#cdd6f4;font-size:12px"
+         title="Yarıçap veya Kenar Boyutu (Metre)">
+
+  <label style="font-size:11px;color:#6c7086;display:inline-flex;align-items:center;gap:3px;cursor:pointer" title="Numarasız koltuklar">
+    <input id="initUnnumbered" type="checkbox" style="cursor:pointer"> Numarasız
+  </label>
+
+  <input id="initColor" type="color" value="#6c4a2a"
+         style="width:25px;height:25px;padding:0;border:none;border-radius:3px;background:none;cursor:pointer"
+         title="Masa Rengi">
+
+  <button class="btn" onclick="addTable('round')">⬤ Yuvarlak</button>
+  <button class="btn" onclick="addTable('square')">■ Kare</button>
+  <button class="btn" onclick="addSoloChair()" title="Bağımsız numaralı sandalye">🪑 Tek</button>
+  <button class="btn" onclick="addDecoObject()" title="Sütun, Engel veya Kapı gibi dekor elemanı">🔲 Engel</button>
+
+  <div class="tb-sep"></div>
+  <button class="btn" id="btnSelect" onclick="setMode('select')" title="Seç (V)">↖ Seç</button>
+  <button class="btn danger" onclick="deleteSelected()" title="Sil (Del)">🗑 Sil</button>
+  <button class="btn" onclick="duplicateSelected()" title="Çoğalt (Ctrl+D)">⧉</button>
+
+  <div class="tb-sep"></div>
+  <span style="font-size:11px;color:#6c7086">Hizala:</span>
+  <button class="btn" title="Sola"      onclick="alignSelected('left')">⊢</button>
+  <button class="btn" title="Y-Orta"   onclick="alignSelected('centerH')">⊣⊢</button>
+  <button class="btn" title="Sağa"     onclick="alignSelected('right')">⊣</button>
+  <button class="btn" title="Üste"     onclick="alignSelected('top')">⊤</button>
+  <button class="btn" title="X-Orta"  onclick="alignSelected('centerV')">⊥⊤</button>
+  <button class="btn" title="Alta"     onclick="alignSelected('bottom')">⊥</button>
+  <button class="btn" title="Yatay dağıt" onclick="distributeSelected('h')">↔</button>
+  <button class="btn" title="Dikey dağıt" onclick="distributeSelected('v')">↕</button>
+
+  <div class="tb-sep"></div>
+  <!-- Zoom -->
+  <button class="btn zoom-btn" onclick="stepZoom(0.8)" title="Uzaklaştır">−</button>
+  <span id="zoomPct">100%</span>
+  <button class="btn zoom-btn" onclick="stepZoom(1.25)" title="Yakınlaştır">+</button>
+  <button class="btn" onclick="fitCanvas()" title="Tüm salonu ekrana sığdır" style="padding:4px 8px">⊡ Sığdır</button>
+
+  <div class="tb-sep"></div>
+  <button class="btn warn" onclick="clearCanvas()">🧹 Temizle</button>
+  <button class="btn primary" onclick="saveLayout()">💾 Kaydet</button>
+  <a id="backBtn" href="<?= ScriptApp.getService().getUrl() ?>" class="btn" style="text-decoration:none">← Admin</a>
+</div>
+
+<div id="main">
+  <!-- Sidebar -->
+  <div id="sidebar">
+
+    <!-- Özellikler -->
+    <div id="propPanel" class="panel">
+      <h3>Özellikler</h3>
+      <div class="field"><label>Etiket</label><input id="propLabel" oninput="updateProp('label',this.value)"></div>
+
+      <!-- Tablo: sandalye sayısı + +1 butonu -->
+      <div id="propChairRow" class="field">
+        <label>Sandalye Sayısı</label>
+        <div style="display:flex;gap:5px;align-items:center">
+          <input id="propChairs" type="number" min="0" max="50" oninput="updateProp('chairCount',+this.value)" style="flex:1">
+          <button class="btn" style="padding:3px 7px;font-size:12px;flex-shrink:0" onclick="addChairToSelected()" title="Bir sandalye ekle">+1</button>
+        </div>
+      </div>
+
+      <!-- Tablo: boyut — yuvarlak -->
+      <div id="propSizeR" class="field">
+        <label>Yarıçap (m)</label>
+        <input id="propR" type="number" min="0.30" max="3.00" step="0.05" oninput="updateProp('r',+this.value)">
+      </div>
+
+      <!-- Tablo: boyut — kare -->
+      <div id="propSizeWH" style="display:none">
+        <div class="dim-row">
+          <div class="field"><label>Genişlik (m)</label><input id="propW" type="number" min="0.50" max="6.50" step="0.05" oninput="updateProp('w',+this.value)"></div>
+          <div class="field"><label>Yükseklik (m)</label><input id="propH" type="number" min="0.50" max="6.50" step="0.05" oninput="updateProp('h',+this.value)"></div>
+        </div>
+      </div>
+
+      <!-- Tablo: numarasız -->
+      <div id="propUnnumberedRow" class="field">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:11px">
+          <input type="checkbox" id="propUnnumbered" onchange="updateProp('unnumbered',this.checked)">
+          Numarasız koltuklar
+        </label>
+        <div style="font-size:10px;color:#6c7086;margin-top:2px;line-height:1.4">Bilette masa adı yazar.</div>
+      </div>
+
+      <!-- Tablo: renk -->
+      <div id="propColorRow" class="field"><label>Masa Rengi</label><input id="propColor" type="color" oninput="updateProp('color',this.value)"></div>
+
+      <!-- Pozisyon -->
+      <div class="dim-row">
+        <div class="field"><label>X (m)</label><input id="propX" type="number" step="0.05" oninput="updatePropPos('x',+this.value)"></div>
+        <div class="field"><label>Y (m)</label><input id="propY" type="number" step="0.05" oninput="updatePropPos('y',+this.value)"></div>
+      </div>
+    </div>
+
+    <!-- Salon Boyutu -->
+    <div class="panel">
+      <h3>Salon Boyutu</h3>
+      <div class="dim-row">
+        <div class="field"><label>En (m)</label><input id="cvW" type="number" value="20" min="4" max="120" step="0.5" onchange="resizeCanvas()"></div>
+        <div class="field"><label>Boy (m)</label><input id="cvH" type="number" value="14" min="4" max="100" step="0.5" onchange="resizeCanvas()"></div>
+      </div>
+      <div style="font-size:10px;color:#6c7086;margin-top:2px">1 m = <strong>60</strong> px · Izgara = 1 m</div>
+    </div>
+
+    <!-- İpuçları -->
+    <div class="panel">
+      <h3>İpuçları</h3>
+      <div class="info-box">
+        • Ctrl+Click → çoklu seçim<br>
+        • Del → seçili sil<br>
+        • Ctrl+D → çoğalt<br>
+        • Ctrl+A → tümünü seç<br>
+        • +1 → seçili masaya sandalye<br>
+        • 🪑 Tek → bağımsız sandalye<br>
+        • ⊡ Sığdır → tam ekran görünüm<br>
+        • Izgara = 1 metre
+      </div>
+    </div>
+  </div>
+
+  <!-- Canvas alanı (zoom konteyner) -->
+  <div id="canvasWrap">
+    <div id="zoomOuter">
+      <div id="zoomInner">
+        <div class="ruler-corner"></div>
+        <div id="rulerX"></div>
+        <div id="rulerY"></div>
+        <div id="canvas">
+          <div id="lasso"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Sabitler ─────────────────────────────────────────────────
+const SCALE = 60;   // px / metre
+const SNAP  = 10;   // snap grid px
+
+// ─── State ────────────────────────────────────────────────────
+let elements  = [];
+let selected  = new Set();
+let mode      = 'select';
+let drag      = null;
+let lasso     = null;
+let idCounter = 0;
+let layoutId  = '<?= layoutId ?>';
+let _zoom     = 1;
+
+const canvas  = document.getElementById('canvas');
+const lassEl  = document.getElementById('lasso');
+
+// ─── Init ─────────────────────────────────────────────────────
+function init() {
+  resizeCanvas();
+  if (layoutId && layoutId !== 'new') loadLayout(layoutId);
+  canvas.addEventListener('mousedown', onCanvasMD);
+  document.addEventListener('mousemove', onMM);
+  document.addEventListener('mouseup',   onMU);
+  document.addEventListener('keydown',   onKey);
+}
+
+// ─── Canvas boyutu + grid ─────────────────────────────────────
+function resizeCanvas() {
+  const wM = parseFloat(document.getElementById('cvW').value) || 20;
+  const hM = parseFloat(document.getElementById('cvH').value) || 14;
+  const w  = Math.round(wM * SCALE);
+  const h  = Math.round(hM * SCALE);
+  canvas.style.width  = w + 'px';
+  canvas.style.height = h + 'px';
+  drawGrid(w, h, wM, hM);
+  buildRuler(w, h, wM, hM);
+  _applyZoom();
+}
+
+function drawGrid(w, h, wM, hM) {
+  canvas.style.backgroundImage =
+    `linear-gradient(rgba(255,255,255,.08) 1px, transparent 1px),` +
+    `linear-gradient(90deg,rgba(255,255,255,.08) 1px, transparent 1px),` +
+    `linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px),` +
+    `linear-gradient(90deg,rgba(255,255,255,.02) 1px, transparent 1px)`;
+  canvas.style.backgroundSize =
+    `${SCALE}px ${SCALE}px, ${SCALE}px ${SCALE}px, ${SNAP}px ${SNAP}px, ${SNAP}px ${SNAP}px`;
+  canvas.querySelectorAll('.m-lbl').forEach(el => el.remove());
+  for (let m = 1; m <= Math.ceil(wM); m++) {
+    const lbl = document.createElement('div');
+    lbl.className = 'm-lbl';
+    lbl.textContent = m + 'm';
+    lbl.style.left = (m * SCALE + 2) + 'px';
+    lbl.style.top  = '2px';
+    canvas.appendChild(lbl);
+  }
+  for (let m = 1; m <= Math.ceil(hM); m++) {
+    const lbl = document.createElement('div');
+    lbl.className = 'm-lbl';
+    lbl.textContent = m + 'm';
+    lbl.style.left = '2px';
+    lbl.style.top  = (m * SCALE + 2) + 'px';
+    canvas.appendChild(lbl);
+  }
+}
+
+function buildRuler(w, h, wM, hM) {
+  const rx = document.getElementById('rulerX');
+  const ry = document.getElementById('rulerY');
+  rx.style.width  = w + 'px';
+  ry.style.height = h + 'px';
+  let rxHtml = '';
+  for (let m = 0; m <= Math.ceil(wM); m++) {
+    rxHtml += `<span style="position:absolute;left:${m*SCALE}px;top:4px;border-left:1px solid rgba(255,255,255,.2);padding-left:2px">${m}</span>`;
+  }
+  rx.innerHTML = rxHtml;
+  let ryHtml = '';
+  for (let m = 0; m <= Math.ceil(hM); m++) {
+    ryHtml += `<span style="position:absolute;top:${m*SCALE}px;left:2px;border-top:1px solid rgba(255,255,255,.2);line-height:1">${m}</span>`;
+  }
+  ry.innerHTML = ryHtml;
+}
+
+// ─── Zoom ─────────────────────────────────────────────────────
+function _applyZoom() {
+  const inner = document.getElementById('zoomInner');
+  const outer = document.getElementById('zoomOuter');
+  inner.style.transform = `scale(${_zoom})`;
+  // Scroll area'yı zoom'a göre güncelle
+  const cw = canvas.offsetWidth  + 40; // 40 = ruler margin
+  const ch = canvas.offsetHeight + 40;
+  outer.style.width  = (cw * _zoom + 40) + 'px';
+  outer.style.height = (ch * _zoom + 40) + 'px';
+  document.getElementById('zoomPct').textContent = Math.round(_zoom * 100) + '%';
+}
+
+function stepZoom(factor) {
+  _zoom = Math.max(0.1, Math.min(4, _zoom * factor));
+  _applyZoom();
+}
+
+function setZoom(z) {
+  _zoom = Math.max(0.1, Math.min(4, z));
+  _applyZoom();
+}
+
+function fitCanvas() {
+  const wrap = document.getElementById('canvasWrap');
+  const vw   = wrap.clientWidth  - 48;
+  const vh   = wrap.clientHeight - 48;
+  const cw   = canvas.offsetWidth  + 40;
+  const ch   = canvas.offsetHeight + 40;
+  _zoom = Math.min(vw / cw, vh / ch, 1.5);
+  _zoom = Math.max(0.1, _zoom);
+  _applyZoom();
+  // Scroll to top-left
+  wrap.scrollLeft = 0;
+  wrap.scrollTop  = 0;
+}
+
+// Zoom için koordinat dönüşümü
+function _toCanvasCoords(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (clientX - rect.left)  / _zoom,
+    y: (clientY - rect.top)   / _zoom
+  };
+}
+
+// ─── Mode ─────────────────────────────────────────────────────
+function setMode(m) {
+  mode = m;
+  document.getElementById('btnSelect').classList.toggle('active', m === 'select');
+  canvas.style.cursor = m === 'select' ? 'default' : 'crosshair';
+}
+setMode('select');
+
+// ─── ID ───────────────────────────────────────────────────────
+function newId(prefix) { return prefix + '_' + (++idCounter) + '_' + Date.now(); }
+
+// ─── Eleman Ekle ──────────────────────────────────────────────
+function addStage() {
+  const el = { id: newId('stage'), type: 'stage', x: snap(SCALE), y: snap(SCALE/2), w: SCALE*8, h: SCALE*1.5|0, label: 'SAHNE' };
+  elements.push(el);
+  renderEl(el);
+  select([el.id]);
+}
+
+function addTable(shape) {
+  const cc = Math.max(0, Math.min(50, +document.getElementById('chairCount').value || 6));
+  const cw = canvas.offsetWidth  || SCALE*20;
+  const ch = canvas.offsetHeight || SCALE*14;
+  
+  // Custom properties from toolbar
+  const initLabelInput = document.getElementById('initLabel').value.trim();
+  const initSize = parseFloat(document.getElementById('initSize').value) || 0.75;
+  const isUnnumbered = document.getElementById('initUnnumbered').checked;
+  const initColor = document.getElementById('initColor').value || (shape === 'round' ? '#6c4a2a' : '#2a4a6c');
+
+  // Convert size to scale pixels
+  const r = shape === 'round' ? Math.round(initSize * SCALE) : 0;
+  const w = shape === 'square' ? Math.round(initSize * 2 * SCALE) : 0;
+  const h = shape === 'square' ? Math.round(initSize * 2 * SCALE) : 0;
+
+  const cx = snap(cw/2 - 60 + Math.random()*120);
+  const cy = snap(ch/2 - 60 + Math.random()*120);
+
+  // Label auto-increment logic
+  let label = '';
+  if (isUnnumbered) {
+    label = '';
+  } else if (initLabelInput) {
+    label = initLabelInput;
+    // Auto-increment the input label for the next placement
+    const match = initLabelInput.match(/^([a-zA-ZğüşıöçĞÜŞİÖÇ\s\-_]*)(\d+)$/);
+    if (match) {
+      const prefix = match[1];
+      const num = parseInt(match[2]);
+      document.getElementById('initLabel').value = prefix + (num + 1);
+    }
+  } else {
+    label = _nextTableLabel();
+  }
+
+  const el = {
+    id: newId('tbl'), type: 'table', shape,
+    x: cx, y: cy, r, w, h,
+    label:      label,
+    color:      initColor,
+    unnumbered: isUnnumbered,
+    chairs:     buildChairs(shape, cc, r, w, h, isUnnumbered)
+  };
+  elements.push(el);
+  renderEl(el);
+  select([el.id]);
+}
+
+function addSoloChair() {
+  const cw  = canvas.offsetWidth  || SCALE*20;
+  const ch  = canvas.offsetHeight || SCALE*14;
+  const num = _nextSoloNum();
+  const el  = {
+    id:    newId('sch'),
+    type:  'solochair',
+    x:     snap(cw/2 + (Math.random()-0.5)*100),
+    y:     snap(ch/2 + (Math.random()-0.5)*100),
+    label: String(num),
+    color: '#a6e3a1'
+  };
+  elements.push(el);
+  renderEl(el);
+  select([el.id]);
+}
+
+function addDecoObject() {
+  const cw  = canvas.offsetWidth  || SCALE*20;
+  const ch  = canvas.offsetHeight || SCALE*14;
+  const el  = {
+    id:    newId('deco'),
+    type:  'deco',
+    x:     snap(cw/2 + (Math.random()-0.5)*100),
+    y:     snap(ch/2 + (Math.random()-0.5)*100),
+    w:     SCALE * 1, // 1 meter default width
+    h:     SCALE * 1, // 1 meter default height
+    label: 'KOLON',
+    color: '#4b5563'
+  };
+  elements.push(el);
+  renderEl(el);
+  select([el.id]);
+}
+
+function _nextSoloNum() {
+  const nums = elements
+    .filter(e => e.type === 'solochair')
+    .map(e => parseInt(e.label) || 0)
+    .filter(n => n > 0);
+  return nums.length ? Math.max(...nums) + 1 : 1;
+}
+
+// ─── Sandalye Oluştur ─────────────────────────────────────────
+function buildChairs(shape, count, r, w, h, unnumbered) {
+  const out = [];
+  if (shape === 'round') {
+    const dist = (r || 46) + 22;
+    for (let i = 0; i < count; i++) {
+      const a   = (i / count) * 2 * Math.PI - Math.PI / 2;
+      const cId = unnumbered ? 'UN_' + newId('ch') : newId('ch');
+      out.push({ id: cId, cx: Math.cos(a) * dist, cy: Math.sin(a) * dist, label: unnumbered ? '' : String(i + 1) });
+    }
+  } else {
+    const sides = [[], [], [], []];
+    for (let i = 0; i < count; i++) sides[i % 4].push(i);
+    const half = (w || 90) / 2, halfH = (h || 90) / 2;
+    const push = (cx, cy) => {
+      const cId = unnumbered ? 'UN_' + newId('ch') : newId('ch');
+      out.push({ id: cId, cx, cy, label: unnumbered ? '' : String(out.length + 1) });
+    };
+    sides[0].forEach((_, k, arr) => { const x = -half + (w / (arr.length + 1)) * (k + 1); push(x, -(halfH + 16)); });
+    sides[1].forEach((_, k, arr) => { const y = -halfH + (h / (arr.length + 1)) * (k + 1); push(half + 16, y); });
+    sides[2].forEach((_, k, arr) => { const x = -half + (w / (arr.length + 1)) * (k + 1); push(x, halfH + 16); });
+    sides[3].forEach((_, k, arr) => { const y = -halfH + (h / (arr.length + 1)) * (k + 1); push(-(half + 16), y); });
+  }
+  return out;
+}
+
+// Seçili masaya 1 sandalye ekle
+function addChairToSelected() {
+  if (selected.size !== 1) return;
+  const el = elements.find(e => e.id === [...selected][0]);
+  if (!el || el.type !== 'table') return;
+  const newCount  = (el.chairs || []).length + 1;
+  const newChairs = buildChairs(el.shape, newCount, el.r, el.w, el.h, el.unnumbered);
+  if (el.chairs && el.chairs.length > 0) {
+    for (let i = 0; i < el.chairs.length; i++) {
+      newChairs[i].id    = el.chairs[i].id;
+      newChairs[i].label = el.chairs[i].label;
+    }
+  }
+  el.chairs = newChairs;
+  renderEl(el);
+  updatePropsPanel();
+}
+
+// ─── Render ───────────────────────────────────────────────────
+function renderEl(el) {
+  const old = document.getElementById(el.id);
+  if (old) old.remove();
+
+  const div = document.createElement('div');
+  div.id        = el.id;
+  div.className = 'c-element';
+  div.style.left = el.x + 'px';
+  div.style.top  = el.y + 'px';
+
+  if (el.type === 'stage') {
+    div.innerHTML = `<div class="el-body el-stage" style="width:${el.w}px;height:${el.h}px;resize:both;overflow:auto"
+      onmouseup="onStageResize(event,'${el.id}')">${el.label}</div>`;
+
+  } else if (el.type === 'deco') {
+    div.innerHTML = `<div class="el-body el-deco" style="width:${el.w}px;height:${el.h}px;resize:both;overflow:auto;
+      background:${el.color||'#4b5563'};border:2px dashed #9ca3af;color:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold"
+      onmouseup="onStageResize(event,'${el.id}')">${el.label}</div>`;
+
+  } else if (el.type === 'solochair') {
+    div.className += ' solo-el';
+    div.style.width  = '30px';
+    div.style.height = '30px';
+    const inner = document.createElement('div');
+    inner.className = 'el-body solo-chair-el';
+    inner.textContent = el.label || '';
+    inner.style.background = el.color || '#a6e3a1';
+    inner.title = el.label || '';
+    div.appendChild(inner);
+
+  } else {
+    // Table
+    const r       = el.r || 46;
+    const w       = el.w || 90;
+    const h       = el.h || 90;
+    const bSize   = el.shape === 'round' ? r * 2 : w;
+    const bH      = el.shape === 'round' ? r * 2 : h;
+    const br      = el.shape === 'round' ? '50%' : '6px';
+    const pad     = 24 + (el.shape === 'round' ? r : Math.max(w, h) / 2 + 18);
+
+    div.style.width  = (bSize + pad * 2) + 'px';
+    div.style.height = (bH   + pad * 2) + 'px';
+
+    let chairsHtml = '';
+    (el.chairs || []).forEach(c => {
+      const cx  = pad + (el.shape === 'round' ? r : w / 2) + c.cx - 12;
+      const cy  = pad + (el.shape === 'round' ? r : h / 2) + c.cy - 12;
+      const cls = el.unnumbered ? 'chair-el unnumbered-ch' : 'chair-el avail';
+      const txt = el.unnumbered ? '●' : (c.label || '');
+      chairsHtml += `<div class="${cls}" id="${c.id}" style="left:${cx}px;top:${cy}px;width:24px;height:24px">${txt}</div>`;
+    });
+
+    const bx = pad + (el.shape === 'round' ? r : w / 2);
+    const by = pad + (el.shape === 'round' ? r : h / 2);
+    const countNote = el.unnumbered
+      ? `<div style="font-size:10px;opacity:.7;margin-top:2px">${(el.chairs||[]).length} kişilik</div>`
+      : '';
+    div.innerHTML = `${chairsHtml}
+      <div class="el-body table-body ${el.shape}"
+           style="left:${bx}px;top:${by}px;width:${bSize}px;height:${bH}px;
+                  border-radius:${br};background:${el.color||'#6c4a2a'};
+                  border:3px solid ${adjustColor(el.color||'#6c4a2a',30)}">
+        ${el.label}${countNote}
+      </div>`;
+  }
+
+  div.addEventListener('mousedown', e => onElMD(e, el.id));
+  canvas.appendChild(div);
+  updateSelection();
+}
+
+function rerenderAll() {
+  canvas.querySelectorAll('.c-element').forEach(d => d.remove());
+  elements.forEach(el => renderEl(el));
+}
+
+function adjustColor(hex, amount) {
+  const n = parseInt((hex || '#333333').replace('#', ''), 16);
+  const r = Math.min(255, (n >> 16) + amount);
+  const g = Math.min(255, ((n >> 8) & 0xff) + amount);
+  const b = Math.min(255, (n & 0xff) + amount);
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+}
+
+// ─── Seçim ────────────────────────────────────────────────────
+function select(ids, add) {
+  if (!add) selected.clear();
+  ids.forEach(id => selected.add(id));
+  updateSelection();
+  updatePropsPanel();
+}
+
+function updateSelection() {
+  document.querySelectorAll('.c-element').forEach(div => {
+    div.classList.toggle('selected', selected.has(div.id));
+  });
+}
+
+function updatePropsPanel() {
+  const panel = document.getElementById('propPanel');
+  if (selected.size !== 1) { panel.classList.remove('visible'); return; }
+  const el = elements.find(e => e.id === [...selected][0]);
+  if (!el) { panel.classList.remove('visible'); return; }
+  panel.classList.add('visible');
+
+  document.getElementById('propLabel').value = el.label || '';
+  document.getElementById('propX').value     = (el.x / SCALE).toFixed(2);
+  document.getElementById('propY').value     = (el.y / SCALE).toFixed(2);
+
+  const cr   = document.getElementById('propChairRow');
+  const cc   = document.getElementById('propColorRow');
+  const cur  = document.getElementById('propUnnumberedRow');
+  const prR  = document.getElementById('propSizeR');
+  const prWH = document.getElementById('propSizeWH');
+
+  if (el.type === 'table') {
+    cr.style.display  = 'block';
+    cc.style.display  = 'block';
+    cur.style.display = 'block';
+    document.getElementById('propChairs').value       = (el.chairs || []).length;
+    document.getElementById('propColor').value        = el.color || '#6c4a2a';
+    document.getElementById('propUnnumbered').checked = !!el.unnumbered;
+
+    if (el.shape === 'round') {
+      prR.style.display  = 'block';
+      prWH.style.display = 'none';
+      document.getElementById('propR').value = ((el.r || 46) / SCALE).toFixed(2);
+    } else {
+      prR.style.display  = 'none';
+      prWH.style.display = 'block';
+      document.getElementById('propW').value = ((el.w || 90) / SCALE).toFixed(2);
+      document.getElementById('propH').value = ((el.h || 90) / SCALE).toFixed(2);
+    }
+  } else if (el.type === 'stage' || el.type === 'deco') {
+    cr.style.display   = 'none';
+    cc.style.display   = el.type === 'deco' ? 'block' : 'none';
+    cur.style.display  = 'none';
+    prR.style.display  = 'none';
+    prWH.style.display = 'block';
+    document.getElementById('propW').value = ((el.w || 60) / SCALE).toFixed(2);
+    document.getElementById('propH').value = ((el.h || 60) / SCALE).toFixed(2);
+    if (el.type === 'deco') {
+      document.getElementById('propColor').value = el.color || '#4b5563';
+    }
+  } else {
+    cr.style.display   = 'none';
+    cc.style.display   = 'none';
+    cur.style.display  = 'none';
+    prR.style.display  = 'none';
+    prWH.style.display = 'none';
+  }
+}
+
+function updateProp(key, val) {
+  if (selected.size !== 1) return;
+  const el = elements.find(e => e.id === [...selected][0]);
+  if (!el) return;
+
+  if (key === 'chairCount' && el.type === 'table') {
+    el.chairs = buildChairs(el.shape, val, el.r, el.w, el.h, el.unnumbered);
+
+  } else if (key === 'unnumbered' && el.type === 'table') {
+    el.unnumbered = val;
+    el.chairs = buildChairs(el.shape, (el.chairs||[]).length, el.r, el.w, el.h, val);
+
+  } else if (key === 'r' && el.type === 'table') {
+    const pxVal = Math.round(val * SCALE);
+    el.r = Math.max(20, Math.min(200, pxVal));
+    el.chairs = buildChairs(el.shape, (el.chairs||[]).length, el.r, el.w, el.h, el.unnumbered);
+
+  } else if ((key === 'w' || key === 'h') && el.type === 'table') {
+    const pxVal = Math.round(val * SCALE);
+    el[key] = Math.max(30, Math.min(500, pxVal));
+    el.chairs = buildChairs(el.shape, (el.chairs||[]).length, el.r, el.w, el.h, el.unnumbered);
+
+  } else if ((key === 'w' || key === 'h') && (el.type === 'stage' || el.type === 'deco')) {
+    const pxVal = Math.round(val * SCALE);
+    el[key] = Math.max(10, Math.min(2000, pxVal));
+
+  } else {
+    el[key] = val;
+  }
+  renderEl(el);
+}
+
+function updatePropPos(axis, val) {
+  if (selected.size !== 1) return;
+  const el = elements.find(e => e.id === [...selected][0]);
+  if (!el) return;
+  const pxVal = val * SCALE;
+  el[axis] = snap(pxVal);
+  const div = document.getElementById(el.id);
+  if (div) div.style[axis === 'x' ? 'left' : 'top'] = el[axis] + 'px';
+  updatePropsPanel();
+}
+
+// ─── Mouse Events ─────────────────────────────────────────────
+function onCanvasMD(e) {
+  if (e.target !== canvas && e.target !== lassEl && !e.target.classList.contains('m-lbl')) return;
+  const c = _toCanvasCoords(e.clientX, e.clientY);
+  lasso = { x1: c.x, y1: c.y };
+  if (!e.ctrlKey) { selected.clear(); updateSelection(); updatePropsPanel(); }
+}
+
+function onElMD(e, id) {
+  e.stopPropagation();
+  if (e.ctrlKey) {
+    selected.has(id) ? selected.delete(id) : selected.add(id);
+    updateSelection(); updatePropsPanel();
+  } else {
+    if (!selected.has(id)) select([id]);
+  }
+  const startPos = {};
+  selected.forEach(sid => {
+    const el = elements.find(el => el.id === sid);
+    if (el) startPos[sid] = { x: el.x, y: el.y };
+  });
+  drag = { ids: [...selected], startPositions: startPos, mx: e.clientX, my: e.clientY };
+}
+
+function onMM(e) {
+  if (drag) {
+    const dx = (e.clientX - drag.mx) / _zoom;
+    const dy = (e.clientY - drag.my) / _zoom;
+    drag.ids.forEach(id => {
+      const el = elements.find(el => el.id === id);
+      if (!el) return;
+      const sp = drag.startPositions[id];
+      el.x = snap(sp.x + dx);
+      el.y = snap(sp.y + dy);
+      const div = document.getElementById(id);
+      if (div) { div.style.left = el.x + 'px'; div.style.top = el.y + 'px'; }
+    });
+    if (selected.size === 1) updatePropsPanel();
+  }
+  if (lasso) {
+    const c  = _toCanvasCoords(e.clientX, e.clientY);
+    const lx = Math.min(lasso.x1, c.x), ly = Math.min(lasso.y1, c.y);
+    const lw = Math.abs(c.x - lasso.x1), lh = Math.abs(c.y - lasso.y1);
+    lassEl.style.display = 'block';
+    lassEl.style.left = lx+'px'; lassEl.style.top = ly+'px';
+    lassEl.style.width = lw+'px'; lassEl.style.height = lh+'px';
+    lasso.mx = c.x; lasso.my = c.y;
+  }
+}
+
+function onMU(e) {
+  if (drag) { drag = null; }
+  if (lasso) {
+    const lx1 = Math.min(lasso.x1, lasso.mx||lasso.x1);
+    const ly1 = Math.min(lasso.y1, lasso.my||lasso.y1);
+    const lx2 = Math.max(lasso.x1, lasso.mx||lasso.x1);
+    const ly2 = Math.max(lasso.y1, lasso.my||lasso.y1);
+    if (lx2 - lx1 > 5 || ly2 - ly1 > 5) {
+      elements.forEach(el => {
+        const cx = el.x + elCenterOffset(el, 'x');
+        const cy = el.y + elCenterOffset(el, 'y');
+        if (cx >= lx1 && cx <= lx2 && cy >= ly1 && cy <= ly2) selected.add(el.id);
+      });
+      updateSelection(); updatePropsPanel();
+    }
+    lassEl.style.display = 'none';
+    lasso = null;
+  }
+}
+
+function elCenterOffset(el, axis) {
+  if (el.type === 'stage') return axis === 'x' ? el.w/2 : el.h/2;
+  if (el.type === 'solochair') return 15;
+  const r = el.r || 46;
+  const w = el.w || 90;
+  const h = el.h || 90;
+  const p = 24 + (el.shape === 'round' ? r : Math.max(w, h) / 2 + 18);
+  const bs = el.shape === 'round' ? r : (axis === 'x' ? w : h);
+  return p + bs / 2;
+}
+
+function onStageResize(e, id) {
+  const div = document.getElementById(id);
+  if (!div) return;
+  const body = div.querySelector('.el-stage, .el-deco');
+  if (!body) return;
+  const el = elements.find(el => el.id === id);
+  if (el) {
+    el.w = body.offsetWidth;
+    el.h = body.offsetHeight;
+    if (selected.has(id)) {
+      updatePropsPanel();
+    }
+  }
+}
+
+// ─── Klavye ───────────────────────────────────────────────────
+function onKey(e) {
+  if (['INPUT','TEXTAREA'].includes(e.target.tagName)) return;
+  if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+  if (e.ctrlKey && e.key === 'a') { e.preventDefault(); selected = new Set(elements.map(el => el.id)); updateSelection(); updatePropsPanel(); }
+  if (e.ctrlKey && e.key === 'd') { e.preventDefault(); duplicateSelected(); }
+  if (e.key === 'v') setMode('select');
+  if (e.key === '+' || e.key === '=') stepZoom(1.15);
+  if (e.key === '-') stepZoom(0.87);
+  if (e.key === '0') fitCanvas();
+}
+
+// ─── Sil / Çoğalt ────────────────────────────────────────────
+function deleteSelected() {
+  selected.forEach(id => {
+    elements = elements.filter(el => el.id !== id);
+    const div = document.getElementById(id);
+    if (div) div.remove();
+  });
+  selected.clear();
+  updatePropsPanel();
+}
+
+function duplicateSelected() {
+  const newEls = [];
+  selected.forEach(id => {
+    const el = elements.find(e => e.id === id);
+    if (!el) return;
+    const copy = JSON.parse(JSON.stringify(el));
+    if (el.type === 'solochair') {
+      copy.id    = newId('sch');
+      copy.label = String(_nextSoloNum());
+    } else if (el.type === 'deco') {
+      copy.id    = newId('deco');
+    } else {
+      copy.id = newId(el.type === 'stage' ? 'stage' : 'tbl');
+    }
+    copy.x += 20; copy.y += 20;
+    if (copy.type === 'table') {
+      copy.label = _nextTableLabel();
+      if (copy.chairs) {
+        copy.chairs = copy.chairs.map(c => ({
+          ...c,
+          id: copy.unnumbered ? 'UN_' + newId('ch') : newId('ch')
+        }));
+      }
+    }
+    elements.push(copy);
+    newEls.push(copy.id);
+    renderEl(copy);
+  });
+  select(newEls);
+}
+
+function _nextTableLabel() {
+  const tables = elements.filter(e => e.type === 'table');
+  let max = 0;
+  tables.forEach(t => {
+    const m = String(t.label || '').match(/\d+/);
+    if (m) max = Math.max(max, parseInt(m[0]));
+  });
+  return 'M' + (max + 1);
+}
+
+function clearCanvas() {
+  if (!confirm('Tüm elemanlar silinecek. Emin misiniz?')) return;
+  elements = [];
+  canvas.querySelectorAll('.c-element').forEach(d => d.remove());
+  selected.clear(); updatePropsPanel();
+}
+
+// ─── Hizalama ─────────────────────────────────────────────────
+function alignSelected(dir) {
+  const els = elements.filter(e => selected.has(e.id));
+  if (els.length < 2) { alert('Hizalamak için en az 2 eleman seçin.'); return; }
+  const xs = els.map(e => e.x), ys = els.map(e => e.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const minY = Math.min(...ys), maxY = Math.max(...ys);
+  els.forEach(el => {
+    if (dir === 'left')    el.x = minX;
+    if (dir === 'right')   el.x = maxX;
+    if (dir === 'centerH') el.x = (minX + maxX) / 2;
+    if (dir === 'top')     el.y = minY;
+    if (dir === 'bottom')  el.y = maxY;
+    if (dir === 'centerV') el.y = (minY + maxY) / 2;
+    const div = document.getElementById(el.id);
+    if (div) { div.style.left = el.x + 'px'; div.style.top = el.y + 'px'; }
+  });
+}
+
+function distributeSelected(axis) {
+  const els = elements.filter(e => selected.has(e.id));
+  if (els.length < 3) { alert('Dağıtmak için en az 3 eleman seçin.'); return; }
+  if (axis === 'h') {
+    els.sort((a, b) => a.x - b.x);
+    const gap = (els[els.length-1].x - els[0].x) / (els.length - 1);
+    els.forEach((el, i) => { el.x = snap(els[0].x + gap * i); const div = document.getElementById(el.id); if (div) div.style.left = el.x + 'px'; });
+  } else {
+    els.sort((a, b) => a.y - b.y);
+    const gap = (els[els.length-1].y - els[0].y) / (els.length - 1);
+    els.forEach((el, i) => { el.y = snap(els[0].y + gap * i); const div = document.getElementById(el.id); if (div) div.style.top = el.y + 'px'; });
+  }
+}
+
+// ─── Snap ─────────────────────────────────────────────────────
+function snap(v) { return Math.round(v / SNAP) * SNAP; }
+
+// ─── Kaydet / Yükle ──────────────────────────────────────────
+function saveLayout() {
+  const name = document.getElementById('layoutName').value.trim();
+  if (!name) { alert('Lütfen salon adı girin.'); document.getElementById('layoutName').focus(); return; }
+  const wM = parseFloat(document.getElementById('cvW').value) || 20;
+  const hM = parseFloat(document.getElementById('cvH').value) || 14;
+  const layout = {
+    width:      canvas.offsetWidth,
+    height:     canvas.offsetHeight,
+    widthM:     wM,
+    heightM:    hM,
+    scale:      SCALE,
+    stage:      elements.filter(e => e.type === 'stage').map(e => ({ ...e })),
+    tables:     elements.filter(e => e.type === 'table').map(e => ({ ...e })),
+    soloChairs: elements.filter(e => e.type === 'solochair').map(e => ({ ...e })),
+    deco:       elements.filter(e => e.type === 'deco').map(e => ({ ...e }))
+  };
+  const payload = { id: layoutId !== 'new' ? layoutId : undefined, name, layout };
+  google.script.run
+    .withSuccessHandler(res => {
+      if (res.success) { layoutId = res.id; alert('Salon kaydedildi: ' + name); }
+      else              alert('Hata: ' + (res.error || 'Bilinmeyen hata'));
+    })
+    .withFailureHandler(err => alert('Hata: ' + err.message))
+    .clientSaveLayout(payload);
+}
+
+function loadLayout(id) {
+  google.script.run
+    .withSuccessHandler(res => {
+      if (!res || !res.layoutJson) return;
+      try {
+        const layout = JSON.parse(res.layoutJson);
+
+        // Boyut (metre veya px'ten dönüştür)
+        const wM = layout.widthM  || Math.round((layout.width  || SCALE*20) / SCALE);
+        const hM = layout.heightM || Math.round((layout.height || SCALE*14) / SCALE);
+        document.getElementById('cvW').value = wM;
+        document.getElementById('cvH').value = hM;
+        resizeCanvas();
+
+        elements = [];
+        canvas.querySelectorAll('.c-element').forEach(d => d.remove());
+
+        // ID sayacını senkronize et
+        const allIds = [
+          ...(layout.stage      || []),
+          ...(layout.tables     || []),
+          ...(layout.soloChairs || []),
+          ...(layout.deco       || [])
+        ].flatMap(e => [e.id, ...(e.chairs||[]).map(c=>c.id)]);
+        allIds.forEach(id => {
+          if (!id) return;
+          const n = parseInt((String(id).replace('UN_','').split('_')[1]) || '0');
+          if (n > idCounter) idCounter = n;
+        });
+
+        (layout.stage      || []).forEach(e => { elements.push(e); renderEl(e); });
+        (layout.tables     || []).forEach(e => { elements.push(e); renderEl(e); });
+        (layout.soloChairs || []).forEach(e => { elements.push(e); renderEl(e); });
+        (layout.deco       || []).forEach(e => { elements.push(e); renderEl(e); });
+
+        document.getElementById('layoutName').value = res.name || '';
+
+        // Yükleme sonrası ekrana sığdır
+        setTimeout(fitCanvas, 120);
+      } catch(err) { console.error('Layout parse hatası:', err); }
+    })
+    .withFailureHandler(err => console.error(err))
+    .clientGetLayoutById(id);
+}
+
+init();
+</script>
+</body>
+</html>

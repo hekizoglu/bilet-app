@@ -1,0 +1,25 @@
+{
+  "totalUsers": 150,
+  "activeUsers": 45,
+  "dropOffPoints": {
+    "landing": 0.05,
+    "search": 0.30,
+    "seatSelection": 0.12,
+    "payment": 0.22,
+    "confirmation": 0.02
+  },
+  "mostUsedFeatures": [
+    "event_listing",
+    "seat_selection",
+    "reservation_form"
+  ],
+  "leastUsedFeatures": [
+    "dark_mode",
+    "qr_checkin",
+    "hall_filter"
+  ],
+  "mobileUsagePercent": 62,
+  "avgSessionDuration": 180,
+  "bounceRate": 0.35,
+  "returnRate": 0.18
+}

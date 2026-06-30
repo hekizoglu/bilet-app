@@ -1,0 +1,26 @@
+{
+  "scoring": {
+    "weights": {
+      "impact": 2.5,
+      "security": 2.0,
+      "usability": 1.5,
+      "demographic": 1.0,
+      "simplicity": 1.5
+    },
+    "difficulty_penalty": {
+      "easy": 0,
+      "medium": 3,
+      "hard": 7,
+      "very_hard": 12
+    },
+    "thresholds": {
+      "high": 28,
+      "medium": 15
+    }
+  },
+  "priorities": ["stability", "security", "usability", "performance"],
+  "auto_apply": {
+    "max_difficulty": "easy",
+    "min_score": 30
+  }
+}

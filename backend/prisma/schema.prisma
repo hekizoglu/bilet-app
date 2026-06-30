@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Setting {
+  id    Int    @id @default(1)
+  key   String @unique
+  value String
+}
+
+model User {
+  id                    String    @id @default(uuid())
+  email                 String    @unique
+  role                  String    @default("CUSTOMER")
+  iban                  String?
+  telegramUsername      String?
+  telegramBotToken      String?
+  telegramChatId        String?
+  paymentMethod         String?
+  isPaymentInfoVerified Boolean   @default(false)
+  paymentInfoVerifiedAt DateTime?
+  createdAt             DateTime  @default(now())
+}
+
+model Hall {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  seatCount   Int
+  layoutJson  String   // SQLite için String, parse edilecek
+  isGlobal    Boolean  @default(false)
+  events      Event[]
+  createdAt   DateTime @default(now())
+}
+
+model Event {
+  id           String        @id @default(uuid())
+  name         String
+  date         DateTime
+  price        Float         // SQLite için Float (orijinali Decimal)
+  status       String        @default("Taslak")
+  isSeated     Boolean       @default(true) // Koltuklu mu (true) yoksa Genel Giriş mi (false)?
+  capacity     Int?          // Koltuksuz ise toplam bilet kapasitesi
+  hallId       String?       // Koltuksuz ise NULL olabilir
+  hall         Hall?         @relation(fields: [hallId], references: [id])
+  paymentType  String        @default("free") // "free", "creditcard", "cardless"
+  reservations Reservation[]
+  createdAt    DateTime      @default(now())
+}
+
+model Reservation {
+  id              String    @id @default(uuid())
+  eventId         String
+  event           Event     @relation(fields: [eventId], references: [id])
+  ticketCode      String    @unique @default(uuid()) // Kapıda sorgulama/QR okutma için eşsiz kod
+  seatId          String?   // Koltuksuz etkinliklerde NULL olur
+  seatName        String?
+  customer        String
+  email           String
+  status          String    @default("Beklemede") // Beklemede, Onaylı, İptal
+  paymentStatus   String    @default("pending") // 'pending', 'paid', 'failed', 'refunded'
+  paymentMethod   String?
+  paidAt          DateTime?
+  paymentReference String?
+  paymentDetails  String?   // SQLite için JSON string
+  isUsed          Boolean   @default(false) // Bilet kapıda okutuldu mu? (Check-in)
+  usedAt          DateTime? // Bilet ne zaman okutuldu?
+  createdAt       DateTime  @default(now())
+}

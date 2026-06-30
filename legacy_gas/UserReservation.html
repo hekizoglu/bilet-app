@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Rezervasyon</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#1d2129;min-height:100vh}
+
+/* Header */
+#header{background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff;padding:20px 24px 28px}
+#header h1{font-size:22px;font-weight:700}
+.ev-meta{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;font-size:13px;opacity:.9}
+.ev-meta span{display:flex;align-items:center;gap:5px}
+
+/* Main layout */
+#main{display:flex;gap:20px;padding:20px;max-width:1400px;margin:0 auto;align-items:flex-start}
+@media(max-width:900px){
+  #main{flex-direction:column;padding:12px}
+  #canvasPanel{order:1}
+  #sidebar{order:2;width:100%}
+  #canvasViewport{height:55vw;min-height:260px}
+}
+
+/* Canvas panel */
+#canvasPanel{flex:1;background:#fff;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.1);overflow:hidden;display:flex;flex-direction:column}
+#canvasPanel h2{font-size:15px;font-weight:600;padding:12px 16px;border-bottom:1px solid #e4e6ea;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+
+/* Viewport — taşma yok, sabit yükseklik */
+#canvasViewport{
+  position:relative;
+  overflow:hidden;
+  background:#11111b;
+  flex:1;
+  min-height:340px;
+  height:60vh;
+  touch-action:none;
+  cursor:grab;
+  user-select:none;
+}
+#canvasViewport.panning{cursor:grabbing}
+/* Transform kapsayıcı — scale + translate burada */
+#canvasTransform{
+  position:absolute;
+  top:0; left:0;
+  transform-origin:0 0;
+  will-change:transform;
+}
+#mapCanvas{position:relative;background:#1e1e2e}
+
+/* Zoom kontrolleri — sağ alt köşe */
+#zoomControls{
+  position:absolute;
+  bottom:12px; right:12px;
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  z-index:50;
+}
+.zoom-btn{
+  width:36px; height:36px;
+  border:none;
+  border-radius:8px;
+  background:rgba(255,255,255,.9);
+  color:#1d2129;
+  font-size:18px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);
+  display:flex; align-items:center; justify-content:center;
+  transition:background .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.zoom-btn:hover{background:#fff}
+.zoom-btn:active{background:#e8f0fe}
+#zoomLabel{
+  background:rgba(0,0,0,.55);
+  color:#fff;
+  font-size:10px;
+  font-weight:600;
+  border-radius:6px;
+  padding:3px 0;
+  text-align:center;
+  letter-spacing:.5px;
+}
+/* Haritayı sürükle ipucu */
+#dragHint{
+  position:absolute;
+  bottom:12px; left:50%;
+  transform:translateX(-50%);
+  background:rgba(0,0,0,.55);
+  color:#fff;
+  font-size:11px;
+  padding:5px 12px;
+  border-radius:20px;
+  pointer-events:none;
+  opacity:1;
+  transition:opacity .5s;
+  white-space:nowrap;
+}
+#dragHint.hidden{opacity:0}
+
+/* Legend */
+.legend{display:flex;gap:12px;padding:10px 18px;border-top:1px solid #e4e6ea;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:12px;color:#606770}
+.legend-dot{width:14px;height:14px;border-radius:50%;border:1px solid rgba(0,0,0,.15)}
+
+/* Sidebar */
+#sidebar{width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:16px}
+@media(max-width:900px){#sidebar{width:100%}}
+
+/* Selected seats card */
+.card{background:#fff;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,.1);padding:18px}
+.card h3{font-size:14px;font-weight:600;margin-bottom:12px;color:#1d2129}
+#selList{min-height:48px;margin-bottom:12px}
+.sel-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f8f9fa;border-radius:8px;margin-bottom:6px;font-size:13px}
+.sel-item button{border:none;background:none;color:#d93025;cursor:pointer;font-size:16px;line-height:1;padding:0 4px}
+.empty-sel{color:#80868b;font-size:13px;text-align:center;padding:12px}
+
+/* Form */
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:#3c4043;margin-bottom:4px}
+.form-group input,.form-group textarea{width:100%;padding:9px 12px;border:1px solid #dadce0;border-radius:8px;font-size:13px;transition:border .15s;font-family:inherit}
+.form-group input:focus,.form-group textarea:focus{outline:none;border-color:#1a73e8;box-shadow:0 0 0 2px rgba(26,115,232,.12)}
+.form-group.req label::after{content:' *';color:#d93025}
+.form-group textarea{resize:vertical;min-height:60px}
+
+/* Buttons */
+.btn{width:100%;padding:12px;border:none;border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s}
+.btn-primary{background:#1a73e8;color:#fff}.btn-primary:hover{background:#1557b0}
+.btn-primary:disabled{background:#b0c4e8;cursor:not-allowed}
+
+/* Price summary */
+.price-row{display:flex;justify-content:space-between;padding:8px 0;font-size:13px;border-bottom:1px solid #f1f3f4}
+.price-row.total{font-weight:700;font-size:15px;color:#1a73e8;border:none;border-top:2px solid #e4e6ea;padding-top:10px}
+
+/* Elements on map */
+.map-stage{position:absolute;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#7f849c;letter-spacing:2px;background:#2a2a40;border:2px dashed #45475a;border-radius:4px;pointer-events:none;cursor:default}
+/* wrap'in pointer-events:none olması kritik — üst üste gelen wrap'ler alttaki sandalyeleri engellemez */
+.map-table-wrap{position:absolute;pointer-events:none}
+.map-table-body{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;color:#fff;pointer-events:none;cursor:default}
+/* Sandalyelerde pointer-events geri açılıyor */
+.map-chair{position:absolute;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;width:26px;height:26px;border:2px solid rgba(255,255,255,.3);transition:all .2s;color:#fff;pointer-events:auto}
+.map-chair.avail{background:#4CAF50;cursor:pointer}.map-chair.avail:hover{background:#2e7d32;transform:scale(1.18);z-index:10}
+.map-chair.reserved{background:#FF9800;cursor:not-allowed}
+.map-chair.occupied{background:#f44336;cursor:not-allowed}
+.map-chair.mine{background:#1a73e8;outline:3px solid #fff;cursor:pointer}
+.map-chair.mine:hover{background:#1557b0;transform:scale(1.1)}
+/* Canvas boş alanı — default ok imleci */
+#mapCanvas{cursor:default}
+
+/* Toast */
+#toast{position:fixed;bottom:24px;right:24px;background:#323232;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;z-index:9999;display:none;box-shadow:0 4px 16px rgba(0,0,0,.2);max-width:340px}
+#toast.show{display:block}
+#toast.success{background:#0f9d58}
+#toast.error{background:#d93025}
+
+/* Success screen */
+#successScreen{display:none;position:fixed;inset:0;background:#1a73e8;color:#fff;z-index:8888;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:40px}
+#successScreen.show{display:flex}
+#successScreen .icon{font-size:72px;margin-bottom:20px}
+#successScreen h2{font-size:26px;margin-bottom:12px}
+#successScreen p{font-size:15px;opacity:.88;max-width:420px;line-height:1.7}
+#successScreen .res-ids{margin:16px 0;background:rgba(255,255,255,.15);border-radius:10px;padding:12px 20px;font-family:monospace;font-size:13px}
+
+/* Loading overlay */
+#loading{display:none;position:fixed;inset:0;background:rgba(255,255,255,.7);z-index:7777;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+#loading.show{display:flex}
+.spinner{width:40px;height:40px;border:4px solid #e4e6ea;border-top-color:#1a73e8;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Numarasız masa ── */
+.map-table-body.unnumbered{pointer-events:auto;cursor:pointer;transition:filter .2s,outline .2s}
+.map-table-body.unnumbered:hover{filter:brightness(1.35)}
+.map-table-body.unnumbered.selected{outline:4px solid #1a73e8;box-shadow:0 0 0 6px rgba(26,115,232,.3)}
+.map-table-body.unnumbered.full{cursor:not-allowed;opacity:.6}
+.unnum-badge{
+  position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);
+  background:#374151;color:#fff;border-radius:20px;
+  font-size:9px;font-weight:700;padding:2px 7px;white-space:nowrap;
+  pointer-events:none
+}
+.map-table-body.unnumbered.selected .unnum-badge{background:#1a73e8}
+
+/* Numarasız seçim modalı */
+#unnumModal{display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,.5);align-items:center;justify-content:center}
+#unnumModal.show{display:flex}
+.unnum-box{background:#fff;border-radius:16px;padding:28px 24px;min-width:290px;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.22);text-align:center}
+.unnum-box h4{font-size:16px;font-weight:700;color:#1d2129;margin-bottom:4px}
+.unnum-box .sub{font-size:13px;color:#80868b;margin-bottom:22px}
+.stepper{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:22px}
+.stepper-btn{width:42px;height:42px;border-radius:50%;border:none;background:#1a73e8;color:#fff;font-size:24px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.stepper-btn:hover{background:#1557b0}
+.stepper-btn:disabled{background:#dadce0;cursor:not-allowed}
+#unnumCount{font-size:38px;font-weight:900;color:#1a73e8;min-width:52px;text-align:center}
+.unnum-actions{display:flex;gap:10px}
+.unnum-actions button{flex:1;padding:11px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s}
+.btn-cancel-unnum{background:#f1f3f4;color:#3c4043}.btn-cancel-unnum:hover{background:#e8eaed}
+.btn-confirm-unnum{background:#1a73e8;color:#fff}.btn-confirm-unnum:hover{background:#1557b0}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1 id="evTitle">Etkinlik Yükleniyor...</h1>
+  <div class="ev-meta">
+    <span>📅 <span id="evDate">—</span></span>
+    <span>🕐 <span id="evTime">—</span></span>
+    <span>🏛️ <span id="evVenue">—</span></span>
+    <span>💺 <span id="evSeats">—</span> boş koltuk</span>
+    <span>💰 <span id="evPrice">—</span></span>
+  </div>
+</div>
+
+<div id="main">
+  <!-- Koltuk haritası -->
+  <div id="canvasPanel">
+    <h2>
+      <span>Koltuk Seçimi</span>
+      <span style="font-size:12px;font-weight:400;color:#80868b">Boş koltuklara tıklayarak seçin</span>
+    </h2>
+    <div id="canvasViewport">
+      <div id="canvasTransform">
+        <div id="mapCanvas"></div>
+      </div>
+      <!-- Zoom butonları -->
+      <div id="zoomControls">
+        <button class="zoom-btn" onclick="zoomStep(1.25)" title="Yakınlaştır">＋</button>
+        <button class="zoom-btn" onclick="fitMap()" title="Tümünü Göster">⊡</button>
+        <button class="zoom-btn" onclick="zoomStep(0.8)" title="Uzaklaştır">－</button>
+        <div id="zoomLabel">100%</div>
+      </div>
+      <div id="dragHint">✋ Sürükle &nbsp;·&nbsp; 🔍 Pinch/Scroll</div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#4CAF50"></div> Boş</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1a73e8"></div> Seçili</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FF9800"></div> Beklemede</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f44336"></div> Dolu</div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <!-- Seçili koltuklar -->
+    <div class="card">
+      <h3>Seçili Koltuklar (<span id="selCount">0</span>)</h3>
+      <div id="selList"><div class="empty-sel">Henüz koltuk seçilmedi</div></div>
+      <div id="priceSummary" style="display:none">
+        <div class="price-row"><span>Bilet fiyatı</span><span id="pUnit">0 ₺</span></div>
+        <div class="price-row"><span>Adet</span><span id="pCount">0</span></div>
+        <div class="price-row total"><span>Toplam</span><span id="pTotal">0 ₺</span></div>
+      </div>
+    </div>
+
+    <!-- Form -->
+    <div class="card">
+      <h3>Rezervasyon Bilgileri</h3>
+      <div class="form-group req"><label>Ad Soyad</label><input id="fName" placeholder="Ahmet Yılmaz"></div>
+      <div class="form-group req"><label>E-posta</label><input id="fEmail" type="email" placeholder="ornek@email.com"></div>
+      <div class="form-group req"><label>Telefon</label><input id="fPhone" type="tel" placeholder="05xx xxx xx xx"></div>
+      <div class="form-group"><label>Not</label><textarea id="fNote" placeholder="Varsa isteğiniz..."></textarea></div>
+      <button class="btn btn-primary" id="submitBtn" onclick="submitReservation()" disabled>
+        Rezerve Gönder
+      </button>
+      <p style="margin-top:10px;font-size:11px;color:#80868b;text-align:center;line-height:1.6">
+        Ödemeniz onaylandıktan sonra rezervasyonunuz kesinleşecektir.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="loading"><div class="spinner"></div><span style="color:#1a73e8;font-weight:500">Lütfen bekleyin...</span></div>
+
+<!-- Success screen -->
+<div id="successScreen">
+  <div class="icon">🎉</div>
+  <h2>Rezervasyon Alındı!</h2>
+  <p>Talebiniz başarıyla iletildi. Lütfen aşağıdaki bilgilere göre ödemenizi yapın.</p>
+  <div class="res-ids" id="resIds"></div>
+
+  <!-- Ödeme bilgileri kutusu -->
+  <div id="paymentBox" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:14px;padding:20px 24px;margin-top:16px;max-width:440px;width:100%;text-align:left">
+    <div id="payDesc" style="font-size:14px;line-height:1.7;opacity:.92;margin-bottom:14px"></div>
+    <div id="bankInfo" style="background:rgba(255,255,255,.15);border-radius:10px;padding:14px 16px;margin-bottom:12px;font-size:14px;line-height:1.9;display:none">
+      <div style="font-weight:700;font-size:15px;margin-bottom:6px">🏦 Ödeme Bilgileri</div>
+      <div id="biBankName"></div>
+      <div id="biHolder"></div>
+      <div id="biIban" style="font-family:monospace;font-size:13px;letter-spacing:1px;margin-top:4px;color:#a8d8ff;word-break:break-all"></div>
+    </div>
+    <div id="phoneInfo" style="font-size:14px;display:none">
+      📞 <span id="biPhones"></span>
+    </div>
+  </div>
+
+  <p style="opacity:.65;font-size:12px;margin-top:16px">Ödemeniz onaylandıktan sonra biletiniz e-posta adresinize gönderilecektir.</p>
+</div>
+
+<!-- Numarasız masa seçim modalı -->
+<div id="unnumModal">
+  <div class="unnum-box">
+    <h4 id="unnumModalTitle">Numarasız Masa</h4>
+    <div class="sub" id="unnumModalSub">Kaç kişi oturacak?</div>
+    <div class="stepper">
+      <button class="stepper-btn" id="unnumMinus" onclick="stepUnnum(-1)">−</button>
+      <div id="unnumCount">0</div>
+      <button class="stepper-btn" id="unnumPlus"  onclick="stepUnnum(1)">+</button>
+    </div>
+    <div class="unnum-actions">
+      <button class="btn-cancel-unnum"  onclick="closeUnnumberedPicker()">Vazgeç</button>
+      <button class="btn-confirm-unnum" onclick="confirmUnnumberedSelection()">Onayla</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const EVENT_DATA  = JSON.parse('<?= eventJson ?>');
+const EVENT_ID    = '<?= eventId ?>';
+
+let layout        = null;
+let reservedSeats = [];
+let selectedIds   = new Set();
+let seatNames     = {};
+let unitPrice     = 0;
+let _settings     = {};
+
+// Numarasız masalar: tableId → { label, availableSlots[], selectedSlots[], selectedCount }
+let unnumberedTables     = {};
+let _unnumCurrentTable   = null;
+let _unnumCurrentCount   = 0;
+
+// ─── Pan / Zoom state ─────────────────────────────────────────
+let _scale    = 1;
+let _panX     = 0;
+let _panY     = 0;
+let _dragging = false;
+let _dragLast = null;
+let _pinchStartDist  = null;
+let _pinchStartScale = null;
+let _pinchLastMid    = null;
+
+function _applyTransform(animate) {
+  const t = document.getElementById('canvasTransform');
+  if (!t) return;
+  t.style.transition = animate ? 'transform .25s ease' : 'none';
+  t.style.transform  = `translate(${_panX}px,${_panY}px) scale(${_scale})`;
+  document.getElementById('zoomLabel').textContent = Math.round(_scale * 100) + '%';
+}
+
+function fitMap(animate) {
+  const vp  = document.getElementById('canvasViewport');
+  const map = document.getElementById('mapCanvas');
+  if (!vp || !map) return;
+  const vw = vp.clientWidth  || 400;
+  const vh = vp.clientHeight || 340;
+  const mw = map.offsetWidth  || vw;
+  const mh = map.offsetHeight || vh;
+  _scale = Math.min(vw / mw, vh / mh) * 0.92;
+  _panX  = (vw - mw * _scale) / 2;
+  _panY  = (vh - mh * _scale) / 2;
+  _applyTransform(animate !== false);
+}
+
+function zoomStep(factor) {
+  const vp = document.getElementById('canvasViewport');
+  const cx = vp ? vp.clientWidth  / 2 : 200;
+  const cy = vp ? vp.clientHeight / 2 : 170;
+  _zoomAt(cx, cy, factor);
+}
+
+function _zoomAt(mx, my, factor) {
+  const newScale = Math.max(0.15, Math.min(6, _scale * factor));
+  _panX = mx - (mx - _panX) * (newScale / _scale);
+  _panY = my - (my - _panY) * (newScale / _scale);
+  _scale = newScale;
+  _applyTransform(false);
+}
+
+function _initPanZoom() {
+  const vp = document.getElementById('canvasViewport');
+  if (!vp) return;
+
+  // ── Mouse drag ──────────────────────────────────────────────
+  vp.addEventListener('mousedown', e => {
+    // Sandalye veya numarasız masa tıklaması ise pan başlatma
+    if (e.target.classList.contains('map-chair')) return;
+    if (e.target.classList.contains('unnumbered')) return;
+    _dragging = true;
+    _dragLast = { x: e.clientX, y: e.clientY };
+    vp.classList.add('panning');
+    _hideHint();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!_dragging) return;
+    _panX += e.clientX - _dragLast.x;
+    _panY += e.clientY - _dragLast.y;
+    _dragLast = { x: e.clientX, y: e.clientY };
+    _applyTransform(false);
+  });
+  window.addEventListener('mouseup', () => {
+    _dragging = false;
+    vp.classList.remove('panning');
+  });
+
+  // ── Scroll wheel zoom ────────────────────────────────────────
+  vp.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect   = vp.getBoundingClientRect();
+    const mx     = e.clientX - rect.left;
+    const my     = e.clientY - rect.top;
+    const factor = e.deltaY < 0 ? 1.12 : 0.88;
+    _zoomAt(mx, my, factor);
+    _hideHint();
+  }, { passive: false });
+
+  // ── Touch: pan + pinch ───────────────────────────────────────
+  vp.addEventListener('touchstart', e => {
+    _hideHint();
+    if (e.touches.length === 1) {
+      // Sandalyeye veya numarasız masaya dokunuyorsa pan başlatma
+      if (e.target.classList.contains('map-chair')) return;
+      if (e.target.classList.contains('unnumbered')) return;
+      _dragging = true;
+      _dragLast = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    } else if (e.touches.length === 2) {
+      _dragging = false;
+      _pinchStartDist  = _touchDist(e.touches);
+      _pinchStartScale = _scale;
+      _pinchLastMid    = _touchMid(e.touches);
+    }
+  }, { passive: true });
+
+  vp.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1 && _dragging) {
+      const dx = e.touches[0].clientX - _dragLast.x;
+      const dy = e.touches[0].clientY - _dragLast.y;
+      _panX += dx; _panY += dy;
+      _dragLast = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      _applyTransform(false);
+    } else if (e.touches.length === 2 && _pinchStartDist) {
+      const dist     = _touchDist(e.touches);
+      const newScale = Math.max(0.15, Math.min(6, _pinchStartScale * dist / _pinchStartDist));
+      const mid      = _touchMid(e.touches);
+      const rect     = vp.getBoundingClientRect();
+      const mx       = mid.x - rect.left;
+      const my       = mid.y - rect.top;
+      // Pan + scale
+      if (_pinchLastMid) {
+        _panX += mid.x - _pinchLastMid.x;
+        _panY += mid.y - _pinchLastMid.y;
+      }
+      _panX = mx - (mx - _panX) * (newScale / _scale);
+      _panY = my - (my - _panY) * (newScale / _scale);
+      _scale = newScale;
+      _pinchLastMid = mid;
+      _applyTransform(false);
+    }
+  }, { passive: false });
+
+  vp.addEventListener('touchend', e => {
+    if (e.touches.length === 0) {
+      _dragging = false;
+      _pinchStartDist = null;
+      _pinchLastMid   = null;
+    }
+  }, { passive: true });
+}
+
+function _touchDist(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+function _touchMid(touches) {
+  return {
+    x: (touches[0].clientX + touches[1].clientX) / 2,
+    y: (touches[0].clientY + touches[1].clientY) / 2
+  };
+}
+function _hideHint() {
+  const h = document.getElementById('dragHint');
+  if (h) h.classList.add('hidden');
+}
+
+// ─── Init ─────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  fillHeader();
+  // unitPrice fillHeader() içinde doğru parse edilerek set edilir
+
+  // Ayarları yükle
+  google.script.run
+    .withSuccessHandler(s => { _settings = s || {}; })
+    .withFailureHandler(() => {})
+    .clientGetSettings();
+
+  // Load layout + reserved seats in parallel
+  Promise.all([
+    new Promise(res => {
+      if (!EVENT_DATA.layoutId) return res(null);
+      google.script.run
+        .withSuccessHandler(l => res(l))
+        .withFailureHandler(() => res(null))
+        .clientGetLayoutById(EVENT_DATA.layoutId);
+    }),
+    new Promise(res => {
+      google.script.run
+        .withSuccessHandler(rs => res(rs||[]))
+        .withFailureHandler(() => res([]))
+        .clientGetReservedSeats(EVENT_ID);
+    })
+  ]).then(([lay, rs]) => {
+    layout        = lay;
+    reservedSeats = rs;
+    if (lay && lay.layoutJson) {
+      try {
+        const parsed = JSON.parse(lay.layoutJson);
+        renderMap(parsed);
+        _initPanZoom();
+        // Kısa gecikme: DOM render bittikten sonra fit
+        setTimeout(() => fitMap(false), 80);
+        // 3 sn sonra ipucunu gizle
+        setTimeout(() => _hideHint(), 3000);
+      } catch(e) { showMapError('Harita oluşturulamadı.'); }
+    } else {
+      showMapError('Bu etkinlik için salon haritası henüz eklenmemiş.');
+    }
+  });
+});
+
+function fillHeader() {
+  document.getElementById('evTitle').textContent = EVENT_DATA.name || 'Etkinlik';
+  document.getElementById('evDate').textContent  = EVENT_DATA.dateDisplay || EVENT_DATA.date || '—';
+
+  // Saat: ISO string gelebilir (Sheets'ten), sadece HH:mm al
+  const rawTime = String(EVENT_DATA.time || '');
+  let displayTime = '—';
+  if (rawTime) {
+    if (rawTime.includes('T')) {
+      // "1899-12-31T01:00:00.000Z" → "01:00"
+      const d = new Date(rawTime);
+      displayTime = d.toISOString().slice(11, 16);
+    } else {
+      displayTime = rawTime;
+    }
+  }
+  document.getElementById('evTime').textContent  = displayTime;
+  document.getElementById('evVenue').textContent = EVENT_DATA.layoutName || '—';
+  document.getElementById('evSeats').textContent = EVENT_DATA.available ?? '—';
+
+  // Fiyat: 0, undefined, null, '' → Ücretsiz
+  const price = parseFloat(String(EVENT_DATA.price || '0').replace(',', '.')) || 0;
+  unitPrice = price;
+  document.getElementById('evPrice').textContent = price > 0 ? price.toLocaleString('tr-TR') + ' ₺' : 'Ücretsiz';
+
+  document.title = (EVENT_DATA.name || 'Rezervasyon') + ' — Rezervasyon';
+}
+
+// ─── Render map ───────────────────────────────────────────────
+function renderMap(parsed) {
+  const mapEl = document.getElementById('mapCanvas');
+  mapEl.style.width  = (parsed.width  || 900) + 'px';
+  mapEl.style.height = (parsed.height || 600) + 'px';
+  mapEl.style.position = 'relative';
+  mapEl.style.background = '#1e1e2e';
+
+  // Draw grid
+  mapEl.style.backgroundImage =
+    'linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),' +
+    'linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px)';
+  mapEl.style.backgroundSize = '20px 20px';
+
+  // Bağımsız sandalyeler (soloChairs)
+  (parsed.soloChairs || []).forEach(sc => {
+    const resInfo = reservedSeats.find(rs => rs.seatId === sc.id);
+    const status  = resInfo ? (resInfo.status === 'Onaylı' ? 'occupied' : 'reserved') : 'avail';
+
+    seatNames[sc.id] = sc.label || sc.id;
+
+    const chair = document.createElement('div');
+    chair.className = `map-chair ${status}`;
+    chair.id        = 'ch_' + sc.id;
+    chair.style.cssText = `left:${sc.x - 13}px;top:${sc.y - 13}px`;
+    chair.textContent   = sc.label || '';
+    chair.title = (sc.label || sc.id) + ' — ' + (status === 'avail' ? 'Boş' : status === 'reserved' ? 'Beklemede' : 'Dolu');
+
+    if (status === 'avail') {
+      chair.onclick = () => toggleSeat(sc.id);
+    }
+    mapEl.appendChild(chair);
+  });
+
+  // Stage(s)
+  (parsed.stage || []).forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'map-stage';
+    div.style.cssText = `left:${s.x}px;top:${s.y}px;width:${s.w}px;height:${s.h}px`;
+    div.textContent = s.label || 'SAHNE';
+    mapEl.appendChild(div);
+  });
+
+  // Tables
+  const takenSeats = new Set(reservedSeats.map(rs => rs.seatId));
+
+  (parsed.tables || []).forEach(t => {
+    const isRound = t.shape === 'round';
+    const r = t.r || 46;
+    const w = t.w || 90;
+    const h = t.h || 90;
+    const pad = 24 + (isRound ? r : Math.max(w,h)/2 + 18);
+    const bSize = isRound ? r*2 : w;
+    const bH    = isRound ? r*2 : h;
+
+    // Numarasız masa tespiti: en az 1 sandalye var ve hepsi UN_ önekli
+    const isUnnumbered = (t.chairs || []).length > 0 &&
+                         t.chairs.every(c => String(c.id).startsWith('UN_'));
+
+    const wrap = document.createElement('div');
+    wrap.className = 'map-table-wrap';
+    wrap.style.cssText = `left:${t.x}px;top:${t.y}px;width:${bSize+pad*2}px;height:${bH+pad*2}px`;
+
+    // Table body
+    const body = document.createElement('div');
+    body.style.cssText =
+      `left:${pad + (isRound?r:w/2)}px;` +
+      `top:${pad + (isRound?r:h/2)}px;` +
+      `width:${bSize}px;height:${bH}px;` +
+      `border-radius:${isRound?'50%':'6px'};` +
+      `background:${t.color || (isRound?'#6c4a2a':'#2a4a6c')};` +
+      `border:3px solid rgba(255,255,255,.2)`;
+
+    if (isUnnumbered) {
+      // ── Numarasız masa ──────────────────────────────────────
+      const tableId = String(t.id || t.label || ('T' + t.x + '_' + t.y))
+                        .replace(/[^a-zA-Z0-9_-]/g, '_');
+      const availSlots = t.chairs.filter(c => !takenSeats.has(c.id)).map(c => c.id);
+      const takenCount = t.chairs.length - availSlots.length;
+
+      unnumberedTables[tableId] = {
+        label:         t.label || 'Masa',
+        availableSlots: availSlots,
+        selectedCount:  0,
+        selectedSlots:  []
+      };
+
+      body.className = 'map-table-body unnumbered' + (availSlots.length === 0 ? ' full' : '');
+      body.id = 'unnum_body_' + tableId;
+
+      // İçerik: masa etiketi + kapasite
+      body.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px">
+          <div style="font-size:11px;font-weight:700;color:#fff">${esc(t.label || '')}</div>
+          <div style="font-size:9px;color:rgba(255,255,255,.7)">${t.chairs.length} kişilik</div>
+          ${takenCount > 0 ? `<div style="font-size:9px;color:#FF9800">${takenCount} dolu</div>` : ''}
+        </div>`;
+
+      // Rozet (boş sayısı)
+      const badge = document.createElement('div');
+      badge.className = 'unnum-badge';
+      badge.id = 'unnum_badge_' + tableId;
+      badge.textContent = availSlots.length + ' boş';
+      body.appendChild(badge);
+
+      if (availSlots.length > 0) {
+        body.onclick = () => openUnnumberedPicker(tableId);
+      }
+
+      wrap.appendChild(body);
+      mapEl.appendChild(wrap);
+      return; // Numaralı sandalyeleri atlat
+    }
+
+    // ── Numaralı masa ──────────────────────────────────────────
+    body.className = 'map-table-body';
+    body.textContent = t.label || '';
+    wrap.appendChild(body);
+
+    (t.chairs || []).forEach(c => {
+      const cx = pad + (isRound?r:w/2) + c.cx - 12;
+      const cy = pad + (isRound?r:h/2) + c.cy - 12;
+
+      const resInfo = reservedSeats.find(rs => rs.seatId === c.id);
+      const status  = resInfo ? (resInfo.status === 'Onaylı' ? 'occupied' : 'reserved') : 'avail';
+
+      seatNames[c.id] = (t.label || 'M') + '-' + (c.label || c.id);
+
+      const chair = document.createElement('div');
+      chair.className = `map-chair ${status}`;
+      chair.id = 'ch_' + c.id;
+      chair.style.cssText = `left:${cx}px;top:${cy}px`;
+      chair.textContent   = c.label || '';
+      chair.title = seatNames[c.id] + ' — ' + (status==='avail'?'Boş':status==='reserved'?'Beklemede':'Dolu');
+
+      if (status === 'avail') {
+        chair.onclick = () => toggleSeat(c.id);
+      }
+
+      wrap.appendChild(chair);
+    });
+
+    mapEl.appendChild(wrap);
+  });
+}
+
+function showMapError(msg) {
+  const mapEl = document.getElementById('mapCanvas');
+  mapEl.style.cssText = 'width:100%;min-height:200px;display:flex;align-items:center;justify-content:center;color:#7f849c;font-size:14px';
+  mapEl.textContent = msg;
+}
+
+// ─── Seat selection ───────────────────────────────────────────
+function toggleSeat(id) {
+  if (selectedIds.has(id)) {
+    selectedIds.delete(id);
+  } else {
+    selectedIds.add(id);
+  }
+  updateChairUI(id);
+  updateSidebar();
+}
+
+function removeSeat(id) {
+  selectedIds.delete(id);
+  updateChairUI(id);
+  updateSidebar();
+}
+
+// ─── Numarasız masa seçimi ────────────────────────────────────
+function openUnnumberedPicker(tableId) {
+  const info = unnumberedTables[tableId];
+  if (!info) return;
+  _unnumCurrentTable = tableId;
+  _unnumCurrentCount = info.selectedCount || 0;
+  document.getElementById('unnumModalTitle').textContent = info.label;
+  document.getElementById('unnumModalSub').textContent =
+    info.availableSlots.length + ' boş koltuk · Kaç kişi oturacak?';
+  document.getElementById('unnumCount').textContent = _unnumCurrentCount;
+  _refreshStepperBtns();
+  document.getElementById('unnumModal').classList.add('show');
+}
+
+function closeUnnumberedPicker() {
+  _unnumCurrentTable = null;
+  document.getElementById('unnumModal').classList.remove('show');
+}
+
+function stepUnnum(delta) {
+  const info = unnumberedTables[_unnumCurrentTable];
+  if (!info) return;
+  _unnumCurrentCount = Math.max(0, Math.min(info.availableSlots.length, _unnumCurrentCount + delta));
+  document.getElementById('unnumCount').textContent = _unnumCurrentCount;
+  _refreshStepperBtns();
+}
+
+function _refreshStepperBtns() {
+  const info = unnumberedTables[_unnumCurrentTable];
+  const max  = info ? info.availableSlots.length : 0;
+  document.getElementById('unnumMinus').disabled = _unnumCurrentCount <= 0;
+  document.getElementById('unnumPlus').disabled  = _unnumCurrentCount >= max;
+}
+
+function confirmUnnumberedSelection() {
+  const tableId = _unnumCurrentTable;
+  const info    = unnumberedTables[tableId];
+  if (!info) { closeUnnumberedPicker(); return; }
+
+  // Önceki seçimleri kaldır
+  (info.selectedSlots || []).forEach(id => selectedIds.delete(id));
+
+  const count    = _unnumCurrentCount;
+  const newSlots = info.availableSlots.slice(0, count);
+
+  newSlots.forEach(id => {
+    selectedIds.add(id);
+    seatNames[id] = info.label + ' (Numarasız)';
+  });
+
+  info.selectedCount = count;
+  info.selectedSlots = newSlots;
+
+  _updateUnnumBodyUI(tableId);
+  updateSidebar();
+  closeUnnumberedPicker();
+}
+
+function removeUnnumTable(tableId) {
+  const info = unnumberedTables[tableId];
+  if (!info) return;
+  (info.selectedSlots || []).forEach(id => selectedIds.delete(id));
+  info.selectedCount = 0;
+  info.selectedSlots = [];
+  _updateUnnumBodyUI(tableId);
+  updateSidebar();
+}
+
+function _updateUnnumBodyUI(tableId) {
+  const info  = unnumberedTables[tableId];
+  const body  = document.getElementById('unnum_body_' + tableId);
+  const badge = document.getElementById('unnum_badge_' + tableId);
+  if (!info || !body) return;
+  const count = info.selectedCount || 0;
+  if (count > 0) {
+    body.classList.add('selected');
+    if (badge) badge.textContent = count + ' seçildi';
+  } else {
+    body.classList.remove('selected');
+    if (badge) badge.textContent = info.availableSlots.length + ' boş';
+  }
+}
+
+function updateChairUI(id) {
+  const el = document.getElementById('ch_' + id);
+  if (!el) return;
+  if (selectedIds.has(id)) {
+    el.className = 'map-chair mine';
+    el.title = seatNames[id] + ' — Seçili';
+  } else {
+    el.className = 'map-chair avail';
+    el.title = seatNames[id] + ' — Boş';
+  }
+}
+
+function updateSidebar() {
+  const count = selectedIds.size;
+  document.getElementById('selCount').textContent = count;
+
+  const list = document.getElementById('selList');
+  if (count === 0) {
+    list.innerHTML = '<div class="empty-sel">Henüz koltuk seçilmedi</div>';
+    document.getElementById('priceSummary').style.display = 'none';
+  } else {
+    let html = '';
+
+    // Numarasız masaları gruplu göster
+    Object.entries(unnumberedTables).forEach(([tid, info]) => {
+      if (!info.selectedCount) return;
+      html += `<div class="sel-item">
+        <span>⬜ ${esc(info.label)} &mdash; ${info.selectedCount} kişi <small style="color:#80868b">(Numarasız)</small></span>
+        <button onclick="removeUnnumTable('${tid}')" title="Kaldır">✕</button>
+      </div>`;
+    });
+
+    // Numaralı koltukları tek tek göster
+    [...selectedIds].forEach(id => {
+      if (String(id).startsWith('UN_')) return; // numarasız zaten yukarıda
+      html += `<div class="sel-item">
+        <span>🪑 ${esc(seatNames[id] || id)}</span>
+        <button onclick="removeSeat('${id}')" title="Kaldır">✕</button>
+      </div>`;
+    });
+
+    list.innerHTML = html || '<div class="empty-sel">Henüz koltuk seçilmedi</div>';
+
+    if (unitPrice > 0) {
+      document.getElementById('priceSummary').style.display = 'block';
+      document.getElementById('pUnit').textContent  = unitPrice + ' ₺';
+      document.getElementById('pCount').textContent = count;
+      document.getElementById('pTotal').textContent = (unitPrice * count) + ' ₺';
+    }
+  }
+
+  document.getElementById('submitBtn').disabled = (count === 0);
+}
+
+// ─── Form submit ──────────────────────────────────────────────
+function submitReservation() {
+  const name  = document.getElementById('fName').value.trim();
+  const email = document.getElementById('fEmail').value.trim();
+  const phone = document.getElementById('fPhone').value.trim();
+
+  if (!name)  { toast('Ad soyad zorunlu','error'); document.getElementById('fName').focus(); return; }
+  if (!email) { toast('E-posta zorunlu','error');  document.getElementById('fEmail').focus(); return; }
+  if (!phone) { toast('Telefon zorunlu','error');  document.getElementById('fPhone').focus(); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Geçersiz e-posta adresi','error'); return; }
+  if (selectedIds.size === 0) { toast('Lütfen koltuk seçin','error'); return; }
+
+  const payload = {
+    eventId:     EVENT_ID,
+    seatIds:     [...selectedIds],
+    seatNames:   seatNames,
+    name, email, phone,
+    personCount: selectedIds.size,
+    notes:       document.getElementById('fNote').value,
+  };
+
+  document.getElementById('loading').classList.add('show');
+  document.getElementById('submitBtn').disabled = true;
+
+  google.script.run
+    .withSuccessHandler(res => {
+      document.getElementById('loading').classList.remove('show');
+      if (res.success) {
+        document.getElementById('resIds').textContent = 'Rezervasyon ID: ' + res.reservationIds.join(', ');
+        _fillPaymentBox();
+        document.getElementById('successScreen').classList.add('show');
+      } else {
+        toast('⚠️ ' + (res.error || 'Bir hata oluştu'), 'error');
+        document.getElementById('submitBtn').disabled = false;
+        // Refresh reserved seats
+        google.script.run
+          .withSuccessHandler(rs => {
+            reservedSeats = rs || [];
+            // Mark newly reserved seats
+            res.conflictSeatId && selectedIds.delete(res.conflictSeatId);
+            updateSidebar();
+          })
+          .clientGetReservedSeats(EVENT_ID);
+      }
+    })
+    .withFailureHandler(err => {
+      document.getElementById('loading').classList.remove('show');
+      document.getElementById('submitBtn').disabled = false;
+      toast('Bağlantı hatası: ' + err.message, 'error');
+    })
+    .clientCreateReservation(payload);
+}
+
+// ─── Payment box ──────────────────────────────────────────────
+function _fillPaymentBox() {
+  const s = _settings;
+
+  // Açıklama metni
+  const desc = String(s['Ödeme Açıklaması'] || '').trim();
+  document.getElementById('payDesc').textContent = desc;
+
+  // Banka bilgileri
+  const bank   = String(s['Banka Adı']    || '').trim();
+  const holder = String(s['Hesap Sahibi'] || '').trim();
+  const iban   = String(s['IBAN']         || '').trim();
+  const bankBox = document.getElementById('bankInfo');
+  if (bank || holder || iban) {
+    if (bank)   document.getElementById('biBankName').textContent = 'Banka: ' + bank;
+    if (holder) document.getElementById('biHolder').textContent   = 'Hesap Sahibi: ' + holder;
+    if (iban)   document.getElementById('biIban').textContent     = iban;
+    bankBox.style.display = 'block';
+  }
+
+  // Telefonlar
+  const phones = ['Telefon 1','Telefon 2','Telefon 3']
+    .map(k => String(s[k] || '').trim()).filter(Boolean);
+  const phoneBox = document.getElementById('phoneInfo');
+  if (phones.length) {
+    document.getElementById('biPhones').textContent = phones.join('   |   ');
+    phoneBox.style.display = 'block';
+  }
+}
+
+// ─── Utils ────────────────────────────────────────────────────
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className   = 'show ' + (type||'');
+  clearTimeout(t._to);
+  t._to = setTimeout(() => t.className = '', 3500);
+}
+</script>
+</body>
+</html>

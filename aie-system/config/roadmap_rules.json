@@ -1,0 +1,58 @@
+{
+  "autoAddToRoadmap": {
+    "enabled": true,
+    "description": "Yüksek puanlı fikirleri otomatik olarak roadmap'a ekle",
+    "rules": [
+      {
+        "priority": "CRITICAL",
+        "minScore": 25,
+        "maxScore": 100,
+        "category": "MUST_HAVE",
+        "description": "25 puan ve üzeri - Kesinlikle yapılması gerekenler",
+        "addToRoadmap": true,
+        "roadmapFormat": "FAZ (Kod/Ürün)"
+      },
+      {
+        "priority": "HIGH",
+        "minScore": 20,
+        "maxScore": 24,
+        "category": "SHOULD_HAVE",
+        "description": "20-24 puan - Yapılması önerilen işler",
+        "addToRoadmap": false,
+        "roadmapFormat": "İnceleme Aşaması"
+      },
+      {
+        "priority": "MEDIUM",
+        "minScore": 15,
+        "maxScore": 19,
+        "category": "NICE_TO_HAVE",
+        "description": "15-19 puan - İsteğe bağlı iyileştirmeler",
+        "addToRoadmap": false,
+        "roadmapFormat": "İnceleme Aşaması"
+      }
+    ]
+  },
+  "roadmapSections": {
+    "CRITICAL": {
+      "title": "🔴 Kesinlikle Yapılması Gerekenler (25+ puan)",
+      "emoji": "🔴",
+      "order": 1
+    },
+    "HIGH": {
+      "title": "🟠 Yapılması Önerilen (20-24 puan)",
+      "emoji": "🟠",
+      "order": 2
+    },
+    "MEDIUM": {
+      "title": "🟡 İsteğe Bağlı (15-19 puan)",
+      "emoji": "🟡",
+      "order": 3
+    }
+  },
+  "loopTracking": {
+    "trackIdeasPerCycle": true,
+    "maxIdeasPerRoadmap": 10,
+    "removeLowScoringIdeas": false,
+    "keepHistoryInBacklog": true
+  }
+}
