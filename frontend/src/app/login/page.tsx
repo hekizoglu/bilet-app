@@ -167,17 +167,27 @@ export default function LoginPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="mt-8 pt-6 border-t border-slate-800/80 flex flex-col items-center"
+          className="mt-8 pt-6 border-t border-slate-800/80 flex flex-col items-center w-full"
         >
           <p className="text-xs text-slate-500 mb-4">Google Auth olmadan hızlı test için:</p>
-          <motion.button
-            whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(59, 130, 246, 0.4)" }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => handleSuccess({ credential: "LOCAL_TEST_TOKEN" })}
-            className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium rounded-2xl text-sm transition-all shadow-lg flex items-center justify-center gap-2 border border-blue-400/20"
-          >
-            <LogIn size={16} /> Local Test Girişi Yap
-          </motion.button>
+          <div className="grid grid-cols-2 gap-3 w-full">
+            <motion.button
+              whileHover={{ scale: 1.03, boxShadow: "0 0 12px rgba(30, 41, 59, 0.6)" }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => handleSuccess({ credential: "LOCAL_TEST_TOKEN" })}
+              className="py-3 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-2xl text-xs transition-all shadow-md flex items-center justify-center gap-1 border border-slate-700/50"
+            >
+              Admin Girişi
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03, boxShadow: "0 0 15px rgba(59, 130, 246, 0.4)" }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => handleSuccess({ credential: "LOCAL_CITIZEN_TOKEN" })}
+              className="py-3 px-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-2xl text-xs transition-all shadow-md flex items-center justify-center gap-1 border border-blue-400/20"
+            >
+              Vatandaş Girişi
+            </motion.button>
+          </div>
         </motion.div>
 
       </motion.div>

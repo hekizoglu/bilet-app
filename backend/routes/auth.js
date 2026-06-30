@@ -15,6 +15,8 @@ router.post('/google', async (req, res) => {
 
     if (token === "LOCAL_TEST_TOKEN") {
       payload = { email: ADMIN_EMAIL, name: 'Local Admin' };
+    } else if (token === "LOCAL_CITIZEN_TOKEN") {
+      payload = { email: 'vatandas@example.com', name: 'Local Vatandaş' };
     } else {
       const ticket = await client.verifyIdToken({
         idToken: token,
