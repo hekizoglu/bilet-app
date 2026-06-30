@@ -1,38 +1,38 @@
 # 🔴 Yüksek Puanlı Fikirler (≥28 puan)
 
-Son Güncelleme: 2026-06-30T19:23:13.066Z
+Son Güncelleme: 2026-06-30T19:38:16.354Z
 
-## IDEA-MR11B0OD-411M | 🔴 YÜKSEK | Puan: 61
+## IDEA-MR11UDNP-PQPY | 🔴 YÜKSEK | Puan: 44.5
 
-**Tarih:** 2026-06-30T19:23:13.069Z
-**Faz:** security
+**Tarih:** 2026-06-30T19:38:16.357Z
+**Faz:** performance
 **Tür:** 💻 Kod
 **Kaynak:** phase_rule
 **Zorluk:** medium
 
 ### Başlık
-Input validation katmanı
+Veritabanı sorgu optimizasyonu
 
 ### Açıklama
-Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+Prisma sorgularında N+1 problemi kontrolü ve index analizi.
 
 ### Puanlama Detayı
 | Kriter | Puan |
 |--------|------|
 | Etki | 8/10 |
-| Güvenlik | 10/10 |
-| Kullanıcı Dostu | 5/10 |
-| Demografik | 6/10 |
-| Basitlik | 7/10 |
+| Güvenlik | 3/10 |
+| Kullanıcı Dostu | 6/10 |
+| Demografik | 5/10 |
+| Basitlik | 5/10 |
 
-**Formül:** (8×2.5) + (10×2.0) + (5×1.5) + (6×1.0) + (7×1.5) − 3 = **61**
+**Formül:** (8×2.5) + (3×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 3 = **44.5**
 
 ---
 
-## IDEA-MR11B0OF-0E1Q | 🔴 YÜKSEK | Puan: 61
+## IDEA-MR11UDNR-PCI4 | 🔴 YÜKSEK | Puan: 61
 
-**Tarih:** 2026-06-30T19:23:13.071Z
-**Faz:** security
+**Tarih:** 2026-06-30T19:38:16.359Z
+**Faz:** performance
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** medium
@@ -56,10 +56,10 @@ Kullanıcıların %22'i ödeme adımında çıkıyor.
 
 ---
 
-## IDEA-MR11B0OH-SDX2 | 🔴 YÜKSEK | Puan: 51.5
+## IDEA-MR11UDNT-VJCP | 🔴 YÜKSEK | Puan: 51.5
 
-**Tarih:** 2026-06-30T19:23:13.073Z
-**Faz:** security
+**Tarih:** 2026-06-30T19:38:16.361Z
+**Faz:** performance
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** easy
