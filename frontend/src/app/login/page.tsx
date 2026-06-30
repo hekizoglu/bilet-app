@@ -3,6 +3,8 @@
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { Ticket, ShieldAlert, Sparkles, LogIn } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,54 +45,142 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+    <div className="relative flex min-h-screen items-center justify-center bg-slate-950 overflow-hidden font-sans">
+      
+      {/* Background Neon Ambient Glows */}
+      <motion.div 
+        animate={{ 
+          x: [0, 40, -20, 0],
+          y: [0, -40, 30, 0],
+        }}
+        transition={{
+          duration: 10,
+          repeat: Infinity,
+          repeatType: "mirror"
+        }}
+        className="absolute top-1/4 left-1/4 h-[300px] w-[300px] rounded-full bg-blue-500/20 blur-[100px] pointer-events-none"
+      />
+      <motion.div 
+        animate={{ 
+          x: [0, -50, 30, 0],
+          y: [0, 50, -40, 0],
+        }}
+        transition={{
+          duration: 12,
+          repeat: Infinity,
+          repeatType: "mirror"
+        }}
+        className="absolute bottom-1/4 right-1/4 h-[350px] w-[350px] rounded-full bg-indigo-500/20 blur-[120px] pointer-events-none"
+      />
+      
+      <div className="absolute top-0 left-0 w-full h-full bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none" />
+
+      {/* Main Glassmorphic Card Container */}
+      <motion.div 
+        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 100, damping: 15 }}
+        className="relative z-10 w-full max-w-md p-8 bg-slate-900/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-slate-800/80 mx-4"
+      >
+        
+        {/* Glowing top line */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-blue-500 to-transparent rounded-t-3xl opacity-75" />
+
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Bilet Sistemi</h1>
-          <p className="text-gray-500 mt-2">Devam etmek için giriş yapın</p>
+          <motion.div 
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 150 }}
+            className="inline-flex items-center justify-center p-3 bg-gradient-to-br from-blue-500/10 to-indigo-500/10 border border-blue-500/20 rounded-2xl mb-4 text-blue-400 shadow-inner"
+          >
+            <Ticket size={32} className="stroke-[1.5]" />
+          </motion.div>
+          
+          <motion.h1 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-3xl font-extrabold tracking-tight text-white flex items-center justify-center gap-2"
+          >
+            Bilet Sistemi <Sparkles size={18} className="text-blue-400 animate-pulse" />
+          </motion.h1>
+          
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.4 }}
+            className="text-slate-400 mt-2 text-sm"
+          >
+            Devam etmek için giriş yapın
+          </motion.p>
         </div>
 
         {clientIdError && (
-          <div className="mb-6 p-4 bg-red-100 text-red-800 rounded-lg text-sm border border-red-300 font-semibold shadow-sm">
-            {clientIdError}
-          </div>
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="mb-6 p-4 bg-red-950/40 text-red-300 rounded-2xl text-xs border border-red-500/30 flex gap-2 font-medium shadow-md backdrop-blur-sm"
+          >
+            <ShieldAlert size={18} className="shrink-0 text-red-400" />
+            <div>{clientIdError}</div>
+          </motion.div>
         )}
 
         {error && (
-          <div className="mb-4 p-3 bg-orange-50 text-orange-700 rounded-lg text-sm border border-orange-200 text-center break-words">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-3 bg-amber-950/40 text-amber-300 rounded-xl text-xs border border-amber-500/30 text-center break-words backdrop-blur-sm"
+          >
             {error}
-          </div>
+          </motion.div>
         )}
 
-        <div className="flex justify-center">
+        {/* Google Authentication Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="flex justify-center"
+        >
           {GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== "YOUR_GOOGLE_CLIENT_ID" ? (
-            <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
-              <GoogleLogin
-                onSuccess={handleSuccess}
-                onError={() => setError("Google Auth bileşeninden bir hata döndü (örn. pencere kapatıldı veya ağ hatası).")}
-                theme="filled_blue"
-                shape="pill"
-                size="large"
-              />
-            </GoogleOAuthProvider>
+            <div className="w-full flex justify-center hover:scale-[1.02] active:scale-[0.98] transition-transform duration-200">
+              <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+                <GoogleLogin
+                  onSuccess={handleSuccess}
+                  onError={() => setError("Google Auth bileşeninden bir hata döndü (örn. pencere kapatıldı veya ağ hatası).")}
+                  theme="filled_blue"
+                  shape="pill"
+                  size="large"
+                />
+              </GoogleOAuthProvider>
+            </div>
           ) : (
-            <div className="text-sm text-gray-500 italic border p-4 rounded bg-gray-50 w-full text-center">
+            <div className="text-sm text-slate-400 italic border border-slate-800 p-4 rounded-2xl bg-slate-900/60 w-full text-center">
               Google Login butonu Client ID eksik olduğu için devre dışı.
             </div>
           )}
-        </div>
+        </motion.div>
 
-        {/* Yerel Geliştirme İçin Test Butonu */}
-        <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col items-center">
-          <p className="text-xs text-gray-400 mb-3">Google Auth olmadan hızlı test için:</p>
-          <button
+        {/* Local Test Login Bypass Section */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          className="mt-8 pt-6 border-t border-slate-800/80 flex flex-col items-center"
+        >
+          <p className="text-xs text-slate-500 mb-4">Google Auth olmadan hızlı test için:</p>
+          <motion.button
+            whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(59, 130, 246, 0.4)" }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => handleSuccess({ credential: "LOCAL_TEST_TOKEN" })}
-            className="px-4 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-700 transition-colors shadow-sm"
+            className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium rounded-2xl text-sm transition-all shadow-lg flex items-center justify-center gap-2 border border-blue-400/20"
           >
-            Local Test Girişi Yap
-          </button>
-        </div>
-      </div>
+            <LogIn size={16} /> Local Test Girişi Yap
+          </motion.button>
+        </motion.div>
+
+      </motion.div>
     </div>
   );
 }
