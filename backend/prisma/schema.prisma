@@ -71,4 +71,7 @@ model Reservation {
   isUsed          Boolean   @default(false) // Bilet kapıda okutuldu mu? (Check-in)
   usedAt          DateTime? // Bilet ne zaman okutuldu?
   createdAt       DateTime  @default(now())
+
+  @@index([eventId])
+  @@index([email])
 }
