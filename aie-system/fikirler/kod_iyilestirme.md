@@ -1,30 +1,30 @@
 # 💻 Kod İyileştirme Fikirleri
 
-Son Güncelleme: 2026-06-30T19:08:09.762Z
+Son Güncelleme: 2026-06-30T19:23:13.066Z
 
-## IDEA-MR10RNOM-WNBM | 🔴 YÜKSEK | Puan: 51
+## IDEA-MR11B0OD-411M | 🔴 YÜKSEK | Puan: 61
 
-**Tarih:** 2026-06-30T19:08:09.766Z
-**Faz:** stabilization
+**Tarih:** 2026-06-30T19:23:13.069Z
+**Faz:** security
 **Tür:** 💻 Kod
 **Kaynak:** phase_rule
-**Zorluk:** hard
+**Zorluk:** medium
 
 ### Başlık
-Hata yakalama ve retry mekanizması
+Input validation katmanı
 
 ### Açıklama
-Kritik endpointler için circuit breaker pattern uygulanmalı.
+Tüm kullanıcı girişleri için merkezi validasyon katmanı.
 
 ### Puanlama Detayı
 | Kriter | Puan |
 |--------|------|
-| Etki | 9/10 |
-| Güvenlik | 7/10 |
-| Kullanıcı Dostu | 6/10 |
-| Demografik | 5/10 |
-| Basitlik | 5/10 |
+| Etki | 8/10 |
+| Güvenlik | 10/10 |
+| Kullanıcı Dostu | 5/10 |
+| Demografik | 6/10 |
+| Basitlik | 7/10 |
 
-**Formül:** (9×2.5) + (7×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 7 = **51**
+**Formül:** (8×2.5) + (10×2.0) + (5×1.5) + (6×1.0) + (7×1.5) − 3 = **61**
 
 ---
