@@ -2205,3 +2205,233 @@ legacy_gas/Designer.html - Eski GAS'tan alınan referans kod
 - **Zorluk:** easy
 - **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
 
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-06-30T13:00:38.199Z
+
+#### 1. 💻 Hata yakalama ve retry mekanizması
+- **ID:** IDEA-MR0NN0KT-079C
+- **Puan:** 51/40
+- **Zorluk:** hard
+- **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı.
+
+#### 2. 📱 Ödeme akışı sadeleştirme
+- **ID:** IDEA-MR0NN0KV-KRZY
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Kullanıcıların %22'i ödeme adımında çıkıyor.
+
+#### 3. 📱 Arama ve filtreleme UX iyileştirme
+- **ID:** IDEA-MR0NN0KX-0EKR
+- **Puan:** 51.5/40
+- **Zorluk:** easy
+- **Açıklama:** Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi revize edilmeli.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-06-30T13:00:38.366Z
+
+#### 1. 💻 Input validation katmanı
+- **ID:** IDEA-MR0NN0PH-H418
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+
+#### 2. 📱 Ödeme akışı sadeleştirme
+- **ID:** IDEA-MR0NN0PI-9292
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Kullanıcıların %22'i ödeme adımında çıkıyor.
+
+#### 3. 📱 Arama ve filtreleme UX iyileştirme
+- **ID:** IDEA-MR0NN0PK-FQSD
+- **Puan:** 51.5/40
+- **Zorluk:** easy
+- **Açıklama:** Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi revize edilmeli.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-06-30T13:00:38.781Z
+
+#### 1. 💻 Veritabanı sorgu optimizasyonu
+- **ID:** IDEA-MR0NN10J-DR4Q
+- **Puan:** 44.5/40
+- **Zorluk:** medium
+- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+
+#### 2. 📱 Ödeme akışı sadeleştirme
+- **ID:** IDEA-MR0NN10R-IIKO
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Kullanıcıların %22'i ödeme adımında çıkıyor.
+
+#### 3. 📱 Arama ve filtreleme UX iyileştirme
+- **ID:** IDEA-MR0NN10U-ZZRC
+- **Puan:** 51.5/40
+- **Zorluk:** easy
+- **Açıklama:** Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi revize edilmeli.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-06-30T13:00:38.972Z
+
+#### 1. 📱 Ödeme akışı sadeleştirme
+- **ID:** IDEA-MR0NN166-OQOF
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Kullanıcıların %22'i ödeme adımında çıkıyor.
+
+#### 2. 📱 Arama ve filtreleme UX iyileştirme
+- **ID:** IDEA-MR0NN16A-DY1A
+- **Puan:** 51.5/40
+- **Zorluk:** easy
+- **Açıklama:** Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi revize edilmeli.
+
+#### 3. 📱 Mobil responsive kontrolü
+- **ID:** IDEA-MR0NN16C-1B23
+- **Puan:** 49/40
+- **Zorluk:** easy
+- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-06-30T13:00:39.143Z
+
+#### 1. 💻 Hata yakalama ve retry mekanizması
+- **ID:** IDEA-MR0NN1B0-9D67
+- **Puan:** 51/40
+- **Zorluk:** hard
+- **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı.
+
+#### 2. 📱 Ödeme akışı sadeleştirme
+- **ID:** IDEA-MR0NN1B1-6B46
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Kullanıcıların %22'i ödeme adımında çıkıyor.
+
+#### 3. 📱 Arama ve filtreleme UX iyileştirme
+- **ID:** IDEA-MR0NN1B4-998E
+- **Puan:** 51.5/40
+- **Zorluk:** easy
+- **Açıklama:** Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi revize edilmeli.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-06-30T13:00:39.289Z
+
+#### 1. 💻 Input validation katmanı
+- **ID:** IDEA-MR0NN1F3-96UU
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+
+#### 2. 📱 Ödeme akışı sadeleştirme
+- **ID:** IDEA-MR0NN1F5-GP25
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Kullanıcıların %22'i ödeme adımında çıkıyor.
+
+#### 3. 📱 Arama ve filtreleme UX iyileştirme
+- **ID:** IDEA-MR0NN1F6-F2BY
+- **Puan:** 51.5/40
+- **Zorluk:** easy
+- **Açıklama:** Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi revize edilmeli.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-06-30T13:00:39.424Z
+
+#### 1. 💻 Veritabanı sorgu optimizasyonu
+- **ID:** IDEA-MR0NN1IT-1WRP
+- **Puan:** 44.5/40
+- **Zorluk:** medium
+- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+
+#### 2. 📱 Ödeme akışı sadeleştirme
+- **ID:** IDEA-MR0NN1IV-KF5M
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Kullanıcıların %22'i ödeme adımında çıkıyor.
+
+#### 3. 📱 Arama ve filtreleme UX iyileştirme
+- **ID:** IDEA-MR0NN1IX-F2Q5
+- **Puan:** 51.5/40
+- **Zorluk:** easy
+- **Açıklama:** Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi revize edilmeli.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-06-30T13:00:39.565Z
+
+#### 1. 📱 Ödeme akışı sadeleştirme
+- **ID:** IDEA-MR0NN1MU-WRXT
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Kullanıcıların %22'i ödeme adımında çıkıyor.
+
+#### 2. 📱 Arama ve filtreleme UX iyileştirme
+- **ID:** IDEA-MR0NN1MV-RHSN
+- **Puan:** 51.5/40
+- **Zorluk:** easy
+- **Açıklama:** Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi revize edilmeli.
+
+#### 3. 📱 Mobil responsive kontrolü
+- **ID:** IDEA-MR0NN1MX-KR9W
+- **Puan:** 49/40
+- **Zorluk:** easy
+- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-06-30T13:00:39.696Z
+
+#### 1. 💻 Hata yakalama ve retry mekanizması
+- **ID:** IDEA-MR0NN1QG-4HIZ
+- **Puan:** 51/40
+- **Zorluk:** hard
+- **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı.
+
+#### 2. 📱 Ödeme akışı sadeleştirme
+- **ID:** IDEA-MR0NN1QI-GVAK
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Kullanıcıların %22'i ödeme adımında çıkıyor.
+
+#### 3. 📱 Arama ve filtreleme UX iyileştirme
+- **ID:** IDEA-MR0NN1QJ-9W95
+- **Puan:** 51.5/40
+- **Zorluk:** easy
+- **Açıklama:** Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi revize edilmeli.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-06-30T13:00:39.840Z
+
+#### 1. 💻 Input validation katmanı
+- **ID:** IDEA-MR0NN1UE-299M
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+
+#### 2. 📱 Ödeme akışı sadeleştirme
+- **ID:** IDEA-MR0NN1UG-PWG5
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Kullanıcıların %22'i ödeme adımında çıkıyor.
+
+#### 3. 📱 Arama ve filtreleme UX iyileştirme
+- **ID:** IDEA-MR0NN1UH-XTXA
+- **Puan:** 51.5/40
+- **Zorluk:** easy
+- **Açıklama:** Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi revize edilmeli.
+

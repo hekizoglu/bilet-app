@@ -1,7 +1,8 @@
 # 📋 Backlog - Yüksek Öncelikli Fikirler
 
-Son Güncelleme: 2026-06-30T12:49:50.000Z
+Son Güncelleme: 2026-06-30T13:00:39.835Z
 
-- [x] **IDEA-MR0N3ZMO-5SZK** | Ödeme akışı sadeleştirme | Puan: 61 | Zorluk: medium
-- [x] **IDEA-MR0N3ZMP-BGEC** | Arama ve filtreleme UX iyileştirme | Puan: 51.5 | Zorluk: easy
-- [x] **IDEA-MR0N3ZMR-0UUB** | Mobil responsive kontrolü | Puan: 49 | Zorluk: easy
+- [ ] **IDEA-MR0NN1UE-299M** | Input validation katmanı | Puan: 61 | Zorluk: medium
+- [ ] **IDEA-MR0NN1UG-PWG5** | Ödeme akışı sadeleştirme | Puan: 61 | Zorluk: medium
+- [ ] **IDEA-MR0NN1UH-XTXA** | Arama ve filtreleme UX iyileştirme | Puan: 51.5 | Zorluk: easy
+
