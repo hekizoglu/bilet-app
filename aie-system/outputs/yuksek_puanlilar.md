@@ -1,38 +1,38 @@
 # 🔴 Yüksek Puanlı Fikirler (≥28 puan)
 
-Son Güncelleme: 2026-06-30T20:08:21.923Z
+Son Güncelleme: 2026-06-30T20:23:24.882Z
 
-## IDEA-MR12X2UE-WS0S | 🔴 YÜKSEK | Puan: 51
+## IDEA-MR13GFKK-4R70 | 🔴 YÜKSEK | Puan: 61
 
-**Tarih:** 2026-06-30T20:08:21.926Z
-**Faz:** stabilization
+**Tarih:** 2026-06-30T20:23:24.885Z
+**Faz:** security
 **Tür:** 💻 Kod
 **Kaynak:** phase_rule
-**Zorluk:** hard
+**Zorluk:** medium
 
 ### Başlık
-Hata yakalama ve retry mekanizması
+Input validation katmanı
 
 ### Açıklama
-Kritik endpointler için circuit breaker pattern uygulanmalı.
+Tüm kullanıcı girişleri için merkezi validasyon katmanı.
 
 ### Puanlama Detayı
 | Kriter | Puan |
 |--------|------|
-| Etki | 9/10 |
-| Güvenlik | 7/10 |
-| Kullanıcı Dostu | 6/10 |
-| Demografik | 5/10 |
-| Basitlik | 5/10 |
+| Etki | 8/10 |
+| Güvenlik | 10/10 |
+| Kullanıcı Dostu | 5/10 |
+| Demografik | 6/10 |
+| Basitlik | 7/10 |
 
-**Formül:** (9×2.5) + (7×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 7 = **51**
+**Formül:** (8×2.5) + (10×2.0) + (5×1.5) + (6×1.0) + (7×1.5) − 3 = **61**
 
 ---
 
-## IDEA-MR12X2UG-RGE9 | 🔴 YÜKSEK | Puan: 61
+## IDEA-MR13GFKP-2J88 | 🔴 YÜKSEK | Puan: 61
 
-**Tarih:** 2026-06-30T20:08:21.928Z
-**Faz:** stabilization
+**Tarih:** 2026-06-30T20:23:24.889Z
+**Faz:** security
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** medium
@@ -56,10 +56,10 @@ Kullanıcıların %22'i ödeme adımında çıkıyor.
 
 ---
 
-## IDEA-MR12X2UH-Z2F0 | 🔴 YÜKSEK | Puan: 51.5
+## IDEA-MR13GFKR-JH71 | 🔴 YÜKSEK | Puan: 51.5
 
-**Tarih:** 2026-06-30T20:08:21.930Z
-**Faz:** stabilization
+**Tarih:** 2026-06-30T20:23:24.891Z
+**Faz:** security
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** easy

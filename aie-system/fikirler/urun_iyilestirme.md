@@ -1,11 +1,11 @@
 # 📱 Ürün İyileştirme Fikirleri
 
-Son Güncelleme: 2026-06-30T20:08:21.923Z
+Son Güncelleme: 2026-06-30T20:23:24.882Z
 
-## IDEA-MR12X2UG-RGE9 | 🔴 YÜKSEK | Puan: 61
+## IDEA-MR13GFKP-2J88 | 🔴 YÜKSEK | Puan: 61
 
-**Tarih:** 2026-06-30T20:08:21.928Z
-**Faz:** stabilization
+**Tarih:** 2026-06-30T20:23:24.889Z
+**Faz:** security
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** medium
@@ -29,10 +29,10 @@ Kullanıcıların %22'i ödeme adımında çıkıyor.
 
 ---
 
-## IDEA-MR12X2UH-Z2F0 | 🔴 YÜKSEK | Puan: 51.5
+## IDEA-MR13GFKR-JH71 | 🔴 YÜKSEK | Puan: 51.5
 
-**Tarih:** 2026-06-30T20:08:21.930Z
-**Faz:** stabilization
+**Tarih:** 2026-06-30T20:23:24.891Z
+**Faz:** security
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** easy
