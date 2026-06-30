@@ -1,11 +1,11 @@
 # 📱 Ürün İyileştirme Fikirleri
 
-Son Güncelleme: 2026-06-30T19:38:16.354Z
+Son Güncelleme: 2026-06-30T19:53:19.212Z
 
-## IDEA-MR11UDNR-PCI4 | 🔴 YÜKSEK | Puan: 61
+## IDEA-MR12DQB3-1CQC | 🔴 YÜKSEK | Puan: 61
 
-**Tarih:** 2026-06-30T19:38:16.359Z
-**Faz:** performance
+**Tarih:** 2026-06-30T19:53:19.215Z
+**Faz:** ux
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** medium
@@ -29,10 +29,10 @@ Kullanıcıların %22'i ödeme adımında çıkıyor.
 
 ---
 
-## IDEA-MR11UDNT-VJCP | 🔴 YÜKSEK | Puan: 51.5
+## IDEA-MR12DQB5-SY1H | 🔴 YÜKSEK | Puan: 51.5
 
-**Tarih:** 2026-06-30T19:38:16.361Z
-**Faz:** performance
+**Tarih:** 2026-06-30T19:53:19.217Z
+**Faz:** ux
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** easy
@@ -53,5 +53,32 @@ Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi r
 | Basitlik | 6/10 |
 
 **Formül:** (8×2.5) + (2×2.0) + (9×1.5) + (8×1.0) + (6×1.5) − 3 = **51.5**
+
+---
+
+## IDEA-MR12DQB6-7MOB | 🔴 YÜKSEK | Puan: 49
+
+**Tarih:** 2026-06-30T19:53:19.218Z
+**Faz:** ux
+**Tür:** 📱 Ürün
+**Kaynak:** phase_rule
+**Zorluk:** easy
+
+### Başlık
+Mobil responsive kontrolü
+
+### Açıklama
+Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+
+### Puanlama Detayı
+| Kriter | Puan |
+|--------|------|
+| Etki | 7/10 |
+| Güvenlik | 2/10 |
+| Kullanıcı Dostu | 9/10 |
+| Demografik | 8/10 |
+| Basitlik | 6/10 |
+
+**Formül:** (7×2.5) + (2×2.0) + (9×1.5) + (8×1.0) + (6×1.5) − 3 = **49**
 
 ---
