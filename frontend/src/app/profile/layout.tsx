@@ -3,7 +3,7 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Ticket, Settings, LogOut, User } from 'lucide-react';
+import { Ticket, Settings, LogOut, User, Building } from 'lucide-react';
 
 export default function ProfileLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -12,6 +12,35 @@ export default function ProfileLayout({ children }: { children: ReactNode }) {
   const handleLogout = () => {
     document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     router.push('/login');
+  };
+
+  const handleSwitchRole = async () => {
+    try {
+      const getCookie = (name: string) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift();
+        return null;
+      };
+
+      const res = await fetch('http://localhost:5000/api/users/switch-role', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getCookie('token')}`
+        }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        document.cookie = `token=${data.token}; path=/; max-age=43200; SameSite=Strict`;
+        router.push('/admin');
+      } else {
+        const err = await res.json();
+        alert(err.error || "Geçiş yapılamadı.");
+      }
+    } catch (error) {
+      alert("Sunucuya bağlanılamadı.");
+    }
   };
 
   const navItems = [
@@ -50,10 +79,18 @@ export default function ProfileLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-100">
+        <div className="p-4 border-t border-gray-100 space-y-2">
+          <button
+            onClick={handleSwitchRole}
+            className="flex items-center gap-3 px-4 py-3 w-full text-left text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-semibold text-sm"
+          >
+            <Building size={20} />
+            Organizasyon Paneli
+          </button>
+          
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 w-full text-left text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="flex items-center gap-3 px-4 py-3 w-full text-left text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm"
           >
             <LogOut size={20} />
             Çıkış Yap

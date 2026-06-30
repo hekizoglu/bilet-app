@@ -1,4 +1,4 @@
-﻿# Strategic Roadmap (ROADMAP.md)
+# Strategic Roadmap (ROADMAP.md)
 
 ## Purpose
 This document tracks the strategic milestones, feature releases, prioritizations, and development phases (Now / Next / Later).
@@ -271,6 +271,26 @@ Bu doküman, Google Apps Script tabanlı sistemden modern Node.js + Next.js + My
 - [x] Mobil ödeme ekranı (`/payment/mobile`) — IBAN one-tap kopyalama, QR görünümü, native Share Sheet
 - [x] PWA Ana Ekrana Ekle Banner — `beforeinstallprompt` ile native yükleme promptu
 - [x] `layout.tsx` güncellendi — Türkçe, viewport kilidi, apple-mobile-web-app meta etiketleri
+
+
+
+## FAZ 15: Üçlü Rol Yapısı ve Kullanıcı Mod Değiştirme (3-Role System & Switch to Organizer)
+**Vade:** Şimdi / Devam Eden Sprint - **Tamamlandı**
+**Amaç:** Kullanıcı, Organizasyon ve Süper Admin rollerini ayırmak ve kullanıcıların tek tıkla organizasyon/kullanıcı modları arasında geçiş yapabilmesini sağlamak.
+
+### 15.1 Backend Yetkilendirme ve Rol Yönetimi
+- [x] `LOCAL_ADMIN_TOKEN`, `LOCAL_ORGANIZER_TOKEN` ve `LOCAL_CUSTOMER_TOKEN` test tokenleri tanımlandı.
+- [x] Google Auth login endpoint'i, veritabanındaki kullanıcı rollerini koruyacak şekilde revize edildi.
+- [x] Rol geçişini veritabanında güncelleyen, yeni JWT üreten ve çerezi (cookie) set eden **POST `/api/users/switch-role`** endpoint'i yazıldı.
+
+### 15.2 Giriş Ekranı Güncellemeleri
+- [x] Giriş sayfasındaki tek buton yerine, Framer Motion animasyonlu ve yan yana konumlandırılmış 3 farklı test giriş butonu (Kullanıcı, Organizasyon, Admin) yerleştirildi.
+- [x] Giriş başarılı olduktan sonra `ORGANIZER` ve `ADMIN` rollerinin doğrudan `/admin` paneline, `CUSTOMER` rolünün ise `/profile` bilet sayfasına yönlendirilmesi sağlandı.
+
+### 15.3 Arayüz Mod Değiştirici (Switch to Organizer Mode)
+- [x] Müşteri profil arayüzü sidebar'ına (`profile/layout.tsx`) "Organizasyon Paneli" (Switch to Organizer) butonu eklendi.
+- [x] Organizatör paneli arayüzü sidebar'ına (`admin/layout.tsx`) "Kullanıcı Paneli" (Switch to Customer) butonu eklendi (Süper Adminler için gizlendi).
+- [x] Mod geçiş butonları tıklandığında backend çağrılıp, çerez güncellenerek sayfa anında yeni panele yönlendiriliyor.
 
 
 

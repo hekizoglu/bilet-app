@@ -31,7 +31,7 @@ export default function LoginPage() {
       
       if (res.ok) {
         document.cookie = `token=${data.token}; path=/; max-age=43200; SameSite=Strict`;
-        if (data.user?.role === 'ADMIN') {
+        if (data.user?.role === 'ADMIN' || data.user?.role === 'ORGANIZER') {
           router.push('/admin');
         } else {
           router.push('/profile');
@@ -170,22 +170,30 @@ export default function LoginPage() {
           className="mt-8 pt-6 border-t border-slate-800/80 flex flex-col items-center w-full"
         >
           <p className="text-xs text-slate-500 mb-4">Google Auth olmadan hızlı test için:</p>
-          <div className="grid grid-cols-2 gap-3 w-full">
+          <div className="grid grid-cols-3 gap-2 w-full">
             <motion.button
-              whileHover={{ scale: 1.03, boxShadow: "0 0 12px rgba(30, 41, 59, 0.6)" }}
+              whileHover={{ scale: 1.03, boxShadow: "0 0 10px rgba(59, 130, 246, 0.2)" }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => handleSuccess({ credential: "LOCAL_TEST_TOKEN" })}
-              className="py-3 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-2xl text-xs transition-all shadow-md flex items-center justify-center gap-1 border border-slate-700/50"
+              onClick={() => handleSuccess({ credential: "LOCAL_CUSTOMER_TOKEN" })}
+              className="py-3 px-1 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-2xl text-[10px] transition-all shadow-md flex items-center justify-center border border-slate-700/50"
             >
-              Admin Girişi
+              Kullanıcı Girişi
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.03, boxShadow: "0 0 12px rgba(99, 102, 241, 0.3)" }}
+              whileTap={{ scale: 0.97 }}
+              onClick={() => handleSuccess({ credential: "LOCAL_ORGANIZER_TOKEN" })}
+              className="py-3 px-1 bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300 font-semibold rounded-2xl text-[10px] transition-all shadow-md flex items-center justify-center border border-indigo-500/20"
+            >
+              Organizasyon
             </motion.button>
             <motion.button
               whileHover={{ scale: 1.03, boxShadow: "0 0 15px rgba(59, 130, 246, 0.4)" }}
               whileTap={{ scale: 0.97 }}
-              onClick={() => handleSuccess({ credential: "LOCAL_CITIZEN_TOKEN" })}
-              className="py-3 px-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-2xl text-xs transition-all shadow-md flex items-center justify-center gap-1 border border-blue-400/20"
+              onClick={() => handleSuccess({ credential: "LOCAL_ADMIN_TOKEN" })}
+              className="py-3 px-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-2xl text-[10px] transition-all shadow-md flex items-center justify-center border border-blue-400/20"
             >
-              Vatandaş Girişi
+              Admin Girişi
             </motion.button>
           </div>
         </motion.div>

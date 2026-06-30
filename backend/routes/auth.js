@@ -12,11 +12,17 @@ router.post('/google', async (req, res) => {
 
   try {
     let payload;
+    let mockRole = null;
 
-    if (token === "LOCAL_TEST_TOKEN") {
+    if (token === "LOCAL_TEST_TOKEN" || token === "LOCAL_ADMIN_TOKEN") {
       payload = { email: ADMIN_EMAIL, name: 'Local Admin' };
-    } else if (token === "LOCAL_CITIZEN_TOKEN") {
-      payload = { email: 'vatandas@example.com', name: 'Local Vatandaş' };
+      mockRole = 'ADMIN';
+    } else if (token === "LOCAL_ORGANIZER_TOKEN") {
+      payload = { email: 'organizasyon@example.com', name: 'Local Organizatör' };
+      mockRole = 'ORGANIZER';
+    } else if (token === "LOCAL_CUSTOMER_TOKEN" || token === "LOCAL_CITIZEN_TOKEN") {
+      payload = { email: 'kullanici@example.com', name: 'Local Kullanıcı' };
+      mockRole = 'CUSTOMER';
     } else {
       const ticket = await client.verifyIdToken({
         idToken: token,
@@ -25,14 +31,22 @@ router.post('/google', async (req, res) => {
       payload = ticket.getPayload();
     }
     
-    // Rol belirleme
-    const role = (payload.email === ADMIN_EMAIL) ? 'ADMIN' : 'CUSTOMER';
-
     // Kullanıcıyı veritabanında bul veya oluştur
     const { PrismaClient } = require('@prisma/client');
     const prisma = new PrismaClient();
     
     let user = await prisma.user.findUnique({ where: { email: payload.email } });
+    
+    // Rol belirleme
+    let role = mockRole;
+    if (!role) {
+      if (user) {
+        role = user.role;
+      } else {
+        role = (payload.email === ADMIN_EMAIL) ? 'ADMIN' : 'CUSTOMER';
+      }
+    }
+    
     if (!user) {
       user = await prisma.user.create({
         data: {
@@ -41,7 +55,7 @@ router.post('/google', async (req, res) => {
         }
       });
     } else if (user.role !== role) {
-      // Eğer Admin email değiştiyse DB'yi güncelle
+      // Eğer rol değiştiyse veya güncellendiyse güncelle
       user = await prisma.user.update({
         where: { email: payload.email },
         data: { role: role }

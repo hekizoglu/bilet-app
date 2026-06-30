@@ -1,17 +1,63 @@
 "use client";
 
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Calendar, Map as MapIcon, Users, LogOut, Settings } from 'lucide-react';
+import { LayoutDashboard, Calendar, Map as MapIcon, Users, LogOut, Settings, User } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  const getCookie = (name: string) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(';').shift();
+    return null;
+  };
+
+  useEffect(() => {
+    try {
+      const token = getCookie('token');
+      if (token) {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        setUserRole(JSON.parse(jsonPayload).role);
+      }
+    } catch (e) {
+      console.error("Token decoding error:", e);
+    }
+  }, []);
 
   const handleLogout = () => {
     document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     router.push('/login');
+  };
+
+  const handleSwitchRole = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/users/switch-role', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getCookie('token')}`
+        }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        document.cookie = `token=${data.token}; path=/; max-age=43200; SameSite=Strict`;
+        router.push('/profile');
+      } else {
+        const err = await res.json();
+        alert(err.error || "Geçiş yapılamadı.");
+      }
+    } catch (error) {
+      alert("Sunucuya bağlanılamadı.");
+    }
   };
 
   const navItems = [
@@ -64,10 +110,20 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           })}
         </nav>
 
-        <div className="p-4 border-t border-gray-100">
+        <div className="p-4 border-t border-gray-100 space-y-2">
+          {userRole === 'ORGANIZER' && (
+            <button
+              onClick={handleSwitchRole}
+              className="flex items-center gap-3 px-4 py-3 w-full text-left text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-semibold text-sm"
+            >
+              <User size={20} />
+              Kullanıcı Paneli
+            </button>
+          )}
+          
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 px-4 py-3 w-full text-left text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            className="flex items-center gap-3 px-4 py-3 w-full text-left text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
           >
             <LogOut size={20} />
             Çıkış Yap
