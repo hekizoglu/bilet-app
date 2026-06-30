@@ -1,11 +1,38 @@
 # 🔴 Yüksek Puanlı Fikirler (≥28 puan)
 
-Son Güncelleme: 2026-06-30T19:53:19.212Z
+Son Güncelleme: 2026-06-30T20:08:21.923Z
 
-## IDEA-MR12DQB3-1CQC | 🔴 YÜKSEK | Puan: 61
+## IDEA-MR12X2UE-WS0S | 🔴 YÜKSEK | Puan: 51
 
-**Tarih:** 2026-06-30T19:53:19.215Z
-**Faz:** ux
+**Tarih:** 2026-06-30T20:08:21.926Z
+**Faz:** stabilization
+**Tür:** 💻 Kod
+**Kaynak:** phase_rule
+**Zorluk:** hard
+
+### Başlık
+Hata yakalama ve retry mekanizması
+
+### Açıklama
+Kritik endpointler için circuit breaker pattern uygulanmalı.
+
+### Puanlama Detayı
+| Kriter | Puan |
+|--------|------|
+| Etki | 9/10 |
+| Güvenlik | 7/10 |
+| Kullanıcı Dostu | 6/10 |
+| Demografik | 5/10 |
+| Basitlik | 5/10 |
+
+**Formül:** (9×2.5) + (7×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 7 = **51**
+
+---
+
+## IDEA-MR12X2UG-RGE9 | 🔴 YÜKSEK | Puan: 61
+
+**Tarih:** 2026-06-30T20:08:21.928Z
+**Faz:** stabilization
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** medium
@@ -29,10 +56,10 @@ Kullanıcıların %22'i ödeme adımında çıkıyor.
 
 ---
 
-## IDEA-MR12DQB5-SY1H | 🔴 YÜKSEK | Puan: 51.5
+## IDEA-MR12X2UH-Z2F0 | 🔴 YÜKSEK | Puan: 51.5
 
-**Tarih:** 2026-06-30T19:53:19.217Z
-**Faz:** ux
+**Tarih:** 2026-06-30T20:08:21.930Z
+**Faz:** stabilization
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** easy
@@ -53,32 +80,5 @@ Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi r
 | Basitlik | 6/10 |
 
 **Formül:** (8×2.5) + (2×2.0) + (9×1.5) + (8×1.0) + (6×1.5) − 3 = **51.5**
-
----
-
-## IDEA-MR12DQB6-7MOB | 🔴 YÜKSEK | Puan: 49
-
-**Tarih:** 2026-06-30T19:53:19.218Z
-**Faz:** ux
-**Tür:** 📱 Ürün
-**Kaynak:** phase_rule
-**Zorluk:** easy
-
-### Başlık
-Mobil responsive kontrolü
-
-### Açıklama
-Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
-
-### Puanlama Detayı
-| Kriter | Puan |
-|--------|------|
-| Etki | 7/10 |
-| Güvenlik | 2/10 |
-| Kullanıcı Dostu | 9/10 |
-| Demografik | 8/10 |
-| Basitlik | 6/10 |
-
-**Formül:** (7×2.5) + (2×2.0) + (9×1.5) + (8×1.0) + (6×1.5) − 3 = **49**
 
 ---
