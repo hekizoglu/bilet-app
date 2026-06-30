@@ -1,11 +1,11 @@
 # 📱 Ürün İyileştirme Fikirleri
 
-Son Güncelleme: 2026-06-30T14:22:09.351Z
+Son Güncelleme: 2026-06-30T14:37:12.829Z
 
-## IDEA-MR0QJUMK-9CBY | 🔴 YÜKSEK | Puan: 61
+## IDEA-MR0R37R4-SWNP | 🔴 YÜKSEK | Puan: 61
 
-**Tarih:** 2026-06-30T14:22:09.356Z
-**Faz:** stabilization
+**Tarih:** 2026-06-30T14:37:12.832Z
+**Faz:** performance
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** medium
@@ -29,10 +29,10 @@ Kullanıcıların %22'i ödeme adımında çıkıyor.
 
 ---
 
-## IDEA-MR0QJUML-KXDD | 🔴 YÜKSEK | Puan: 51.5
+## IDEA-MR0R37R6-EBPX | 🔴 YÜKSEK | Puan: 51.5
 
-**Tarih:** 2026-06-30T14:22:09.357Z
-**Faz:** stabilization
+**Tarih:** 2026-06-30T14:37:12.834Z
+**Faz:** performance
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** easy

@@ -1,30 +1,30 @@
 # 💻 Kod İyileştirme Fikirleri
 
-Son Güncelleme: 2026-06-30T14:22:09.350Z
+Son Güncelleme: 2026-06-30T14:37:12.828Z
 
-## IDEA-MR0QJUMI-LZPA | 🔴 YÜKSEK | Puan: 51
+## IDEA-MR0R37R3-XV2A | 🔴 YÜKSEK | Puan: 44.5
 
-**Tarih:** 2026-06-30T14:22:09.354Z
-**Faz:** stabilization
+**Tarih:** 2026-06-30T14:37:12.831Z
+**Faz:** performance
 **Tür:** 💻 Kod
 **Kaynak:** phase_rule
-**Zorluk:** hard
+**Zorluk:** medium
 
 ### Başlık
-Hata yakalama ve retry mekanizması
+Veritabanı sorgu optimizasyonu
 
 ### Açıklama
-Kritik endpointler için circuit breaker pattern uygulanmalı.
+Prisma sorgularında N+1 problemi kontrolü ve index analizi.
 
 ### Puanlama Detayı
 | Kriter | Puan |
 |--------|------|
-| Etki | 9/10 |
-| Güvenlik | 7/10 |
+| Etki | 8/10 |
+| Güvenlik | 3/10 |
 | Kullanıcı Dostu | 6/10 |
 | Demografik | 5/10 |
 | Basitlik | 5/10 |
 
-**Formül:** (9×2.5) + (7×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 7 = **51**
+**Formül:** (8×2.5) + (3×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 3 = **44.5**
 
 ---
