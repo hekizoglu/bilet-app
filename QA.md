@@ -1,4 +1,4 @@
-﻿# Quality Assurance Control (QA.md)
+# Quality Assurance Control (QA.md)
 
 ## Purpose
 This document defines the quality gates, user experience criteria, and the Definition of Done (DoD) required for any code before it is passed to code review.
@@ -14,23 +14,23 @@ This document defines the quality gates, user experience criteria, and the Defin
 ## Quality Gates & Verification Checklist
 
 ### 1. Functional QA
-- [ ] No regression on core ticket reservation flows.
-- [ ] Validation functions check bounds (e.g., negative capacity, past dates are blocked).
-- [ ] Seat lock state releases correctly if checkout is aborted.
+- [x] No regression on core ticket reservation flows.
+- [x] Validation functions check bounds (e.g., negative capacity, past dates are blocked).
+- [x] Seat lock state releases correctly if checkout is aborted.
 
 ### 2. UI/UX & Mobile QA
-- [ ] UI rendering is responsive down to 320px viewport width.
-- [ ] Seat selections are tappable on touch screens without misalignment.
-- [ ] Premium design aesthetics (gradients, smooth transitions, unified color scheme) are verified.
+- [x] UI rendering is responsive down to 320px viewport width.
+- [x] Seat selections are tappable on touch screens without misalignment.
+- [x] Premium design aesthetics (gradients, smooth transitions, unified color scheme) are verified.
 
 ### 3. Performance & API QA
-- [ ] API routes complete responses in under **200ms** under normal load.
-- [ ] Database requests are query-optimized to avoid N+1 queries.
-- [ ] WebSockets sync seat selections across clients in under **100ms**.
+- [x] API routes complete responses in under **200ms** under normal load.
+- [x] Database requests are query-optimized to avoid N+1 queries.
+- [x] WebSockets sync seat selections across clients in under **100ms**.
 
 ### 4. Security QA
-- [ ] All inputs are sanitized and validated with Zod.
-- [ ] Admin dashboard pages block access unless authenticated.
+- [x] All inputs are sanitized and validated with Zod.
+- [x] Admin dashboard pages block access unless authenticated.
 
 ---
 
