@@ -1,11 +1,11 @@
 # 📱 Ürün İyileştirme Fikirleri
 
-Son Güncelleme: 2026-06-30T20:23:24.882Z
+Son Güncelleme: 2026-06-30T20:38:28.533Z
 
-## IDEA-MR13GFKP-2J88 | 🔴 YÜKSEK | Puan: 61
+## IDEA-MR13ZSU1-KYA7 | 🔴 YÜKSEK | Puan: 61
 
-**Tarih:** 2026-06-30T20:23:24.889Z
-**Faz:** security
+**Tarih:** 2026-06-30T20:38:28.537Z
+**Faz:** performance
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** medium
@@ -29,10 +29,10 @@ Kullanıcıların %22'i ödeme adımında çıkıyor.
 
 ---
 
-## IDEA-MR13GFKR-JH71 | 🔴 YÜKSEK | Puan: 51.5
+## IDEA-MR13ZSU3-6IGF | 🔴 YÜKSEK | Puan: 51.5
 
-**Tarih:** 2026-06-30T20:23:24.891Z
-**Faz:** security
+**Tarih:** 2026-06-30T20:38:28.539Z
+**Faz:** performance
 **Tür:** 📱 Ürün
 **Kaynak:** behavior_analytics
 **Zorluk:** easy

@@ -3079,3 +3079,26 @@ legacy_gas/Designer.html - Eski GAS'tan alınan referans kod
 - **Zorluk:** easy
 - **Açıklama:** Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi revize edilmeli.
 
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-06-30T20:38:28.544Z
+
+#### 1. 💻 Veritabanı sorgu optimizasyonu
+- **ID:** IDEA-MR13ZSTZ-MEZ2
+- **Puan:** 44.5/40
+- **Zorluk:** medium
+- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+
+#### 2. 📱 Ödeme akışı sadeleştirme
+- **ID:** IDEA-MR13ZSU1-KYA7
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Kullanıcıların %22'i ödeme adımında çıkıyor.
+
+#### 3. 📱 Arama ve filtreleme UX iyileştirme
+- **ID:** IDEA-MR13ZSU3-6IGF
+- **Puan:** 51.5/40
+- **Zorluk:** easy
+- **Açıklama:** Arama sonuçlarında yüksek çıkış oranı. Filtreleme ve sonuç gösterimi revize edilmeli.
+
