@@ -275,6 +275,9 @@ router.post('/', validate(resSchema), async (req, res) => {
         } catch (mailErr) {
           console.error("Ücretsiz bilet mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
         }
+      } catch (outerMailErr) {
+        console.error("Ücretsiz bilet mail kurulum hatası:", outerMailErr.message);
+      }
     }
 
     res.status(201).json({ success: true, reservation });
@@ -540,36 +543,44 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
     });
 
     try {
-    let info;
-    try {
-      info = await retryWithBackoff(async () => {
-        return emailCircuit.execute(transporter, {
-          from: '"Bilet Sistemi" <noreply@bilet.local>',
-          to: reservation.email,
-          subject: `🎫 Bilet İade Bilgilendirmesi: ${reservation.event.name}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-              <h2 style="color: #dc2626; text-align: center;">Biletiniz İade Edildi</h2>
-              <p>Merhaba <b>${reservation.customer}</b>,</p>
-              <p><b>${reservation.event.name}</b> etkinliği için aldığınız bilet iptal edilmiş ve ödemeniz iade edilmiştir.</p>
-              <p>İade Edilen Tutar: <b>${amount} TL</b></p>
-              <p>İade Nedeni: <b>${reason || 'Müşteri Talebi'}</b></p>
-              <p style="color: #666; font-size: 14px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
-                İade tutarının hesabınıza yansıması bankanıza bağlı olarak 3-5 iş günü sürebilir.
-              </p>
-            </div>
-          `
-        });
-      }, 3, 1000);
+      let info;
+      try {
+        info = await retryWithBackoff(async () => {
+          return emailCircuit.execute(transporter, {
+            from: '"Bilet Sistemi" <noreply@bilet.local>',
+            to: reservation.email,
+            subject: `🎫 Bilet İade Bilgilendirmesi: ${reservation.event.name}`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <h2 style="color: #dc2626; text-align: center;">Biletiniz İade Edildi</h2>
+                <p>Merhaba <b>${reservation.customer}</b>,</p>
+                <p><b>${reservation.event.name}</b> etkinliği için aldığınız bilet iptal edilmiş ve ödemeniz iade edilmiştir.</p>
+                <p>İade Edilen Tutar: <b>${amount} TL</b></p>
+                <p>İade Nedeni: <b>${reason || 'Müşteri Talebi'}</b></p>
+                <p style="color: #666; font-size: 14px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
+                  İade tutarının hesabınıza yansıması bankanıza bağlı olarak 3-5 iş günü sürebilir.
+                </p>
+              </div>
+            `
+          });
+        }, 3, 1000);
 
-      res.json({
-        success: true,
-        message: "Bilet başarıyla iade edildi ve iptal e-postası gönderildi.",
-        previewUrl: nodemailer.getTestMessageUrl(info),
-        reservation: updated
-      });
-    } catch (mailErr) {
-      console.error("İade mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
+        res.json({
+          success: true,
+          message: "Bilet başarıyla iade edildi ve iptal e-postası gönderildi.",
+          previewUrl: nodemailer.getTestMessageUrl(info),
+          reservation: updated
+        });
+      } catch (mailErr) {
+        console.error("İade mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
+        res.json({
+          success: true,
+          message: "Bilet başarıyla iade edildi ancak bilgilendirme e-postası gönderilemedi.",
+          reservation: updated
+        });
+      }
+    } catch (setupErr) {
+      console.error("İade mail kurulum hatası:", setupErr.message);
       res.json({
         success: true,
         message: "Bilet başarıyla iade edildi ancak bilgilendirme e-postası gönderilemedi.",

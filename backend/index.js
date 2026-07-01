@@ -15,8 +15,12 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
+  .split(',')
+  .map(o => o.trim());
+
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: { origin: ALLOWED_ORIGINS, credentials: true }
 });
 
 const logger = require('./utils/logger');
@@ -42,10 +46,17 @@ const limiter = rateLimit({
 });
 
 // Middlewares
-app.use(helmet());
-app.use(cors());
-app.use(express.json());
-app.use(morgan('dev'));
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false
+}));
+app.use(cors({
+  origin: ALLOWED_ORIGINS,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+app.use(express.json({ limit: '1mb' }));
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use('/api', limiter); // Sadece API rotalarına uygula
 
 // Routes

@@ -30,7 +30,10 @@ const webhookSchema = z.object({
 });
 
 const creditCardSchema = z.object({
-  cardNumber: z.string({ required_error: "Kart numarası girilmedi." }).trim().replace(/\s/g, '').length(16, "Geçersiz kart numarası. Kart numarası 16 haneli olmalıdır."),
+  cardNumber: z.string({ required_error: "Kart numarası girilmedi." })
+    .trim()
+    .transform(val => val.replace(/\s/g, ''))
+    .pipe(z.string().length(16, "Geçersiz kart numarası. Kart numarası 16 haneli olmalıdır.")),
   expiry: z.string({ required_error: "Son kullanma tarihi girilmedi." }).trim().regex(/^\d{2}\/\d{2}$/, "Geçersiz son kullanma tarihi formatı. Örn: 12/29"),
   cvv: z.string({ required_error: "CVV kodu girilmedi." }).trim().min(3, "CVV en az 3 hane olmalıdır.").max(4, "CVV en fazla 4 hane olmalıdır."),
   holderName: z.string({ required_error: "Kart sahibi adı girilmedi." }).trim().min(3, "Kart sahibi adı en az 3 karakter olmalıdır.")
