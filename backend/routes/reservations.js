@@ -8,6 +8,7 @@ const { requireAuth } = require('../middlewares/auth');
 const cache = require('../utils/cache');
 const { CircuitBreaker, retryWithBackoff } = require('../utils/circuitBreaker');
 const taskQueue = require('../utils/queue');
+const Sentry = require('@sentry/node');
 
 // Dış servisler için Circuit Breaker tanımları (Hata eşiği: 3, soğuma süresi: 20 saniye)
 const emailCircuit = new CircuitBreaker(
@@ -589,7 +590,8 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
           reservation: updated
         });
       } catch (mailErr) {
-        console.error("İade mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
+        console.error("Mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
+        Sentry.captureException(mailErr);
         res.json({
           success: true,
           message: "Bilet başarıyla iade edildi ancak bilgilendirme e-postası gönderilemedi.",

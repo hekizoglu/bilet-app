@@ -9,6 +9,7 @@ const { z } = require('zod');
 const { validate } = require('../middlewares/validate');
 const { CircuitBreaker, retryWithBackoff } = require('../utils/circuitBreaker');
 const taskQueue = require('../utils/queue');
+const Sentry = require('@sentry/node');
 
 // Dış SMTP servisi için Circuit Breaker tanımı (Hata eşiği: 3, soğuma süresi: 20 saniye)
 const emailCircuit = new CircuitBreaker(
@@ -354,6 +355,7 @@ router.post('/:reservationId/pay-creditcard', validate(creditCardSchema), async 
         console.log("[Payment] Kredi kartı ödeme onay maili gönderildi:", nodemailer.getTestMessageUrl(mailInfo));
       } catch (mailErr) {
         console.error("[Payment] Mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
+        Sentry.captureException(mailErr);
       }
     });
 

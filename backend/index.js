@@ -1,4 +1,16 @@
 require('dotenv').config();
+const Sentry = require('@sentry/node');
+const { nodeProfilingIntegration } = require('@sentry/profiling-node');
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN || "",
+  integrations: [
+    nodeProfilingIntegration(),
+  ],
+  tracesSampleRate: 1.0,
+  profilesSampleRate: 1.0,
+});
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -203,6 +215,14 @@ app.get('/api/admin/dashboard', requireAuth, (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ status: 'OK' });
 });
+
+// Sentry Debug Route
+app.get('/api/debug-sentry', (req, res) => {
+  throw new Error("Sentry Backend Test Error!");
+});
+
+// Sentry Error Handler (must be before any other error middleware)
+Sentry.setupExpressErrorHandler(app);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
