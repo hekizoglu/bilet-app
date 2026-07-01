@@ -5,11 +5,12 @@ import { Users, CheckCircle, Clock } from 'lucide-react';
 
 export default function ReservationsPage() {
   const [reservations, setReservations] = useState<any[]>([]);
+  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 20 });
   const [refundReservation, setRefundReservation] = useState<any>(null);
   const [refundAmount, setRefundAmount] = useState<string>('');
   const [refundReason, setRefundReason] = useState<string>('Müşteri Talebi');
 
-  const fetchReservations = async () => {
+  const fetchReservations = async (page = 1) => {
     try {
       const getCookie = (name: string) => {
         const value = `; ${document.cookie}`;
@@ -19,12 +20,13 @@ export default function ReservationsPage() {
       };
 
       const token = getCookie('token');
-      const res = await fetch('http://localhost:5000/api/reservations', {
+      const res = await fetch(`http://localhost:5000/api/reservations?page=${page}&limit=20`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await res.json();
-        setReservations(data);
+        setReservations(data.reservations || data);
+        if (data.pagination) setPagination(data.pagination);
       }
     } catch (err) {
       console.error(err);
@@ -53,7 +55,7 @@ export default function ReservationsPage() {
       const data = await res.json();
       if (res.ok) {
         alert('Rezervasyon onaylandı ve e-posta gönderildi! Test URL: ' + (data.previewUrl || 'Yok'));
-        fetchReservations(); // Refresh list
+        fetchReservations(pagination.page); // Refresh list
       } else {
         alert('Hata: ' + data.error);
       }
@@ -80,7 +82,7 @@ export default function ReservationsPage() {
       const data = await res.json();
       if (res.ok) {
         alert('Ödeme doğrulandı, rezervasyon onaylandı ve e-posta gönderildi! Test URL: ' + (data.previewUrl || 'Yok'));
-        fetchReservations();
+        fetchReservations(pagination.page);
       } else {
         alert('Hata: ' + data.error);
       }
@@ -114,9 +116,9 @@ export default function ReservationsPage() {
 
       const data = await res.json();
       if (res.ok) {
-        alert('İade başarıyla gerçekleştirildi, bilet iptal edildi ve bilgilendirme e-postası gönderildi!');
+        alert('Bilet başarıyla iade edildi!');
         setRefundReservation(null);
-        fetchReservations();
+        fetchReservations(pagination.page);
       } else {
         alert('Hata: ' + data.error);
       }
@@ -235,6 +237,29 @@ export default function ReservationsPage() {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {pagination.totalPages > 1 && (
+        <div className="flex justify-center items-center gap-4 mt-6">
+          <button 
+            disabled={pagination.page <= 1}
+            onClick={() => fetchReservations(pagination.page - 1)}
+            className="px-4 py-2 border rounded-xl disabled:opacity-50 hover:bg-gray-50 transition font-medium text-sm"
+          >
+            Önceki
+          </button>
+          <span className="text-sm font-medium text-gray-700">
+            Sayfa {pagination.page} / {pagination.totalPages}
+          </span>
+          <button 
+            disabled={pagination.page >= pagination.totalPages}
+            onClick={() => fetchReservations(pagination.page + 1)}
+            className="px-4 py-2 border rounded-xl disabled:opacity-50 hover:bg-gray-50 transition font-medium text-sm"
+          >
+            Sonraki
+          </button>
+        </div>
+      )}
 
       {/* Refund Modal */}
       {refundReservation && (

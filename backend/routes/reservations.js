@@ -366,18 +366,39 @@ router.post('/checkin', requireAuth, async (req, res) => {
   }
 });
 
-// Admin: Tüm Rezervasyonları Listele
+// Admin: Tüm Rezervasyonları Listele (Sayfalamalı)
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const cached = cache.get('admin_reservations');
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+    
+    const cacheKey = `admin_reservations_${page}_${limit}`;
+    const cached = cache.get(cacheKey);
     if (cached) return res.json(cached);
 
-    const reservations = await prisma.reservation.findMany({
-      include: { event: true },
-      orderBy: { createdAt: 'desc' }
-    });
-    cache.set('admin_reservations', reservations, 10 * 1000); // 10 seconds cache
-    res.json(reservations);
+    const [reservations, total] = await prisma.$transaction([
+      prisma.reservation.findMany({
+        include: { event: true },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit
+      }),
+      prisma.reservation.count()
+    ]);
+    
+    const responseData = {
+      reservations,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    };
+
+    cache.set(cacheKey, responseData, 5 * 1000); // 5 seconds cache
+    res.json(responseData);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
   }
