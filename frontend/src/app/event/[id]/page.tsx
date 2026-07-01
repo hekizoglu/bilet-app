@@ -31,25 +31,29 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
       })
       .catch(console.error);
 
-    // 2. Gerçek Zamanlı Socket Bağlantısı
-    const socket = io('http://localhost:5000');
-    socket.emit('join_event', id);
+    let socket: any;
 
-    socket.on('seat_booked', (payload: { seatId: string }) => {
-      // Bir başkası koltuk aldı, listeden anında sil
-      setData((prev: any) => {
-        if (!prev || !prev.isSeated) return prev;
-        return {
-          ...prev,
-          availableSeats: prev.availableSeats.filter((s: any) => s.id !== payload.seatId)
-        };
+    if (data?.eventId) {
+      // 2. Gerçek Zamanlı Socket Bağlantısı
+      socket = io('http://localhost:5000');
+      socket.emit('join_event', data.eventId);
+
+      socket.on('seat_booked', (payload: { seatId: string }) => {
+        // Bir başkası koltuk aldı, listeden anında sil
+        setData((prev: any) => {
+          if (!prev || !prev.isSeated) return prev;
+          return {
+            ...prev,
+            availableSeats: prev.availableSeats.filter((s: any) => s.id !== payload.seatId)
+          };
+        });
       });
-    });
+    }
 
     return () => {
-      socket.disconnect();
+      if (socket) socket.disconnect();
     };
-  }, [id]);
+  }, [id, data?.eventId]);
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
@@ -58,7 +62,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          eventId: id,
+          eventId: data.eventId,
           customer: form.name,
           email: form.email,
           phone: form.phone,

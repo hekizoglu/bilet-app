@@ -28,15 +28,16 @@ model User {
 }
 
 model Hall {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
+  id              String   @id @default(uuid())
+  name            String
+  description     String?
   seatCount       Int
   layoutJson      String   // SQLite için String, parse edilecek
   backgroundImage String?  // Salona eklenecek kroki / arka plan görseli
+  address         String?  // Salonun açık adresi
   isGlobal        Boolean  @default(false)
-  events      Event[]
-  createdAt   DateTime @default(now())
+  events          Event[]
+  createdAt       DateTime @default(now())
 }
 
 model Event {

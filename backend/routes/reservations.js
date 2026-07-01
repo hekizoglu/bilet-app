@@ -82,7 +82,8 @@ router.get('/availability/:eventId', async (req, res) => {
         capacity: event.capacity, 
         sold: totalSold, 
         available: Math.max(0, availableCount),
-        paymentType: event.paymentType
+        paymentType: event.paymentType,
+        eventId: event.id
       };
     } else {
       // 2. Koltuklu Algoritması
@@ -101,7 +102,8 @@ router.get('/availability/:eventId', async (req, res) => {
         totalSeats: event.hall.seatCount,
         sold: takenSeatIds.size,
         availableSeats,
-        paymentType: event.paymentType
+        paymentType: event.paymentType,
+        eventId: event.id
       };
     }
 
@@ -618,6 +620,50 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
       });
     }
 
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// GET /api/reservations/scanner/:eventId - Scanner (Offline) cihaz için biletleri indir
+router.get('/scanner/:eventId', requireAuth, async (req, res) => {
+  try {
+    const reservations = await prisma.reservation.findMany({
+      where: { eventId: req.params.eventId, status: "Onaylı" },
+      select: {
+        id: true,
+        ticketCode: true,
+        seatName: true,
+        customer: true,
+        isUsed: true
+      }
+    });
+    res.json(reservations);
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// POST /api/reservations/bulk-checkin - Offline scanner'dan gelen biletleri sisteme eşitle
+router.post('/bulk-checkin', requireAuth, async (req, res) => {
+  try {
+    const { ticketCodes } = req.body;
+    if (!Array.isArray(ticketCodes) || ticketCodes.length === 0) {
+      return res.status(400).json({ error: "Geçersiz ticketCodes listesi" });
+    }
+
+    const updated = await prisma.reservation.updateMany({
+      where: {
+        ticketCode: { in: ticketCodes },
+        isUsed: false
+      },
+      data: {
+        isUsed: true,
+        usedAt: new Date()
+      }
+    });
+
+    res.json({ success: true, count: updated.count });
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
   }

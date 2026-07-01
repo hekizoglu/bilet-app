@@ -11,10 +11,12 @@
   "dependencies": {
     "@react-oauth/google": "^0.13.5",
     "@sentry/nextjs": "^10.62.0",
+    "html5-qrcode": "^2.3.8",
     "konva": "^10.3.0",
     "lucide-react": "^1.21.0",
     "motion": "^12.42.0",
     "next": "16.2.9",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-konva": "^19.2.5",

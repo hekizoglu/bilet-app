@@ -14,6 +14,7 @@ const hallSchema = z.object({
   seatCount: z.number().int().nonnegative(),
   layoutJson: z.string(), // SQLite için string
   backgroundImage: z.string().optional().nullable(),
+  address: z.string().optional().nullable(),
   isGlobal: z.boolean().default(false).optional()
 });
 
@@ -43,6 +44,7 @@ router.post('/:id/clone', requireAuth, async (req, res) => {
         seatCount: original.seatCount,
         layoutJson: original.layoutJson,
         backgroundImage: original.backgroundImage,
+        address: original.address,
         isGlobal: false
       }
     });

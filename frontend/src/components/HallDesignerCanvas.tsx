@@ -34,6 +34,7 @@ export default function HallDesignerCanvas() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [address, setAddress] = useState('');
   const [isGlobal, setIsGlobal] = useState(false);
   const [backgroundImage, setBackgroundImage] = useState('');
   
@@ -67,6 +68,7 @@ export default function HallDesignerCanvas() {
         const data = await res.json();
         setName(data.name);
         setDescription(data.description || '');
+        setAddress(data.address || '');
         setIsGlobal(data.isGlobal || false);
         setBackgroundImage(data.backgroundImage || '');
         if (data.layoutJson) {
@@ -187,16 +189,13 @@ export default function HallDesignerCanvas() {
     }
 
     const token = getCookie('token');
-    const layoutObj: HallLayout = {
-      canvas: { width: 1000, height: 800 },
-      elements
-    };
     
     const payload = {
       name,
       description,
-      seatCount: getTotalSeats(),
-      layoutJson: JSON.stringify(layoutObj),
+      address,
+      seatCount: elements.reduce((acc, el) => acc + (el.seatCount || 1), 0),
+      layoutJson: JSON.stringify({ canvas: { width: 1000, height: 600 }, elements }),
       backgroundImage,
       isGlobal
     };
@@ -321,6 +320,15 @@ export default function HallDesignerCanvas() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Salon Adı</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg text-sm" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Açık Adres</label>
+              <textarea 
+                value={address}
+                onChange={e => setAddress(e.target.value)}
+                placeholder="Google Haritalar QR kodu için açık adres giriniz..."
+                className="w-full p-2 border border-gray-300 rounded text-sm h-20 resize-none focus:outline-none focus:border-blue-500"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Kroki / Arkaplan Resmi URL</label>

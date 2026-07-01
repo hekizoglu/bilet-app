@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Ticket, Calendar, MapPin, Loader2 } from 'lucide-react';
+import { Ticket, Calendar, MapPin, Loader2, Navigation } from 'lucide-react';
 import Link from 'next/link';
+import { QRCodeCanvas } from 'qrcode.react';
 
 export default function ProfilePage() {
   const [reservations, setReservations] = useState<any[]>([]);
@@ -153,12 +154,15 @@ export default function ProfilePage() {
             <h3 className="text-xl font-bold text-center text-gray-900 mb-1">🎫 Giriş Bileti</h3>
             <p className="text-xs text-center text-gray-500 mb-6 font-mono">Bilet ID: {selectedTicket.ticketCode.slice(0, 8).toUpperCase()}</p>
             
-            <div className="flex flex-col items-center border-t border-b border-dashed border-gray-200 py-6 my-4 bg-gray-50 rounded-xl">
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${selectedTicket.ticketCode}`} 
-                alt="QR Code" 
-                className="w-48 h-48 border-2 border-white rounded-lg shadow-sm mb-4"
-              />
+            <div className="flex flex-col items-center border-t border-b border-dashed border-gray-200 py-6 my-4 bg-gray-50 rounded-xl overflow-y-auto max-h-[60vh]">
+              <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 mb-4">
+                <QRCodeCanvas 
+                  value={selectedTicket.ticketCode} 
+                  size={160}
+                  level="M"
+                  includeMargin={true}
+                />
+              </div>
               <p className="text-center font-bold text-lg text-blue-900">{selectedTicket.event?.name}</p>
               <p className="text-center text-xs text-gray-500 mt-1">{new Date(selectedTicket.event?.date).toLocaleString('tr-TR')}</p>
               
@@ -173,6 +177,26 @@ export default function ProfilePage() {
                   {selectedTicket.event?.isSeated ? (selectedTicket.seatName || selectedTicket.seatId) : 'Genel Giriş'}
                 </p>
               </div>
+
+              {selectedTicket.event?.hall?.address && (
+                <div className="mt-6 pt-6 border-t border-dashed border-gray-200 w-full flex flex-col items-center">
+                  <div className="flex items-center gap-1.5 text-blue-600 mb-2">
+                    <Navigation size={18} />
+                    <span className="text-sm font-bold">Yol Tarifi</span>
+                  </div>
+                  <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 mb-2">
+                    <QRCodeCanvas 
+                      value={`https://maps.google.com/?q=${encodeURIComponent(selectedTicket.event.hall.address)}`} 
+                      size={100}
+                      level="L"
+                      includeMargin={true}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 text-center px-4">
+                    {selectedTicket.event.hall.address}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2 justify-stretch mt-6">
