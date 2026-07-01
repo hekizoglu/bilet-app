@@ -13,6 +13,7 @@ const hallSchema = z.object({
   description: z.string().optional().nullable(),
   seatCount: z.number().int().nonnegative(),
   layoutJson: z.string(), // SQLite için string
+  backgroundImage: z.string().optional().nullable(),
   isGlobal: z.boolean().default(false).optional()
 });
 
@@ -41,6 +42,7 @@ router.post('/:id/clone', requireAuth, async (req, res) => {
         description: original.description,
         seatCount: original.seatCount,
         layoutJson: original.layoutJson,
+        backgroundImage: original.backgroundImage,
         isGlobal: false
       }
     });

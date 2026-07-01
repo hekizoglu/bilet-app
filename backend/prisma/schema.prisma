@@ -31,9 +31,10 @@ model Hall {
   id          String   @id @default(uuid())
   name        String
   description String?
-  seatCount   Int
-  layoutJson  String   // SQLite için String, parse edilecek
-  isGlobal    Boolean  @default(false)
+  seatCount       Int
+  layoutJson      String   // SQLite için String, parse edilecek
+  backgroundImage String?  // Salona eklenecek kroki / arka plan görseli
+  isGlobal        Boolean  @default(false)
   events      Event[]
   createdAt   DateTime @default(now())
 }
