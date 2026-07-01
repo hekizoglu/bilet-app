@@ -158,3 +158,47 @@ FAZ 15 (Performans), FAZ 16 (Güvenlik), FAZ 17 (Validasyon), FAZ 18 (UX) şu an
 - **Zorluk:** hard
 - **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı.
 
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T10:55:57.607Z
+
+#### 1. 💻 Input validation katmanı
+- **ID:** IDEA-MR1YMJ6P-O9WS
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T10:56:13.126Z
+
+#### 1. 💻 Veritabanı sorgu optimizasyonu
+- **ID:** IDEA-MR1YMV5T-X53L
+- **Puan:** 44.5/40
+- **Zorluk:** medium
+- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T10:56:57.603Z
+
+#### 1. 📱 Mobil responsive kontrolü
+- **ID:** IDEA-MR1YNTHB-V1JD
+- **Puan:** 49/40
+- **Zorluk:** easy
+- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T10:57:13.531Z
+
+#### 1. 💻 Hata yakalama ve retry mekanizması
+- **ID:** IDEA-MR1YO5R6-WIXY
+- **Puan:** 51/40
+- **Zorluk:** hard
+- **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı.
+

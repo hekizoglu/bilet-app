@@ -1,10 +1,10 @@
 # 🔴 Yüksek Puanlı Fikirler (≥28 puan)
 
-Son Güncelleme: 2026-07-01T10:54:57.611Z
+Son Güncelleme: 2026-07-01T10:57:13.503Z
 
-## IDEA-MR1YL8WD-IWAM | 🔴 YÜKSEK | Puan: 51
+## IDEA-MR1YO5R6-WIXY | 🔴 YÜKSEK | Puan: 51
 
-**Tarih:** 2026-07-01T10:54:57.613Z
+**Tarih:** 2026-07-01T10:57:13.507Z
 **Faz:** stabilization
 **Tür:** 💻 Kod
 **Kaynak:** phase_rule
