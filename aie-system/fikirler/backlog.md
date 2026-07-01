@@ -1,6 +1,6 @@
 # 📋 Backlog - Yüksek Öncelikli Fikirler
 
-Son Güncelleme: 2026-07-01T11:53:13.587Z
+Son Güncelleme: 2026-07-01T12:14:13.660Z
 
-- [ ] **IDEA-MR20O6EQ-T2TU** | Hata yakalama ve retry mekanizması | Puan: 51 | Zorluk: hard
+- [ ] **IDEA-MR21F6OP-BQBN** | Veritabanı sorgu optimizasyonu | Puan: 44.5 | Zorluk: medium
 

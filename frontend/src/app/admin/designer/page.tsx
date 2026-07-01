@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { HallSettingsPanel } from '../../../components/HallSettingsPanel';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Maximize2, X } from 'lucide-react';
 
 interface AutoGenerateConfig {
   hallLengthM: number;
@@ -25,11 +25,13 @@ const HallDesignerCanvas = dynamic(() => import('../../../components/HallDesigne
 export default function DesignerPage() {
   const canvasRef = useRef<any>(null);
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(true);
+  const [isCanvasModalOpen, setIsCanvasModalOpen] = useState(false);
 
   const handleAutoGenerate = (config: AutoGenerateConfig) => {
     if (canvasRef.current?.autoGenerateLayout) {
       canvasRef.current.autoGenerateLayout(config);
     }
+    setIsCanvasModalOpen(true);
   };
 
   return (
@@ -52,7 +54,7 @@ export default function DesignerPage() {
       <button
         onClick={() => setIsSettingsPanelOpen(!isSettingsPanelOpen)}
         className="flex-shrink-0 w-10 bg-white border-r border-gray-200 hover:bg-gray-50 flex items-center justify-center transition-colors"
-        title={isSettingsPanelOpen ? 'Paneli Gizle' : 'Paneli Aç'}
+        title={isSettingsPanelOpen ? 'Paneli Gizle' : 'Paneli Ac'}
       >
         {isSettingsPanelOpen ? (
           <ChevronLeft size={20} className="text-gray-600" />
@@ -61,20 +63,54 @@ export default function DesignerPage() {
         )}
       </button>
 
-      {/* Sağ Taraf - Tasarımcı (Full Width) */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="p-6 border-b border-gray-200 bg-white">
-          <h1 className="text-3xl font-bold text-gray-900">🎪 Salon Tasarımcısı</h1>
-          <p className="text-gray-500 mt-1">
-            Etkinlikleriniz için oturma planlarını sürükle-bırak ile hazırlayın. 
-            {isSettingsPanelOpen ? ' Ayarları sol panelden değiştirebilirsiniz.' : ' Paneli açmak için ◀ butonuna tıklayın.'}
+      {/* Ana Alan - Başlık + Placeholder */}
+      <div className="flex-1 flex flex-col overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50">
+        <div className="p-8 border-b border-gray-200 bg-white">
+          <h1 className="text-4xl font-bold text-gray-900">🎪 Salon Tasarımcısı</h1>
+          <p className="text-gray-600 mt-3">
+            Salon ayarlarını sol panelden düzenleyin. "Detaylı Sahne Oluştur" butonuna tıklayarak tasarımcı penceresini açın.
           </p>
         </div>
 
-        <div className="flex-1 overflow-auto p-6">
-          <HallDesignerCanvas ref={canvasRef} />
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="text-center">
+            <Maximize2 size={64} className="text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg mb-6">
+              {isCanvasModalOpen ? 'Tasarımcı penceresi açılıyor...' : 'Başlamak için sol panelden "Detaylı Sahne Oluştur" butonuna tıklayın'}
+            </p>
+            <button
+              onClick={() => setIsCanvasModalOpen(true)}
+              disabled={!isCanvasModalOpen}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+            >
+              🎯 Tasarımcıyı Aç
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Modal - Canvas Penceresi */}
+      {isCanvasModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full h-full max-w-7xl max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between bg-gradient-to-r from-blue-600 to-indigo-600">
+              <h2 className="text-2xl font-bold text-white">🎪 Salon Tasarımcısı - Düzen Planlayıcısı</h2>
+              <button
+                onClick={() => setIsCanvasModalOpen(false)}
+                className="p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition"
+              >
+                <X size={24} className="text-white" />
+              </button>
+            </div>
+
+            {/* Modal Content - Canvas */}
+            <div className="flex-1 overflow-auto">
+              <HallDesignerCanvas ref={canvasRef} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
