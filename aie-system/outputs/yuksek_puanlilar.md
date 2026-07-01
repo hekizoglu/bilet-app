@@ -1,30 +1,30 @@
 # 🔴 Yüksek Puanlı Fikirler (≥28 puan)
 
-Son Güncelleme: 2026-07-01T09:20:56.957Z
+Son Güncelleme: 2026-07-01T10:49:57.563Z
 
-## IDEA-MR1V8CJK-34I9 | 🔴 YÜKSEK | Puan: 61
+## IDEA-MR1YETDP-TBSL | 🔴 YÜKSEK | Puan: 44.5
 
-**Tarih:** 2026-07-01T09:20:56.960Z
-**Faz:** security
+**Tarih:** 2026-07-01T10:49:57.566Z
+**Faz:** performance
 **Tür:** 💻 Kod
 **Kaynak:** phase_rule
 **Zorluk:** medium
 
 ### Başlık
-Input validation katmanı
+Veritabanı sorgu optimizasyonu
 
 ### Açıklama
-Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+Prisma sorgularında N+1 problemi kontrolü ve index analizi.
 
 ### Puanlama Detayı
 | Kriter | Puan |
 |--------|------|
 | Etki | 8/10 |
-| Güvenlik | 10/10 |
-| Kullanıcı Dostu | 5/10 |
-| Demografik | 6/10 |
-| Basitlik | 7/10 |
+| Güvenlik | 3/10 |
+| Kullanıcı Dostu | 6/10 |
+| Demografik | 5/10 |
+| Basitlik | 5/10 |
 
-**Formül:** (8×2.5) + (10×2.0) + (5×1.5) + (6×1.0) + (7×1.5) − 3 = **61**
+**Formül:** (8×2.5) + (3×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 3 = **44.5**
 
 ---
