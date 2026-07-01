@@ -961,3 +961,234 @@ FAZ 15 (Performans), FAZ 16 (Güvenlik), FAZ 17 (Validasyon), FAZ 18 (UX) şu an
 - **Zorluk:** medium
 - **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı.
 
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:32:13.461Z
+
+#### 1. 💻 Veritabanı sorgu optimizasyonu
+- **ID:** IDEA-MR1ZX633-AWCE
+- **Puan:** 44.5/40
+- **Zorluk:** medium
+- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:32:57.854Z
+
+#### 1. 📱 Mobil responsive kontrolü
+- **ID:** IDEA-MR1ZY4C7-0PNY
+- **Puan:** 49/40
+- **Zorluk:** easy
+- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:33:13.603Z
+
+#### 1. 💻 Hata yakalama ve retry mekanizması
+- **ID:** IDEA-MR1ZYGHP-V465
+- **Puan:** 51/40
+- **Zorluk:** hard
+- **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:33:57.827Z
+
+#### 1. 💻 Input validation katmanı
+- **ID:** IDEA-MR1ZZEM7-ZCRN
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:34:13.520Z
+
+#### 1. 💻 Veritabanı sorgu optimizasyonu
+- **ID:** IDEA-MR1ZZQQ3-T2SW
+- **Puan:** 44.5/40
+- **Zorluk:** medium
+- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:34:57.837Z
+
+#### 1. 📱 Mobil responsive kontrolü
+- **ID:** IDEA-MR200OX5-HLBR
+- **Puan:** 49/40
+- **Zorluk:** easy
+- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:35:13.504Z
+
+#### 1. 💻 Hata yakalama ve retry mekanizması
+- **ID:** IDEA-MR20110C-KIKC
+- **Puan:** 51/40
+- **Zorluk:** hard
+- **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:35:57.830Z
+
+#### 1. 💻 Input validation katmanı
+- **ID:** IDEA-MR201Z7M-K4JM
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:36:13.556Z
+
+#### 1. 💻 Veritabanı sorgu optimizasyonu
+- **ID:** IDEA-MR202BCG-4KCH
+- **Puan:** 44.5/40
+- **Zorluk:** medium
+- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:36:57.828Z
+
+#### 1. 📱 Mobil responsive kontrolü
+- **ID:** IDEA-MR2039I7-EF68
+- **Puan:** 49/40
+- **Zorluk:** easy
+- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:37:13.534Z
+
+#### 1. 💻 Hata yakalama ve retry mekanizması
+- **ID:** IDEA-MR203LMJ-YXOW
+- **Puan:** 51/40
+- **Zorluk:** hard
+- **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:37:57.833Z
+
+#### 1. 💻 Input validation katmanı
+- **ID:** IDEA-MR204JSZ-E58C
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:38:13.524Z
+
+#### 1. 💻 Veritabanı sorgu optimizasyonu
+- **ID:** IDEA-MR204VWX-HOPE
+- **Puan:** 44.5/40
+- **Zorluk:** medium
+- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:38:57.848Z
+
+#### 1. 📱 Mobil responsive kontrolü
+- **ID:** IDEA-MR205U43-320B
+- **Puan:** 49/40
+- **Zorluk:** easy
+- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:39:13.527Z
+
+#### 1. 💻 Hata yakalama ve retry mekanizması
+- **ID:** IDEA-MR20667N-3IQO
+- **Puan:** 51/40
+- **Zorluk:** hard
+- **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:39:57.869Z
+
+#### 1. 💻 Input validation katmanı
+- **ID:** IDEA-MR2074FC-A8XA
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:40:13.510Z
+
+#### 1. 💻 Veritabanı sorgu optimizasyonu
+- **ID:** IDEA-MR207GHV-BFHN
+- **Puan:** 44.5/40
+- **Zorluk:** medium
+- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:40:57.865Z
+
+#### 1. 📱 Mobil responsive kontrolü
+- **ID:** IDEA-MR208EPX-19IL
+- **Puan:** 49/40
+- **Zorluk:** easy
+- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:41:13.535Z
+
+#### 1. 💻 Hata yakalama ve retry mekanizması
+- **ID:** IDEA-MR208QT7-DEGU
+- **Puan:** 51/40
+- **Zorluk:** hard
+- **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:41:57.883Z
+
+#### 1. 💻 Input validation katmanı
+- **ID:** IDEA-MR209P13-NAFT
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T11:42:13.656Z
+
+#### 1. 💻 Veritabanı sorgu optimizasyonu
+- **ID:** IDEA-MR20A177-ZFX6
+- **Puan:** 44.5/40
+- **Zorluk:** medium
+- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+

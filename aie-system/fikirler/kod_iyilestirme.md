@@ -1,30 +1,30 @@
 # 💻 Kod İyileştirme Fikirleri
 
-Son Güncelleme: 2026-07-01T11:31:57.817Z
+Son Güncelleme: 2026-07-01T11:42:13.648Z
 
-## IDEA-MR1ZWU0S-POZZ | 🔴 YÜKSEK | Puan: 61
+## IDEA-MR20A177-ZFX6 | 🔴 YÜKSEK | Puan: 44.5
 
-**Tarih:** 2026-07-01T11:31:57.820Z
-**Faz:** security
+**Tarih:** 2026-07-01T11:42:13.651Z
+**Faz:** performance
 **Tür:** 💻 Kod
 **Kaynak:** phase_rule
 **Zorluk:** medium
 
 ### Başlık
-Input validation katmanı
+Veritabanı sorgu optimizasyonu
 
 ### Açıklama
-Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+Prisma sorgularında N+1 problemi kontrolü ve index analizi.
 
 ### Puanlama Detayı
 | Kriter | Puan |
 |--------|------|
 | Etki | 8/10 |
-| Güvenlik | 10/10 |
-| Kullanıcı Dostu | 5/10 |
-| Demografik | 6/10 |
-| Basitlik | 7/10 |
+| Güvenlik | 3/10 |
+| Kullanıcı Dostu | 6/10 |
+| Demografik | 5/10 |
+| Basitlik | 5/10 |
 
-**Formül:** (8×2.5) + (10×2.0) + (5×1.5) + (6×1.0) + (7×1.5) − 3 = **61**
+**Formül:** (8×2.5) + (3×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 3 = **44.5**
 
 ---

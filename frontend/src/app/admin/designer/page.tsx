@@ -1,6 +1,19 @@
 "use client";
+import { useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { HallSettingsPanel } from '../../../components/HallSettingsPanel';
+
+interface AutoGenerateConfig {
+  hallLengthM: number;
+  hallWidthM: number;
+  tableRadiusCm: number;
+  chairsPerTable: number;
+  minSpacingCm: number;
+  stageLengthM: number;
+  stageWidthM: number;
+  stageCapacity: number;
+  numberingType: 'table_only' | 'table_and_seats' | 'seats_only' | 'none';
+}
 
 // Konva kütüphanesi window objesi aradığı için SSR (Server Side Rendering) kapatılır.
 const HallDesignerCanvas = dynamic(() => import('../../../components/HallDesignerCanvas'), { 
@@ -9,6 +22,15 @@ const HallDesignerCanvas = dynamic(() => import('../../../components/HallDesigne
 });
 
 export default function DesignerPage() {
+  const canvasRef = useRef<any>(null);
+
+  const handleAutoGenerate = (config: AutoGenerateConfig) => {
+    // HallDesignerCanvas'ın autoGenerateLayout'ını çağır
+    if (canvasRef.current?.autoGenerateLayout) {
+      canvasRef.current.autoGenerateLayout(config);
+    }
+  };
+
   return (
     <div className="flex gap-6">
       {/* Sol Panel - Alan Bilgileri */}
@@ -18,7 +40,7 @@ export default function DesignerPage() {
         </h2>
 
         {/* Form */}
-        <HallSettingsPanel />
+        <HallSettingsPanel onAutoGenerate={handleAutoGenerate} />
       </div>
 
       {/* Sağ Taraf - Tasarımcı */}
@@ -30,7 +52,7 @@ export default function DesignerPage() {
           </p>
         </div>
 
-        <HallDesignerCanvas />
+        <HallDesignerCanvas ref={canvasRef} />
       </div>
     </div>
   );

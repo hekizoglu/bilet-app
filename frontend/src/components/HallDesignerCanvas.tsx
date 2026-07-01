@@ -27,6 +27,22 @@ interface HallLayout {
   elements: DesignerElement[];
 }
 
+interface AutoGenerateConfig {
+  hallLengthM: number;
+  hallWidthM: number;
+  tableRadiusCm: number;
+  chairsPerTable: number;
+  minSpacingCm: number;
+  stageLengthM: number;
+  stageWidthM: number;
+  stageCapacity: number;
+  numberingType: 'table_only' | 'table_and_seats' | 'seats_only' | 'none';
+}
+
+interface HallDesignerCanvasProps {
+  onAutoGenerate?: (config: AutoGenerateConfig) => void;
+}
+
 export default function HallDesignerCanvas() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -182,85 +198,117 @@ export default function HallDesignerCanvas() {
     }, 0);
   };
 
-  // 🎭 Otomatik Sahne Oluştur
-  const autoGenerateLayout = () => {
-    const CANVAS_WIDTH = 1000;
-    const CANVAS_HEIGHT = 800;
-    const STAGE_HEIGHT = 100;
-    const TABLE_RADIUS = 40;
-    const TABLE_SEATS = 8;
-    const SPACING = 180; // Masalar arası mesafe
-    const COLS = 5; // Kolon sayısı
-    const ROWS = 3; // Satır sayısı
+  // 🎭 Otomatik Sahne Oluştur - Detailed Config
+  const autoGenerateLayout = (config: AutoGenerateConfig) => {
+    // 📐 Dönüşüm: 1 metre = 80 pixel (ölçeklendirilmiş görünüm)
+    const PIXEL_PER_METER = 80;
+    const CANVAS_WIDTH = config.hallLengthM * PIXEL_PER_METER;
+    const CANVAS_HEIGHT = config.hallWidthM * PIXEL_PER_METER;
+    
+    // Masa ölçüleri: santimetre → pixel
+    const TABLE_RADIUS = (config.tableRadiusCm / 100) * PIXEL_PER_METER / 2; // cm to m to pixels
+    const TABLE_SEATS = config.chairsPerTable;
+    const MIN_SPACING = (config.minSpacingCm / 100) * PIXEL_PER_METER; // cm to m to pixels
+    
+    // Sahne ölçüleri
+    const STAGE_WIDTH = config.stageLengthM * PIXEL_PER_METER;
+    const STAGE_HEIGHT = config.stageWidthM * PIXEL_PER_METER;
+    let STAGE_CAPACITY = Math.min(config.stageCapacity, 2000); // ⚠️ MAX 2000 CAP
+
+    // 🎯 KAPASİTE KONTROLÜ
+    const MAX_TOTAL_CAPACITY = 2000;
+    const MAX_SEATED_CAPACITY = MAX_TOTAL_CAPACITY - STAGE_CAPACITY;
 
     const newElements: DesignerElement[] = [];
 
-    // 1️⃣ Sahneyi ekle (üstte, orta)
-    newElements.push({
-      id: `stage-${Date.now()}`,
-      type: 'stage',
-      label: 'Sahne',
-      x: (CANVAS_WIDTH - 300) / 2,
-      y: 20,
-      width: 300,
-      height: 60,
-      rotation: 0,
-      numberingType: 'none'
-    });
+    // 1️⃣ SAHNE YERLEŞTIR (Üstte, Orta)
+    if (STAGE_CAPACITY > 0) {
+      newElements.push({
+        id: `stage-${Date.now()}`,
+        type: 'stage',
+        label: `Sahne (${STAGE_CAPACITY} kişi)`,
+        x: (CANVAS_WIDTH - STAGE_WIDTH) / 2,
+        y: 30,
+        width: STAGE_WIDTH,
+        height: STAGE_HEIGHT,
+        rotation: 0,
+        seatCount: STAGE_CAPACITY,
+        numberingType: 'none'
+      });
+    }
 
-    // 2️⃣ Masaları grid'de dizle
+    // 2️⃣ MASALARI GRID'DE YERLEŞTIR
+    // Sahne sonrası boş alan
+    const AVAILABLE_HEIGHT = CANVAS_HEIGHT - (STAGE_HEIGHT + 60);
+    const AVAILABLE_WIDTH = CANVAS_WIDTH - 100;
+
+    // Grid hesapla: Masalar + spacing
+    const TABLE_DIAMETER = TABLE_RADIUS * 2;
+    let COLS = Math.max(1, Math.floor(AVAILABLE_WIDTH / (TABLE_DIAMETER + MIN_SPACING)));
+    let ROWS = Math.max(1, Math.floor(AVAILABLE_HEIGHT / (TABLE_DIAMETER + MIN_SPACING)));
+
+    // 🎯 KAPASİTE LIMITI: Masa sayısını kapasiteye göre ayarla
+    const maxTablesForCapacity = Math.floor(MAX_SEATED_CAPACITY / TABLE_SEATS);
+    const calculatedTotalTables = COLS * ROWS;
+
+    if (calculatedTotalTables * TABLE_SEATS > MAX_SEATED_CAPACITY) {
+      // Kapasiteyi aşıyorsa, satır sayısını kırp
+      ROWS = Math.max(1, Math.floor(maxTablesForCapacity / COLS));
+    }
+
     let tableCount = 0;
-    let startY = STAGE_HEIGHT + 80;
+    const startX = 50;
+    const startY = STAGE_HEIGHT + 80;
+    let totalSeatedCapacity = 0;
 
     for (let row = 0; row < ROWS; row++) {
       for (let col = 0; col < COLS; col++) {
-        const x = 80 + col * SPACING;
-        const y = startY + row * SPACING;
+        // ⚠️ Kapasiteyi aşacaksa masa ekleme
+        if (totalSeatedCapacity + TABLE_SEATS > MAX_SEATED_CAPACITY) {
+          break;
+        }
+
+        const x = startX + col * (TABLE_DIAMETER + MIN_SPACING);
+        const y = startY + row * (TABLE_DIAMETER + MIN_SPACING);
 
         // Canvas sınırlarını kontrol et
-        if (x + TABLE_RADIUS > CANVAS_WIDTH - 50 || y + TABLE_RADIUS > CANVAS_HEIGHT - 50) {
+        if (x + TABLE_RADIUS > CANVAS_WIDTH - 30 || y + TABLE_RADIUS > CANVAS_HEIGHT - 30) {
           continue;
         }
 
         tableCount++;
+        totalSeatedCapacity += TABLE_SEATS;
         newElements.push({
           id: `round_table-${Date.now()}-${tableCount}`,
           type: 'round_table',
-          label: `M${tableCount}`,
+          label: `T${tableCount}`,
           x,
           y,
           radius: TABLE_RADIUS,
           rotation: 0,
           seatCount: TABLE_SEATS,
-          numberingType: 'table_and_seats'
+          numberingType: config.numberingType
         });
       }
-    }
-
-    // 3️⃣ Kenar sandalyeleri ekle (isteğe bağlı)
-    const addPeripheralChairs = false; // false = sadece masalar
-    if (addPeripheralChairs) {
-      const chairSpacing = 40;
-      // Sol kenar
-      for (let i = 0; i < 6; i++) {
-        newElements.push({
-          id: `chair-${Date.now()}-l${i}`,
-          type: 'chair',
-          label: `K${tableCount + i + 1}`,
-          x: 20,
-          y: STAGE_HEIGHT + 100 + i * chairSpacing,
-          width: 30,
-          height: 30,
-          rotation: 0,
-          numberingType: 'seats_only'
-        });
+      // Kapasite limitini aştıysa satırları da kes
+      if (totalSeatedCapacity + TABLE_SEATS > MAX_SEATED_CAPACITY) {
+        break;
       }
     }
 
     // Tüm elemanları güncelle
     setElements(newElements);
     setSelectedId(null);
-    alert(`✅ ${tableCount} masa otomatik yerleştirildi!`);
+    
+    const totalCapacity = totalSeatedCapacity + STAGE_CAPACITY;
+    alert(`✅ Salon Oluşturuldu!
+📊 Bilgiler:
+• Alan: ${config.hallLengthM}m × ${config.hallWidthM}m (${(config.hallLengthM * config.hallWidthM).toFixed(1)}m²)
+• Masa Sayısı: ${tableCount}
+• Oturan Kapasite: ${totalSeatedCapacity} kişi
+• Sahne Kapasitesi: ${STAGE_CAPACITY} kişi
+• ⭐ TOPLAM KAPASİTE: ${totalCapacity} kişi / 2000 max
+${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCapacity} kişi yer var)`}`);
   };
 
   // 📊 İstatistik Hesaplayıcı
