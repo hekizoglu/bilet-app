@@ -1,6 +1,6 @@
 # 📋 Backlog - Yüksek Öncelikli Fikirler
 
-Son Güncelleme: 2026-07-01T08:51:48.842Z
+Son Güncelleme: 2026-07-01T09:20:56.962Z
 
-- [ ] **IDEA-MR1U6VON-5NL9** | Mobil responsive kontrolü | Puan: 49 | Zorluk: easy
+- [ ] **IDEA-MR1V8CJK-34I9** | Input validation katmanı | Puan: 61 | Zorluk: medium
 

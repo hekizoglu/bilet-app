@@ -1,30 +1,30 @@
 # 🔴 Yüksek Puanlı Fikirler (≥28 puan)
 
-Son Güncelleme: 2026-07-01T08:51:48.837Z
+Son Güncelleme: 2026-07-01T09:20:56.957Z
 
-## IDEA-MR1U6VON-5NL9 | 🔴 YÜKSEK | Puan: 49
+## IDEA-MR1V8CJK-34I9 | 🔴 YÜKSEK | Puan: 61
 
-**Tarih:** 2026-07-01T08:51:48.840Z
-**Faz:** ux
-**Tür:** 📱 Ürün
+**Tarih:** 2026-07-01T09:20:56.960Z
+**Faz:** security
+**Tür:** 💻 Kod
 **Kaynak:** phase_rule
-**Zorluk:** easy
+**Zorluk:** medium
 
 ### Başlık
-Mobil responsive kontrolü
+Input validation katmanı
 
 ### Açıklama
-Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+Tüm kullanıcı girişleri için merkezi validasyon katmanı.
 
 ### Puanlama Detayı
 | Kriter | Puan |
 |--------|------|
-| Etki | 7/10 |
-| Güvenlik | 2/10 |
-| Kullanıcı Dostu | 9/10 |
-| Demografik | 8/10 |
-| Basitlik | 6/10 |
+| Etki | 8/10 |
+| Güvenlik | 10/10 |
+| Kullanıcı Dostu | 5/10 |
+| Demografik | 6/10 |
+| Basitlik | 7/10 |
 
-**Formül:** (7×2.5) + (2×2.0) + (9×1.5) + (8×1.0) + (6×1.5) − 3 = **49**
+**Formül:** (8×2.5) + (10×2.0) + (5×1.5) + (6×1.0) + (7×1.5) − 3 = **61**
 
 ---
