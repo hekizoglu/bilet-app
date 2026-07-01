@@ -1,10 +1,10 @@
 # 🔴 Yüksek Puanlı Fikirler (≥28 puan)
 
-Son Güncelleme: 2026-07-01T11:42:13.649Z
+Son Güncelleme: 2026-07-01T11:44:13.535Z
 
-## IDEA-MR20A177-ZFX6 | 🔴 YÜKSEK | Puan: 44.5
+## IDEA-MR20CLPD-GX7E | 🔴 YÜKSEK | Puan: 44.5
 
-**Tarih:** 2026-07-01T11:42:13.651Z
+**Tarih:** 2026-07-01T11:44:13.537Z
 **Faz:** performance
 **Tür:** 💻 Kod
 **Kaynak:** phase_rule

@@ -500,7 +500,17 @@ ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCap
             <h3 className="text-sm font-bold text-purple-900 mb-2">⚡ Otomatik Sahne Oluştur</h3>
             <p className="text-xs text-purple-700 mb-3">Masaları grid pattern'de otomatik yerleştir</p>
             <button 
-              onClick={autoGenerateLayout}
+              onClick={() => autoGenerateLayout({
+                hallLengthM: 12,
+                hallWidthM: 8,
+                tableRadiusCm: 120,
+                chairsPerTable: 8,
+                minSpacingCm: 100,
+                stageLengthM: 6,
+                stageWidthM: 2,
+                stageCapacity: 150,
+                numberingType: 'table_and_seats'
+              })}
               className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-2 px-3 rounded-lg text-sm transition shadow-md"
             >
               ✨ Otomatik Yerleştir
