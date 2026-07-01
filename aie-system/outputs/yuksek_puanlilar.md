@@ -1,30 +1,30 @@
 # 🔴 Yüksek Puanlı Fikirler (≥28 puan)
 
-Son Güncelleme: 2026-07-01T11:10:13.311Z
+Son Güncelleme: 2026-07-01T11:13:13.565Z
 
-## IDEA-MR1Z4VGH-7V0N | 🔴 YÜKSEK | Puan: 44.5
+## IDEA-MR1Z8QJM-QFW2 | 🔴 YÜKSEK | Puan: 51
 
-**Tarih:** 2026-07-01T11:10:13.313Z
-**Faz:** performance
+**Tarih:** 2026-07-01T11:13:13.570Z
+**Faz:** stabilization
 **Tür:** 💻 Kod
 **Kaynak:** phase_rule
-**Zorluk:** medium
+**Zorluk:** hard
 
 ### Başlık
-Veritabanı sorgu optimizasyonu
+Hata yakalama ve retry mekanizması
 
 ### Açıklama
-Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+Kritik endpointler için circuit breaker pattern uygulanmalı.
 
 ### Puanlama Detayı
 | Kriter | Puan |
 |--------|------|
-| Etki | 8/10 |
-| Güvenlik | 3/10 |
+| Etki | 9/10 |
+| Güvenlik | 7/10 |
 | Kullanıcı Dostu | 6/10 |
 | Demografik | 5/10 |
 | Basitlik | 5/10 |
 
-**Formül:** (8×2.5) + (3×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 3 = **44.5**
+**Formül:** (9×2.5) + (7×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 7 = **51**
 
 ---
