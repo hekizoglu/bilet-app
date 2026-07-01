@@ -23,6 +23,7 @@ export default function EventsPage() {
   const [capacity, setCapacity] = useState('');
   const [hallId, setHallId] = useState('');
   const [paymentType, setPaymentType] = useState('free');
+  const [visibility, setVisibility] = useState('PUBLIC');
 
   const fetchEvents = async () => {
     try {
@@ -71,6 +72,7 @@ export default function EventsPage() {
       status,
       isSeated,
       paymentType,
+      visibility,
       ...(isSeated ? { hallId } : { capacity: Number(capacity) })
     };
 
@@ -88,7 +90,7 @@ export default function EventsPage() {
         setIsModalOpen(false);
         fetchEvents();
         // Formu temizle
-        setName(''); setDate(''); setPrice(''); setStatus('Taslak'); setIsSeated(true); setCapacity(''); setHallId(''); setPaymentType('free');
+        setName(''); setDate(''); setPrice(''); setStatus('Taslak'); setIsSeated(true); setCapacity(''); setHallId(''); setPaymentType('free'); setVisibility('PUBLIC');
       } else {
         const errData = await res.json();
         let errMsg = errData.error || errData.message || "Bilinmeyen hata";
@@ -100,6 +102,26 @@ export default function EventsPage() {
     } catch (error) {
       console.error(error);
       alert('Sunucuya bağlanılamadı');
+    }
+  };
+
+  const handleRegenerateSlug = async (eventId: string) => {
+    if (!confirm("Bu işlem mevcut özel linki iptal edecek ve yeni bir link oluşturacaktır. Emin misiniz?")) return;
+    
+    const token = getCookie('token');
+    try {
+      const res = await fetch(`http://localhost:5000/api/events/${eventId}/regenerate-slug`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        alert("Link başarıyla yenilendi!");
+        fetchEvents();
+      } else {
+        alert("Link yenilenirken hata oluştu.");
+      }
+    } catch (e) {
+      alert("Sunucuya bağlanılamadı");
     }
   };
 
@@ -229,6 +251,7 @@ export default function EventsPage() {
               <th className="p-4 font-medium">Fiyat (₺)</th>
               <th className="p-4 font-medium">Ödeme</th>
               <th className="p-4 font-medium">Tür</th>
+              <th className="p-4 font-medium">Görünürlük</th>
               <th className="p-4 font-medium">Durum</th>
               <th className="p-4 font-medium text-right">İşlemler</th>
             </tr>
@@ -255,6 +278,22 @@ export default function EventsPage() {
                     </span>
                   )}
                 </td>
+                <td className="p-4 text-gray-600">
+                  {event.visibility === 'PUBLIC' ? (
+                    <span className="text-green-600 font-medium">Genel</span>
+                  ) : (
+                    <div className="flex flex-col gap-1 text-xs">
+                      <span className="text-red-600 font-medium">Özel Link</span>
+                      <div className="flex items-center gap-1 bg-gray-100 p-1 rounded">
+                        <span className="text-gray-500 truncate w-24">...{event.privateSlug?.slice(-6)}</span>
+                        <button onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/event/${event.privateSlug}`);
+                          alert("Link kopyalandı!");
+                        }} className="text-blue-600 font-bold hover:underline">Kopyala</button>
+                      </div>
+                    </div>
+                  )}
+                </td>
                 <td className="p-4">
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                     event.status === 'Aktif' ? 'bg-blue-100 text-blue-800' :
@@ -266,21 +305,32 @@ export default function EventsPage() {
                 </td>
                 <td className="p-4 text-right">
                   <div className="flex justify-end gap-2">
+                    {event.visibility === 'PRIVATE' && (
+                      <button 
+                        onClick={() => handleRegenerateSlug(event.id)} 
+                        className="text-sm px-3 py-1.5 bg-orange-50 text-orange-700 hover:bg-orange-100 font-medium rounded transition"
+                        title="Özel Linki Yenile (Eskisi iptal olur)"
+                      >
+                        Yenile
+                      </button>
+                    )}
                     <button 
                       onClick={() => {
-                        navigator.clipboard.writeText(`${window.location.origin}/event/${event.id}`);
+                        const link = event.visibility === 'PRIVATE' ? event.privateSlug : event.id;
+                        navigator.clipboard.writeText(`${window.location.origin}/event/${link}`);
                         alert('Etkinlik linki kopyalandı! Müşterilerinize gönderebilirsiniz.');
                       }}
                       className="text-sm px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 font-medium rounded transition"
                       title="Müşteri Linkini Kopyala"
                     >
-                      Linki Kopyala
+                      Kopyala
                     </button>
                     <a 
-                      href={`/event/${event.id}`}
+                      href={`/event/${event.visibility === 'PRIVATE' ? event.privateSlug : event.id}`}
                       target="_blank"
-                      className="text-sm px-3 py-1.5 border border-gray-200 text-gray-600 hover:bg-gray-50 font-medium rounded transition"
-                      title="Müşteri Sayfasına Git"
+                      rel="noopener noreferrer"
+                      className="text-sm px-3 py-1.5 bg-gray-50 text-gray-700 hover:bg-gray-100 font-medium rounded transition"
+                      title="Sayfaya Git"
                     >
                       Sayfayı Gör
                     </a>
@@ -379,6 +429,17 @@ export default function EventsPage() {
                       <option value="free">Ücretsiz</option>
                       <option value="creditcard">Şimdi Ödeme (Kredi Kartı)</option>
                       <option value="cardless">Kartsız Ödeme (Banka/WhatsApp)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Görünürlük</label>
+                    <select 
+                      value={visibility}
+                      onChange={(e) => setVisibility(e.target.value)}
+                      className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                    >
+                      <option value="PUBLIC">Genel (Ana sayfada listelenir)</option>
+                      <option value="PRIVATE">Özel (Sadece link ile girilir)</option>
                     </select>
                   </div>
                 </div>

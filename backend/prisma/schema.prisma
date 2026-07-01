@@ -45,6 +45,8 @@ model Event {
   date         DateTime
   price        Float         // SQLite için Float (orijinali Decimal)
   status       String        @default("Taslak")
+  visibility   String        @default("PUBLIC") // "PUBLIC" or "PRIVATE"
+  privateSlug  String?       @unique            // Gizli etkinlikler için özel paylaşım linki kodu
   isSeated     Boolean       @default(true) // Koltuklu mu (true) yoksa Genel Giriş mi (false)?
   capacity     Int?          // Koltuksuz ise toplam bilet kapasitesi
   hallId       String?       // Koltuksuz ise NULL olabilir

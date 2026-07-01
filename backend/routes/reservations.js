@@ -48,12 +48,23 @@ router.get('/availability/:eventId', async (req, res) => {
     const cached = cache.get(cacheKey);
     if (cached) return res.json(cached);
 
-    const event = await prisma.event.findUnique({
-      where: { id: req.params.eventId },
+    // uuid format check
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.eventId);
+    
+    const event = await prisma.event.findFirst({
+      where: isUuid ? { id: req.params.eventId } : { privateSlug: req.params.eventId },
       include: { hall: true }
     });
 
     if (!event) return res.status(404).json({ error: "Etkinlik bulunamadı" });
+    
+    if (!event) return res.status(404).json({ error: "Etkinlik bulunamadı" });
+
+    // Güvenlik: Eğer etkinlik PRIVATE ise, URL'de mutlaka privateSlug kullanılmalı. 
+    // Yani isUuid true ise ve etkinlik PRIVATE ise erişimi reddet (admin paneli hariç - ileride adminler girebilir ama public bilet alamaz)
+    if (event.visibility === 'PRIVATE' && isUuid) {
+      return res.status(403).json({ error: "Bu özel bir etkinliktir. Lütfen davet linkini kullanın." });
+    }
 
     // Satılmış/Bekleyen rezervasyonları çek
     const reservations = await prisma.reservation.findMany({
