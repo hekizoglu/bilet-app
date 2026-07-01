@@ -10,7 +10,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
   
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ name: '', email: '', seatId: '', seatName: '' });
+  const [form, setForm] = useState({ name: '', email: '', phone: '', seatId: '', seatName: '' });
 
   const [reservationSuccess, setReservationSuccess] = useState<any>(null);
   const [adminPaymentInfo, setAdminPaymentInfo] = useState<any>(null);
@@ -61,6 +61,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
           eventId: id,
           customer: form.name,
           email: form.email,
+          phone: form.phone,
           seatId: form.seatId || null,
           seatName: form.seatName || null
         })
@@ -91,8 +92,14 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
       <div className="max-w-2xl mx-auto p-8 text-center">
         <div className="bg-green-50 text-green-800 p-8 rounded-2xl border border-green-100 shadow-sm">
           <h1 className="text-3xl font-bold mb-4">Rezervasyon Başarılı!</h1>
-          <p className="text-lg mb-6">Bilet talebiniz alınmıştır. Bilgiler e-posta adresinize gönderildi.</p>
+          <p className="text-lg mb-6">Bilet talebiniz alınmıştır.</p>
           
+          {(reservationSuccess.mailSent === 'queued' || reservationSuccess.mailSent === false) && (
+            <div className="bg-orange-50 border border-orange-200 text-orange-800 p-4 rounded-xl text-sm mb-6 text-left">
+              <strong>🔔 Bilgilendirme:</strong> Biletiniz başarıyla sistemimize kaydedildi. E-posta sistemindeki yoğunluk nedeniyle e-bilet gönderiminiz arka planda işlenmektedir (Lütfen daha sonra Spam klasörünüzü de kontrol edin). Biletinize anında <strong>"Biletlerim"</strong> sekmesinden ulaşabilirsiniz.
+            </div>
+          )}
+
           {data.paymentType === 'cardless' && (
             <div className="bg-white p-6 rounded-xl border border-gray-200 mt-6 text-left space-y-4">
               <h2 className="text-xl font-bold text-blue-800">Ödeme Bekleniyor (Kartsız Ödeme)</h2>
@@ -267,6 +274,12 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">E-Posta</label>
               <input required type="email" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                      onChange={e => setForm({...form, email: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Telefon</label>
+              <input type="tel" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                     placeholder="05xxxxxxxxx (İsteğe bağlı)"
+                     onChange={e => setForm({...form, phone: e.target.value})} />
             </div>
             <button type="submit" className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition shadow-md shadow-green-500/10 text-sm cursor-pointer">
               Rezervasyonu Tamamla

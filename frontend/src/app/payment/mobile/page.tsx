@@ -19,6 +19,8 @@ function MobilePaymentContent() {
   const [reservation, setReservation] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [paySuccess, setPaySuccess] = useState(false);
+  const [mailStatus, setMailStatus] = useState<string | null>(null);
 
   // Credit Card Form States
   const [cardNumber, setCardNumber] = useState("");
@@ -130,6 +132,7 @@ function MobilePaymentContent() {
       const result = await res.json();
       if (res.ok) {
         setPaySuccess(true);
+        setMailStatus(result.mailSent);
         setReservation((prev: any) => ({ ...prev, paymentStatus: 'paid', status: 'Onaylı' }));
       } else {
         alert(`Hata: ${result.error || "Ödeme başarısız."}`);
@@ -224,6 +227,12 @@ function MobilePaymentContent() {
               </div>
             </div>
           </div>
+
+          {(mailStatus === 'queued' || mailStatus === false) && (
+            <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-3 text-left text-sm text-orange-200">
+              <strong>🔔 Uyarı:</strong> E-posta sistemindeki yoğunluk nedeniyle e-bilet gönderiminiz arka planda işlenmektedir (Lütfen daha sonra Spam klasörünüzü de kontrol edin). Biletinize anında <strong>"Biletlerim"</strong> sekmesinden ulaşabilirsiniz.
+            </div>
+          )}
 
           <div className="text-xs text-slate-400">
             QR kodlu e-biletiniz <strong>{reservation?.email}</strong> adresine gönderildi. Etkinlik girişinde biletinizi okutarak giriş yapabilirsiniz.

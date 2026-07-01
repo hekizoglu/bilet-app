@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient, Prisma } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { z } = require('zod');
 const { validate } = require('../middlewares/validate');
 const { requireAuth } = require('../middlewares/auth');
 const cache = require('../utils/cache');
 const { CircuitBreaker, retryWithBackoff } = require('../utils/circuitBreaker');
+const taskQueue = require('../utils/queue');
 
 // Dış servisler için Circuit Breaker tanımları (Hata eşiği: 3, soğuma süresi: 20 saniye)
 const emailCircuit = new CircuitBreaker(
@@ -106,7 +107,8 @@ const resSchema = z.object({
   seatId: z.string().optional().nullable(),
   seatName: z.string().optional().nullable(),
   customer: z.string().min(2),
-  email: z.string().email()
+  email: z.string().email(),
+  phone: z.string().optional()
 });
 
 router.post('/', validate(resSchema), async (req, res) => {
@@ -158,11 +160,16 @@ router.post('/', validate(resSchema), async (req, res) => {
         return tx.reservation.create({
           data: {
             ...req.body,
+            ticketCode: require('crypto').randomUUID(),
             status,
             paymentStatus,
             paymentReference
           }
         });
+      }, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        maxWait: 5000,
+        timeout: 10000
       });
     } catch (transactionErr) {
       return res.status(400).json({ error: transactionErr.message });
@@ -180,7 +187,7 @@ router.post('/', validate(resSchema), async (req, res) => {
 
     // Send Telegram Notification (if cardless)
     if (event.paymentType === 'cardless') {
-      try {
+      taskQueue.addJob('sendTelegram', async () => {
         const { decrypt } = require('../utils/encryption');
         const admin = await prisma.user.findFirst({
           where: { role: 'ADMIN' }
@@ -194,6 +201,7 @@ router.post('/', validate(resSchema), async (req, res) => {
             const messageText = `🎫 *Yeni Rezervasyon Bildirimi!*\n\n` +
               `*Müşteri:* ${reservation.customer}\n` +
               `*E-posta:* ${reservation.email}\n` +
+              (reservation.phone ? `*Telefon:* ${reservation.phone}\n` : '') +
               `*Etkinlik:* ${event.name}\n` +
               `*Koltuk:* ${reservation.seatName || 'Genel Giriş'}\n` +
               `*Tutar:* ${event.price} ₺\n` +
@@ -218,24 +226,19 @@ router.post('/', validate(resSchema), async (req, res) => {
               }
             };
 
-            try {
-              await retryWithBackoff(async () => {
-                return telegramCircuit.execute(options, payload);
-              }, 3, 1000);
-              console.log("Telegram bildirimi başarıyla gönderildi.");
-            } catch (errTelegram) {
-              console.error("Telegram bildirim gönderimi başarısız (Circuit Breaker/Retry):", errTelegram.message);
-            }
+            await retryWithBackoff(async () => {
+              return telegramCircuit.execute(options, payload);
+            }, 3, 1000);
           }
         }
-      } catch (telegramErr) {
-        console.error("Telegram gönderme hatası:", telegramErr);
-      }
+      });
     }
 
     // Ücretsiz etkinlikler için anında e-bilet QR kodlu mail gönderimi
+    let mailStatus = 'not_required';
     if (event.paymentType === 'free') {
-      try {
+      mailStatus = 'queued';
+      taskQueue.addJob('sendFreeTicketEmail', async () => {
         const QRCode = require('qrcode');
         const qrDataUrl = await QRCode.toDataURL(reservation.ticketCode);
 
@@ -249,38 +252,31 @@ router.post('/', validate(resSchema), async (req, res) => {
           }
         });
 
-        let mailInfo;
-        try {
-          mailInfo = await retryWithBackoff(async () => {
-            return emailCircuit.execute(transporter, {
-              from: '"Bilet Sistemi" <noreply@bilet.local>',
-              to: reservation.email,
-              subject: `🎫 Biletiniz Onaylandı (Ücretsiz Etkinlik): ${event.name}`,
-              html: `
-                <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                  <h2 style="color: #2563eb; text-align: center;">Biletiniz Hazır!</h2>
-                  <p>Merhaba <b>${reservation.customer}</b>,</p>
-                  <p><b>${event.name}</b> ücretsiz etkinliği için biletiniz başarıyla oluşturulmuştur.</p>
-                  ${event.isSeated ? `<p>Koltuk: <b>${reservation.seatName || reservation.seatId}</b></p>` : `<p>Giriş: <b>Genel Giriş</b></p>`}
-                  <div style="text-align: center; margin-top: 30px;">
-                    <p style="color: #666; font-size: 14px;">Kapıdaki görevliye aşağıdaki QR Kodu okutunuz:</p>
-                    <img src="${qrDataUrl}" alt="Bilet QR Kodu" style="width: 200px; height: 200px; border: 1px solid #ccc; border-radius: 10px;" />
-                    <p style="font-family: monospace; font-size: 18px; letter-spacing: 2px;">${reservation.ticketCode.split('-')[0].toUpperCase()}</p>
-                  </div>
+        const mailInfo = await retryWithBackoff(async () => {
+          return emailCircuit.execute(transporter, {
+            from: '"Bilet Sistemi" <noreply@bilet.local>',
+            to: reservation.email,
+            subject: `🎫 Biletiniz Onaylandı (Ücretsiz Etkinlik): ${event.name}`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <h2 style="color: #2563eb; text-align: center;">Biletiniz Hazır!</h2>
+                <p>Merhaba <b>${reservation.customer}</b>,</p>
+                <p><b>${event.name}</b> ücretsiz etkinliği için biletiniz başarıyla oluşturulmuştur.</p>
+                ${event.isSeated ? `<p>Koltuk: <b>${reservation.seatName || reservation.seatId}</b></p>` : `<p>Giriş: <b>Genel Giriş</b></p>`}
+                <div style="text-align: center; margin-top: 30px;">
+                  <p style="color: #666; font-size: 14px;">Kapıdaki görevliye aşağıdaki QR Kodu okutunuz:</p>
+                  <img src="${qrDataUrl}" alt="Bilet QR Kodu" style="width: 200px; height: 200px; border: 1px solid #ccc; border-radius: 10px;" />
+                  <p style="font-family: monospace; font-size: 18px; letter-spacing: 2px;">${reservation.ticketCode.split('-')[0].toUpperCase()}</p>
                 </div>
-              `
-            });
-          }, 3, 1000);
-          console.log("Ücretsiz bilet maili gönderildi:", nodemailer.getTestMessageUrl(mailInfo));
-        } catch (mailErr) {
-          console.error("Ücretsiz bilet mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
-        }
-      } catch (outerMailErr) {
-        console.error("Ücretsiz bilet mail kurulum hatası:", outerMailErr.message);
-      }
+              </div>
+            `
+          });
+        }, 3, 1000);
+        console.log("Ücretsiz bilet maili gönderildi:", nodemailer.getTestMessageUrl(mailInfo));
+      });
     }
 
-    res.status(201).json({ success: true, reservation });
+    res.status(201).json({ success: true, reservation, mailSent: mailStatus });
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
   }

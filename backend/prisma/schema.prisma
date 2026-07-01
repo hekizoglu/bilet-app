@@ -65,6 +65,7 @@ model Reservation {
   seatName        String?
   customer        String
   email           String
+  phone           String?
   status          String    @default("Beklemede") // Beklemede, Onaylı, İptal
   paymentStatus   String    @default("pending") // 'pending', 'paid', 'failed', 'refunded'
   paymentMethod   String?

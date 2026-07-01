@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const { z } = require('zod');
 const { validate } = require('../middlewares/validate');
 const { CircuitBreaker, retryWithBackoff } = require('../utils/circuitBreaker');
+const taskQueue = require('../utils/queue');
 
 // Dış SMTP servisi için Circuit Breaker tanımı (Hata eşiği: 3, soğuma süresi: 20 saniye)
 const emailCircuit = new CircuitBreaker(
@@ -314,57 +315,54 @@ router.post('/:reservationId/pay-creditcard', validate(creditCardSchema), async 
       }
     });
 
-    // QR Kodu Base64 formatında oluştur ve E-posta Gönder
-    const QRCode = require('qrcode');
-    const qrDataUrl = await QRCode.toDataURL(reservation.ticketCode);
+    // QR Kodu Base64 formatında oluştur ve E-posta Gönder (Asenkron)
+    taskQueue.addJob('sendPaymentSuccessEmail', async () => {
+      try {
+        const QRCode = require('qrcode');
+        const qrDataUrl = await QRCode.toDataURL(reservation.ticketCode);
 
-    const nodemailer = require('nodemailer');
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      auth: {
-        user: 'mylene.stamm@ethereal.email',
-        pass: 'Hk3V78Jqyv28pS7T1G'
+        const nodemailer = require('nodemailer');
+        const transporter = nodemailer.createTransport({
+          host: 'smtp.ethereal.email',
+          port: 587,
+          auth: {
+            user: 'mylene.stamm@ethereal.email',
+            pass: 'Hk3V78Jqyv28pS7T1G'
+          }
+        });
+
+        const mailInfo = await retryWithBackoff(async () => {
+          return emailCircuit.execute(transporter, {
+            from: '"Bilet Sistemi" <noreply@bilet.local>',
+            to: reservation.email,
+            subject: `🎫 Ödemeniz Onaylandı: ${reservation.event.name}`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <h2 style="color: #2563eb; text-align: center;">Ödemeniz Alındı ve Biletiniz Hazır!</h2>
+                <p>Merhaba <b>${reservation.customer}</b>,</p>
+                <p><b>${reservation.event.name}</b> etkinliği için kredi kartı ile yaptığınız ödeme başarıyla doğrulanmıştır.</p>
+                ${reservation.event.isSeated ? `<p>Koltuk: <b>${reservation.seatName || reservation.seatId}</b></p>` : `<p>Giriş: <b>Genel Giriş</b></p>`}
+                <div style="text-align: center; margin-top: 30px;">
+                  <p style="color: #666; font-size: 14px;">Kapıdaki görevliye aşağıdaki QR Kodu okutunuz:</p>
+                  <img src="${qrDataUrl}" alt="Bilet QR Kodu" style="width: 200px; height: 200px; border: 1px solid #ccc; border-radius: 10px;" />
+                  <p style="font-family: monospace; font-size: 18px; letter-spacing: 2px;">${reservation.ticketCode.split('-')[0].toUpperCase()}</p>
+                </div>
+              </div>
+            `
+          });
+        }, 3, 1000);
+        console.log("[Payment] Kredi kartı ödeme onay maili gönderildi:", nodemailer.getTestMessageUrl(mailInfo));
+      } catch (mailErr) {
+        console.error("[Payment] Mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
       }
     });
 
-    let info;
-    try {
-      info = await retryWithBackoff(async () => {
-        return emailCircuit.execute(transporter, {
-          from: '"Bilet Sistemi" <noreply@bilet.local>',
-          to: reservation.email,
-          subject: `🎫 Ödemeniz Onaylandı: ${reservation.event.name}`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-              <h2 style="color: #2563eb; text-align: center;">Ödemeniz Alındı ve Biletiniz Hazır!</h2>
-              <p>Merhaba <b>${reservation.customer}</b>,</p>
-              <p><b>${reservation.event.name}</b> etkinliği için kredi kartı ile yaptığınız ödeme başarıyla doğrulanmıştır.</p>
-              ${reservation.event.isSeated ? `<p>Koltuk: <b>${reservation.seatName || reservation.seatId}</b></p>` : `<p>Giriş: <b>Genel Giriş</b></p>`}
-              <div style="text-align: center; margin-top: 30px;">
-                <p style="color: #666; font-size: 14px;">Kapıdaki görevliye aşağıdaki QR Kodu okutunuz:</p>
-                <img src="${qrDataUrl}" alt="Bilet QR Kodu" style="width: 200px; height: 200px; border: 1px solid #ccc; border-radius: 10px;" />
-                <p style="font-family: monospace; font-size: 18px; letter-spacing: 2px;">${reservation.ticketCode.split('-')[0].toUpperCase()}</p>
-              </div>
-            </div>
-          `
-        });
-      }, 3, 1000);
-
-      res.json({ 
-        success: true, 
-        message: "Ödeme kredi kartı ile başarıyla yapıldı ve Bilet E-postası gönderildi.", 
-        previewUrl: nodemailer.getTestMessageUrl(info),
-        reservation: updated
-      });
-    } catch (mailErr) {
-      console.error("Mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
-      res.json({
-        success: true,
-        message: "Ödeme yapıldı ancak bilet e-postası gönderilemedi.",
-        reservation: updated
-      });
-    }
+    res.json({ 
+      success: true, 
+      message: "Ödeme kredi kartı ile başarıyla yapıldı ve Bilet E-postası kuyruğa alındı.", 
+      reservation: updated,
+      mailSent: 'queued'
+    });
 
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
