@@ -3,9 +3,9 @@
   "activeUsers": 45,
   "dropOffPoints": {
     "landing": 0.05,
-    "search": 0.30,
-    "seatSelection": 0.12,
-    "payment": 0.22,
+    "search": 0.04,
+    "seatSelection": 0.02,
+    "payment": 0.03,
     "confirmation": 0.02
   },
   "mostUsedFeatures": [

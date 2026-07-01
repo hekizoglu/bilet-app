@@ -11,6 +11,8 @@ export default function EventsPage() {
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [priceFilter, setPriceFilter] = useState('All');
+  const [layoutFilter, setLayoutFilter] = useState('All');
   
   // Form State
   const [name, setName] = useState('');
@@ -110,7 +112,16 @@ export default function EventsPage() {
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'All' || event.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    
+    let matchesPrice = true;
+    if (priceFilter === 'Free') matchesPrice = Number(event.price) === 0;
+    else if (priceFilter === 'Paid') matchesPrice = Number(event.price) > 0;
+
+    let matchesLayout = true;
+    if (layoutFilter === 'Seated') matchesLayout = event.isSeated === true;
+    else if (layoutFilter === 'Seatless') matchesLayout = event.isSeated === false;
+
+    return matchesSearch && matchesStatus && matchesPrice && matchesLayout;
   });
 
   return (
@@ -130,27 +141,82 @@ export default function EventsPage() {
       </div>
 
       {/* Search and Filter bar */}
-      <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-        <div className="flex-1">
-          <input 
-            type="text" 
-            placeholder="Etkinlik adına göre ara..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full p-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+      <div className="space-y-4 bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <input 
+              type="text" 
+              placeholder="Etkinlik adına göre ara..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full p-2.5 pr-10 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')} 
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:flex gap-3">
+            <div className="w-full md:w-36">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="All">Tüm Durumlar</option>
+                <option value="Aktif">Aktif</option>
+                <option value="Taslak">Taslak</option>
+                <option value="Pasif">Pasif</option>
+              </select>
+            </div>
+
+            <div className="w-full md:w-36">
+              <select
+                value={layoutFilter}
+                onChange={(e) => setLayoutFilter(e.target.value)}
+                className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="All">Oturma Düzeni</option>
+                <option value="Seated">Koltuklu</option>
+                <option value="Seatless">Ayakta</option>
+              </select>
+            </div>
+
+            <div className="w-full md:w-36">
+              <select
+                value={priceFilter}
+                onChange={(e) => setPriceFilter(e.target.value)}
+                className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="All">Ücret Tipi</option>
+                <option value="Free">Ücretsiz</option>
+                <option value="Paid">Ücretli</option>
+              </select>
+            </div>
+
+            {(searchTerm || statusFilter !== 'All' || layoutFilter !== 'All' || priceFilter !== 'All') && (
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setStatusFilter('All');
+                  setLayoutFilter('All');
+                  setPriceFilter('All');
+                }}
+                className="col-span-2 sm:col-span-1 py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                Temizle
+              </button>
+            )}
+          </div>
         </div>
-        <div className="w-full sm:w-48">
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full p-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-          >
-            <option value="All">Tüm Durumlar</option>
-            <option value="Aktif">Aktif</option>
-            <option value="Taslak">Taslak</option>
-            <option value="Pasif">Pasif</option>
-          </select>
+
+        <div className="text-xs font-semibold text-gray-500 pt-1">
+          {filteredEvents.length} / {events.length} etkinlik listeleniyor
         </div>
       </div>
 
@@ -224,8 +290,34 @@ export default function EventsPage() {
             ))}
             {events.length === 0 && (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-500">
+                <td colSpan={7} className="p-8 text-center text-gray-500">
                   Henüz etkinlik bulunmuyor.
+                </td>
+              </tr>
+            )}
+            {events.length > 0 && filteredEvents.length === 0 && (
+              <tr>
+                <td colSpan={7} className="p-12 text-center text-gray-500">
+                  <div className="flex flex-col items-center justify-center gap-3">
+                    <div className="w-12 h-12 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center">
+                      <Calendar size={24} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-gray-800 text-base">Eşleşen Etkinlik Bulunamadı</p>
+                      <p className="text-xs text-gray-500 mt-1">Arama kriterlerinizi veya filtrelerinizi değiştirerek tekrar deneyebilirsiniz.</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setSearchTerm('');
+                        setStatusFilter('All');
+                        setLayoutFilter('All');
+                        setPriceFilter('All');
+                      }}
+                      className="mt-2 text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-2 rounded-lg font-bold transition cursor-pointer"
+                    >
+                      Filtreleri Temizle
+                    </button>
+                  </div>
                 </td>
               </tr>
             )}

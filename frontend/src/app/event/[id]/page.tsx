@@ -67,7 +67,12 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
       });
       if (res.ok) {
         const result = await res.json();
-        setReservationSuccess(result.reservation);
+        // EĞER ÖDEMELİ İSE DOĞRUDAN MOBİL ÖDEME SAYFASINA YÖNLENDİR
+        if (data.paymentType && data.paymentType !== 'free') {
+          router.push(`/payment/mobile?id=${result.reservation.id}`);
+        } else {
+          setReservationSuccess(result.reservation);
+        }
       }
       else {
         const err = await res.json();
@@ -78,8 +83,8 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     }
   };
 
-  if (loading) return <div className="p-8">Yükleniyor...</div>;
-  if (data.error) return <div className="text-red-500 p-8">{data.error}</div>;
+  if (loading) return <div className="p-8 text-center text-gray-500">Yükleniyor...</div>;
+  if (data.error) return <div className="text-red-500 p-8 text-center">{data.error}</div>;
 
   if (reservationSuccess) {
     return (
@@ -143,59 +148,132 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     );
   }
 
+  // Koltukları Y-koordinatına göre 15px toleransla satırlara grupla ve sırala
+  const getGroupedSeats = (seats: any[]) => {
+    if (!seats || seats.length === 0) return [];
+    const tolerance = 15;
+    const rows: { y: number; seats: any[] }[] = [];
+    
+    seats.forEach(seat => {
+      const existingRow = rows.find(r => Math.abs(r.y - seat.y) <= tolerance);
+      if (existingRow) {
+        existingRow.seats.push(seat);
+      } else {
+        rows.push({ y: seat.y, seats: [seat] });
+      }
+    });
+    
+    rows.sort((a, b) => a.y - b.y);
+    rows.forEach(r => {
+      r.seats.sort((a, b) => a.x - b.x);
+    });
+    return rows;
+  };
+
+  const groupedSeats = data.isSeated ? getGroupedSeats(data.availableSeats) : [];
+
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-2">{data.isSeated ? data.hallName : "Genel Giriş Etkinliği"}</h1>
-      
-      {data.paymentType === 'cardless' && (
-        <div className="mb-6 inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-          Bu etkinlik Kartsız Ödeme ile çalışmaktadır.
-        </div>
-      )}
+    <div className="max-w-5xl mx-auto p-4 sm:p-8 font-sans">
+      <div className="mb-6">
+        <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 mb-2">
+          {data.isSeated ? data.hallName : "Genel Giriş Etkinliği"}
+        </h1>
+        {data.paymentType === 'cardless' && (
+          <span className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+            Bu etkinlik Kartsız Ödeme ile çalışmaktadır.
+          </span>
+        )}
+        {data.paymentType === 'creditcard' && (
+          <span className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+            Bu etkinlik Kredi Kartı ile çalışmaktadır.
+          </span>
+        )}
+        {data.paymentType === 'free' && (
+          <span className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+            Ücretsiz Etkinlik
+          </span>
+        )}
+      </div>
 
-      {!data.isSeated && (
-        <div className="bg-blue-50 p-6 rounded-lg mb-8 border border-blue-100">
-          <p className="text-xl">Kalan Bilet: <span className="font-bold text-blue-600">{data.available} / {data.capacity}</span></p>
-        </div>
-      )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* Sol Sütun: Koltuk Seçimi / Kapasite */}
+        <div className="lg:col-span-2 space-y-6">
+          {!data.isSeated && (
+            <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100 flex items-center justify-between">
+              <div>
+                <p className="text-sm text-blue-600 font-medium">Kalan Bilet Sayısı</p>
+                <p className="text-3xl font-black text-blue-900 mt-1">{data.available} / {data.capacity}</p>
+              </div>
+              <span className="text-xs font-semibold text-blue-700 bg-blue-100/50 px-2.5 py-1 rounded-lg">
+                Genel Giriş
+              </span>
+            </div>
+          )}
 
-      {data.isSeated && (
-        <div className="bg-gray-50 p-6 rounded-lg mb-8 border border-gray-200">
-          <p className="text-lg font-medium mb-4">Boş Koltuklar ({data.availableSeats.length} adet)</p>
-          <div className="flex flex-wrap gap-2">
-            {data.availableSeats.map((seat: any) => (
-              <button 
-                key={seat.id}
-                onClick={() => setForm({ ...form, seatId: seat.id, seatName: seat.id })}
-                className={`p-3 rounded border transition-all ${
-                  form.seatId === seat.id 
-                    ? 'bg-blue-600 text-white border-blue-700' 
-                    : 'bg-white text-gray-700 hover:bg-gray-100'
-                }`}
-              >
-                {seat.id.split('-')[1]?.slice(-3) || seat.id}
-              </button>
-            ))}
-          </div>
+          {data.isSeated && (
+            <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
+              <p className="text-lg font-bold mb-4 text-gray-800">Boş Koltuk Seçimi ({data.availableSeats.length} adet)</p>
+              
+              <div className="space-y-4">
+                {groupedSeats.length > 0 ? (
+                  groupedSeats.map((row, index) => (
+                    <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-2 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[70px]">
+                        Sıra {index + 1}:
+                      </span>
+                      <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin scrollbar-thumb-gray-200">
+                        {row.seats.map((seat: any) => (
+                          <button 
+                            key={seat.id}
+                            type="button"
+                            onClick={() => setForm({ ...form, seatId: seat.id, seatName: seat.id.split('-')[1]?.slice(-3) || seat.id })}
+                            className={`min-w-[44px] min-h-[44px] px-3 py-2 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+                              form.seatId === seat.id 
+                                ? 'bg-blue-600 text-white border-blue-700 shadow-md shadow-blue-500/20' 
+                                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                            }`}
+                          >
+                            {seat.id.split('-')[1]?.slice(-3) || seat.id}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">Boş koltuk kalmadı.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-      )}
 
-      <form onSubmit={handleSubmit} className="space-y-4 max-w-md bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-        <h2 className="text-xl font-bold">Bilet Al</h2>
-        <div>
-          <label className="block text-sm font-medium mb-1">Ad Soyad</label>
-          <input required type="text" className="w-full border p-2 rounded" 
-                 onChange={e => setForm({...form, name: e.target.value})} />
+        {/* Sağ Sütun: Rezervasyon Formu */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+          <h2 className="text-xl font-bold text-gray-900">Müşteri Bilgileri</h2>
+          
+          {form.seatId && (
+            <div className="p-3 bg-blue-50 text-blue-800 rounded-xl text-sm font-semibold border border-blue-100">
+              Seçilen Koltuk: <span className="underline font-mono">{form.seatName}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Ad Soyad</label>
+              <input required type="text" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm" 
+                     onChange={e => setForm({...form, name: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">E-Posta</label>
+              <input required type="email" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                     onChange={e => setForm({...form, email: e.target.value})} />
+            </div>
+            <button type="submit" className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition shadow-md shadow-green-500/10 text-sm cursor-pointer">
+              Rezervasyonu Tamamla
+            </button>
+          </form>
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-1">E-Posta</label>
-          <input required type="email" className="w-full border p-2 rounded"
-                 onChange={e => setForm({...form, email: e.target.value})} />
-        </div>
-        <button type="submit" className="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700">
-          Rezervasyonu Tamamla
-        </button>
-      </form>
+      </div>
     </div>
   );
 }

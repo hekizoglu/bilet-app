@@ -51,6 +51,9 @@ model Event {
   paymentType  String        @default("free") // "free", "creditcard", "cardless"
   reservations Reservation[]
   createdAt    DateTime      @default(now())
+
+  @@index([hallId])
+  @@index([status])
 }
 
 model Reservation {
@@ -74,4 +77,6 @@ model Reservation {
 
   @@index([eventId])
   @@index([email])
+  @@index([paymentReference])
+  @@index([status])
 }

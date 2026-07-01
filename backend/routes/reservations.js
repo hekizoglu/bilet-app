@@ -6,6 +6,38 @@ const { z } = require('zod');
 const { validate } = require('../middlewares/validate');
 const { requireAuth } = require('../middlewares/auth');
 const cache = require('../utils/cache');
+const { CircuitBreaker, retryWithBackoff } = require('../utils/circuitBreaker');
+
+// Dış servisler için Circuit Breaker tanımları (Hata eşiği: 3, soğuma süresi: 20 saniye)
+const emailCircuit = new CircuitBreaker(
+  async (transporter, mailOptions) => {
+    return transporter.sendMail(mailOptions);
+  },
+  { failureThreshold: 3, cooldownPeriod: 20000 }
+);
+
+const telegramCircuit = new CircuitBreaker(
+  async (options, payload) => {
+    return new Promise((resolve, reject) => {
+      const https = require('https');
+      const req = https.request(options, (res) => {
+        let body = '';
+        res.on('data', chunk => body += chunk);
+        res.on('end', () => {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            resolve(body);
+          } else {
+            reject(new Error(`Telegram HTTP ${res.statusCode}: ${body}`));
+          }
+        });
+      });
+      req.on('error', reject);
+      req.write(payload);
+      req.end();
+    });
+  },
+  { failureThreshold: 3, cooldownPeriod: 20000 }
+);
 
 // Get Event Availability (Koltuklu & Koltuksuz destekli - Faz 6 Algoritması)
 router.get('/availability/:eventId', async (req, res) => {
@@ -120,10 +152,14 @@ router.post('/', validate(resSchema), async (req, res) => {
         const dateStr = new Date().toISOString().split('T')[0];
         const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
         const paymentReference = `PAYMENT-${dateStr}-${randomStr}`;
+        const status = event.paymentType === 'free' ? 'Onaylı' : 'Beklemede';
+        const paymentStatus = event.paymentType === 'free' ? 'paid' : 'pending';
 
         return tx.reservation.create({
           data: {
             ...req.body,
+            status,
+            paymentStatus,
             paymentReference
           }
         });
@@ -182,21 +218,63 @@ router.post('/', validate(resSchema), async (req, res) => {
               }
             };
 
-            const reqTelegram = https.request(options, (resTelegram) => {
-              resTelegram.on('data', () => {});
-            });
-
-            reqTelegram.on('error', (errTelegram) => {
-              console.error("Telegram bildirim hatası:", errTelegram);
-            });
-
-            reqTelegram.write(payload);
-            reqTelegram.end();
+            try {
+              await retryWithBackoff(async () => {
+                return telegramCircuit.execute(options, payload);
+              }, 3, 1000);
+              console.log("Telegram bildirimi başarıyla gönderildi.");
+            } catch (errTelegram) {
+              console.error("Telegram bildirim gönderimi başarısız (Circuit Breaker/Retry):", errTelegram.message);
+            }
           }
         }
       } catch (telegramErr) {
         console.error("Telegram gönderme hatası:", telegramErr);
       }
+    }
+
+    // Ücretsiz etkinlikler için anında e-bilet QR kodlu mail gönderimi
+    if (event.paymentType === 'free') {
+      try {
+        const QRCode = require('qrcode');
+        const qrDataUrl = await QRCode.toDataURL(reservation.ticketCode);
+
+        const nodemailer = require('nodemailer');
+        const transporter = nodemailer.createTransport({
+          host: 'smtp.ethereal.email',
+          port: 587,
+          auth: {
+            user: 'mylene.stamm@ethereal.email',
+            pass: 'Hk3V78Jqyv28pS7T1G'
+          }
+        });
+
+        let mailInfo;
+        try {
+          mailInfo = await retryWithBackoff(async () => {
+            return emailCircuit.execute(transporter, {
+              from: '"Bilet Sistemi" <noreply@bilet.local>',
+              to: reservation.email,
+              subject: `🎫 Biletiniz Onaylandı (Ücretsiz Etkinlik): ${event.name}`,
+              html: `
+                <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                  <h2 style="color: #2563eb; text-align: center;">Biletiniz Hazır!</h2>
+                  <p>Merhaba <b>${reservation.customer}</b>,</p>
+                  <p><b>${event.name}</b> ücretsiz etkinliği için biletiniz başarıyla oluşturulmuştur.</p>
+                  ${event.isSeated ? `<p>Koltuk: <b>${reservation.seatName || reservation.seatId}</b></p>` : `<p>Giriş: <b>Genel Giriş</b></p>`}
+                  <div style="text-align: center; margin-top: 30px;">
+                    <p style="color: #666; font-size: 14px;">Kapıdaki görevliye aşağıdaki QR Kodu okutunuz:</p>
+                    <img src="${qrDataUrl}" alt="Bilet QR Kodu" style="width: 200px; height: 200px; border: 1px solid #ccc; border-radius: 10px;" />
+                    <p style="font-family: monospace; font-size: 18px; letter-spacing: 2px;">${reservation.ticketCode.split('-')[0].toUpperCase()}</p>
+                  </div>
+                </div>
+              `
+            });
+          }, 3, 1000);
+          console.log("Ücretsiz bilet maili gönderildi:", nodemailer.getTestMessageUrl(mailInfo));
+        } catch (mailErr) {
+          console.error("Ücretsiz bilet mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
+        }
     }
 
     res.status(201).json({ success: true, reservation });
@@ -235,26 +313,33 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
       }
     });
 
-    const info = await transporter.sendMail({
-      from: '"Bilet Sistemi" <noreply@bilet.local>',
-      to: reservation.email,
-      subject: `🎫 Biletiniz Onaylandı: ${reservation.event.name}`,
-      html: `
-        <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-          <h2 style="color: #2563eb; text-align: center;">Biletiniz Hazır!</h2>
-          <p>Merhaba <b>${reservation.customer}</b>,</p>
-          <p><b>${reservation.event.name}</b> etkinliği için biletiniz onaylanmıştır.</p>
-          ${reservation.event.isSeated ? `<p>Koltuk: <b>${reservation.seatName}</b></p>` : `<p>Giriş: <b>Genel Giriş</b></p>`}
-          <div style="text-align: center; margin-top: 30px;">
-            <p style="color: #666; font-size: 14px;">Kapıdaki görevliye aşağıdaki QR Kodu okutunuz:</p>
-            <img src="${qrDataUrl}" alt="Bilet QR Kodu" style="width: 200px; height: 200px; border: 1px solid #ccc; border-radius: 10px;" />
-            <p style="font-family: monospace; font-size: 18px; letter-spacing: 2px;">${reservation.ticketCode.split('-')[0].toUpperCase()}</p>
-          </div>
-        </div>
-      `
-    });
-
-    res.json({ success: true, message: "Onaylandı ve E-posta Gönderildi", previewUrl: nodemailer.getTestMessageUrl(info) });
+    let info;
+    try {
+      info = await retryWithBackoff(async () => {
+        return emailCircuit.execute(transporter, {
+          from: '"Bilet Sistemi" <noreply@bilet.local>',
+          to: reservation.email,
+          subject: `🎫 Biletiniz Onaylandı: ${reservation.event.name}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #2563eb; text-align: center;">Biletiniz Hazır!</h2>
+              <p>Merhaba <b>${reservation.customer}</b>,</p>
+              <p><b>${reservation.event.name}</b> etkinliği için biletiniz onaylanmıştır.</p>
+              ${reservation.event.isSeated ? `<p>Koltuk: <b>${reservation.seatName}</b></p>` : `<p>Giriş: <b>Genel Giriş</b></p>`}
+              <div style="text-align: center; margin-top: 30px;">
+                <p style="color: #666; font-size: 14px;">Kapıdaki görevliye aşağıdaki QR Kodu okutunuz:</p>
+                <img src="${qrDataUrl}" alt="Bilet QR Kodu" style="width: 200px; height: 200px; border: 1px solid #ccc; border-radius: 10px;" />
+                <p style="font-family: monospace; font-size: 18px; letter-spacing: 2px;">${reservation.ticketCode.split('-')[0].toUpperCase()}</p>
+              </div>
+            </div>
+          `
+        });
+      }, 3, 1000);
+      res.json({ success: true, message: "Onaylandı ve E-posta Gönderildi", previewUrl: nodemailer.getTestMessageUrl(info) });
+    } catch (mailErr) {
+      console.error("Onayla bilet mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
+      res.json({ success: true, message: "Onaylandı ancak e-posta gönderilemedi.", reservation });
+    }
 
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
@@ -376,7 +461,8 @@ router.get('/public/:id', async (req, res) => {
         name: reservation.event.name,
         date: reservation.event.date,
         price: reservation.event.price,
-        isSeated: reservation.event.isSeated
+        isSeated: reservation.event.isSeated,
+        paymentType: reservation.event.paymentType
       },
       adminPayment: admin ? {
         iban: admin.iban,
@@ -454,23 +540,27 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
     });
 
     try {
-      const info = await transporter.sendMail({
-        from: '"Bilet Sistemi" <noreply@bilet.local>',
-        to: reservation.email,
-        subject: `🎫 Bilet İade Bilgilendirmesi: ${reservation.event.name}`,
-        html: `
-          <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-            <h2 style="color: #dc2626; text-align: center;">Biletiniz İade Edildi</h2>
-            <p>Merhaba <b>${reservation.customer}</b>,</p>
-            <p><b>${reservation.event.name}</b> etkinliği için aldığınız bilet iptal edilmiş ve ödemeniz iade edilmiştir.</p>
-            <p>İade Edilen Tutar: <b>${amount} TL</b></p>
-            <p>İade Nedeni: <b>${reason || 'Müşteri Talebi'}</b></p>
-            <p style="color: #666; font-size: 14px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
-              İade tutarının hesabınıza yansıması bankanıza bağlı olarak 3-5 iş günü sürebilir.
-            </p>
-          </div>
-        `
-      });
+    let info;
+    try {
+      info = await retryWithBackoff(async () => {
+        return emailCircuit.execute(transporter, {
+          from: '"Bilet Sistemi" <noreply@bilet.local>',
+          to: reservation.email,
+          subject: `🎫 Bilet İade Bilgilendirmesi: ${reservation.event.name}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #dc2626; text-align: center;">Biletiniz İade Edildi</h2>
+              <p>Merhaba <b>${reservation.customer}</b>,</p>
+              <p><b>${reservation.event.name}</b> etkinliği için aldığınız bilet iptal edilmiş ve ödemeniz iade edilmiştir.</p>
+              <p>İade Edilen Tutar: <b>${amount} TL</b></p>
+              <p>İade Nedeni: <b>${reason || 'Müşteri Talebi'}</b></p>
+              <p style="color: #666; font-size: 14px; margin-top: 20px; border-top: 1px solid #eee; padding-top: 10px;">
+                İade tutarının hesabınıza yansıması bankanıza bağlı olarak 3-5 iş günü sürebilir.
+              </p>
+            </div>
+          `
+        });
+      }, 3, 1000);
 
       res.json({
         success: true,
@@ -479,7 +569,7 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
         reservation: updated
       });
     } catch (mailErr) {
-      console.error("İade mail gönderme hatası:", mailErr.message);
+      console.error("İade mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
       res.json({
         success: true,
         message: "Bilet başarıyla iade edildi ancak bilgilendirme e-postası gönderilemedi.",
