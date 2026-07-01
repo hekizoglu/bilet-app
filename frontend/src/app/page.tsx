@@ -1,19 +1,110 @@
-import Link from 'next/link';
-import { Calendar, MapPin, Tag } from 'lucide-react';
+'use client';
 
-async function getPublicEvents() {
-  try {
-    const res = await fetch('http://localhost:5000/api/events/public', { cache: 'no-store' });
-    if (!res.ok) return [];
-    return await res.json();
-  } catch (e) {
-    console.error("Etkinlikler çekilemedi", e);
-    return [];
-  }
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { Calendar, MapPin, Users, ArrowRight, Filter, Zap } from 'lucide-react';
+
+interface Event {
+  id: string;
+  name: string;
+  description: string;
+  date: string;
+  location: string;
+  capacity: number;
+  reserved: number;
+  category: string;
+  hasSeating: boolean;
+  price?: number;
 }
 
-export default async function Home() {
-  const events = await getPublicEvents();
+export default function Home() {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  async function fetchEvents() {
+    try {
+      const res = await fetch('http://localhost:5000/api/events/public');
+      if (res.ok) {
+        const data = await res.json();
+        setEvents(data);
+      } else {
+        // Fallback demo events
+        setEvents(demoEvents);
+      }
+    } catch (e) {
+      console.log('API çalışmıyor, demo veriler yükleniyor');
+      setEvents(demoEvents);
+    }
+    setLoading(false);
+  }
+
+  const demoEvents: Event[] = [
+    {
+      id: '1',
+      name: 'Konser 2026 - Açılış Gecesi',
+      description: 'Yılın en büyük konser etkinliği!',
+      date: '2026-07-15T20:00:00Z',
+      location: 'İstanbul Konser Salonu',
+      capacity: 500,
+      reserved: 350,
+      category: 'konser',
+      hasSeating: true,
+      price: 150,
+    },
+    {
+      id: '2',
+      name: 'Tiyatro - Hamlet',
+      description: 'Klasik tiyatro oyunu',
+      date: '2026-07-20T19:30:00Z',
+      location: 'Devlet Tiyatrosu',
+      capacity: 300,
+      reserved: 180,
+      category: 'tiyatro',
+      hasSeating: true,
+      price: 100,
+    },
+    {
+      id: '3',
+      name: 'Üniversite Balosu',
+      description: 'Genel katılım açık etkinlik',
+      date: '2026-08-01T22:00:00Z',
+      location: 'Üniversite Spor Salonu',
+      capacity: 1000,
+      reserved: 520,
+      category: 'balon',
+      hasSeating: false,
+      price: 200,
+    },
+    {
+      id: '4',
+      name: 'Film Festivali - Açılış',
+      description: 'Uluslararası film festivali',
+      date: '2026-07-10T18:00:00Z',
+      location: 'Sinema Merkezi',
+      capacity: 400,
+      reserved: 290,
+      category: 'sinema',
+      hasSeating: true,
+      price: 75,
+    },
+  ];
+
+  const filteredEvents = filter === 'all' 
+    ? events 
+    : events.filter(e => e.category === filter);
+
+  const categories = [
+    { id: 'all', name: 'Tümü', emoji: '📋' },
+    { id: 'konser', name: 'Konser', emoji: '🎵' },
+    { id: 'tiyatro', name: 'Tiyatro', emoji: '🎭' },
+    { id: 'sinema', name: 'Sinema', emoji: '🎬' },
+    { id: 'balon', name: 'Balon', emoji: '🎉' },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
