@@ -2238,3 +2238,526 @@ Aşağıdaki işler AIE döngüleri tarafından otomatik olarak tespit edilip ç
 - **Zorluk:** hard
 - **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı.
 
+
+---
+
+# 🎯 KRITIK DEĞERLENDİRME: Üretim Hazırlığı ve Sertleştirme (2026-07-01)
+
+## Özet Karar
+**Uygulamanın fikri güçlü, mimari iskelet doğru, ancak "üretimde para toplayan bilet sistemi" seviyesine gelmesi için en kritik konular:**
+- ✅ **Yeni özellik DEĞİL** → çifte rezervasyon koruması, ödeme-onay tutarlılığı, QR güvenliği, audit log, yük altında davranış
+- **Konumlandırma:** "1.0.0-rc" değil → **"0.9 hardening candidate"**
+- **Gerçek soru:** 1000 kişi aynı anda 200 koltuğa basarsa sistem ayakta kalıyor mu?
+
+---
+
+## 1️⃣ Ürün Durumu Analizi
+
+| Alan | Durum | Yorum |
+|---|---|---|
+| **Ürün Fikri** | ✅ Güçlü | Etkinlik + QR + ödeme + admin panel = ticari olarak anlamlı |
+| **Teknik İskelet** | ✅ İyi | Express + Prisma + Next + Socket.IO doğru kombinasyon |
+| **Gerçek Zamanlı Koltuk** | ⚠️ Riskli | Socket.IO UI güncellemesi yetmez; DB seviyesinde kilit şart |
+| **Ödeme** | ❌ Eksik | Kredi kartı simülasyonu ≠ production ödeme |
+| **Güvenlik** | ⚠️ Orta-iyi | Helmet/Zod/JWT güzel ama RBAC, audit, token iptali, IDOR testleri şart |
+| **Test** | ⚠️ Başlangıç | Test dosyaları var ama yarış durumu / kaos testi ana konu |
+| **Production** | ❌ Erken | Backup, migration, observability, queue, Redis eksikse patlar |
+
+---
+
+## 2️⃣ README'deki Kritik Kırmızı Bayraklar
+
+### 🚩 Bayrak #1: Node.js Badge ↔ Gereksinim Uyumsuzluğu
+- **Durum:** Badge: Node.js 24.x | Gereksinim: >=20.x
+- **Risk:** Production hedefi muğlak
+- **Çözüm:** `package.json` engines alanına yaz:
+  ```json
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=10"
+  }
+  ```
+  Veya tüm sürümlerde test et (Node 20/22/24 CI matrix)
+
+### 🚩 Bayrak #2: SQLite vs PostgreSQL Farkı
+- **Durum:** Yerel: SQLite | Production: PostgreSQL
+- **Risk:** SQLite'ta geçen test, PostgreSQL'de farklı davranabilir
+- **Çözüm:** **Yerelde de Docker PostgreSQL kur.** SQLite sadece demo için kalsın.
+
+### 🚩 Bayrak #3: AES-256-CBC Yetersizliği
+- **Durum:** README'de AES-256-CBC yazıyor
+- **Risk:** CBC tek başına authentication/bütünlük sağlamaz
+- **Çözüm:** AEAD (AES-GCM) yaklaşımını kullan → OWASP Cryptographic Storage Cheat Sheet
+
+### 🚩 Bayrak #4: Socket.IO Güvenlik Yanlış Anlayış
+- **Durum:** Socket.IO = çifte rezervasyon koruması diye düşünülüyor
+- **Risk:** Socket.IO gösterir; doğruluk kaynağı DB'dir. Multi-server sticky session gerekir.
+- **Çözüm:** DB UNIQUE INDEX + transaction isolation ile koruma yap
+
+### 🚩 Bayrak #5: "18 Faz Tamamlandı" Yanılsaması
+- **Durum:** Roadmap'ta 18 faz tamamlandı yazıyor
+- **Risk:** Feature tamamlanması ≠ sistem sağlıklı
+- **Soru:** 1000 istek / 200 koltuk = 0 çifte satış mı? Cevap net değilse HAZIR DEĞİL.
+
+---
+
+## 3️⃣ Rezervasyon Motoru: Sistem Kalbi
+
+### Koltuk Durumları Model
+```
+AVAILABLE        → Satın alınabilir
+HELD             → Geçici tutuş (7 dakika default)
+PENDING          → Ödeme/havale bekleniyor
+PAID             → Ödeme alındı
+APPROVED         → Admin onayladı
+CHECKED_IN       → QR okutuldu
+CANCELLED        → İptal edildi
+EXPIRED          → Hold süresi bitti
+REFUNDED         → Para iade edildi
+```
+
+### PostgreSQL Zorunlu Koruma
+```sql
+CREATE UNIQUE INDEX uniq_active_event_seat
+ON reservation_seats(event_id, seat_id)
+WHERE status IN ('HELD', 'PENDING', 'PAID', 'APPROVED', 'CHECKED_IN');
+```
+**Uyarı:** Bunu app code'a bırakırsan aynı koltuğu iki kişiye satarsın.
+
+### Prisma Optimistic Concurrency
+- `reservation_seats` tablosuna `version` veya `updatedAt` timestamp ekle
+- Kayıt güncellenirken version kontrolü yap → `P2025` hatası yakala
+- Retry mekanizması implement et
+
+---
+
+## 4️⃣ Test Planı: Saldırı Gibi Test
+
+### 4A. Rezervasyon Yarış Testi
+**Hedef:** Aynı koltuğa 1000 paralel istek
+
+```
+1000 istek → 1 başarılı
+999 istek → 409 Conflict
+0 çifte satış
+0 veri tutarsızlığı
+```
+
+Test senaryoları:
+- Aynı koltuğa 1000 paralel istek
+- 10 koltuğa 1000 paralel istek
+- Hold süresi bitince tekrar satın alma
+- Ödeme sırasında koltuk expire olursa ne olur?
+- Kullanıcı sayfayı kapatırsa koltuk kilitli kalıyor mu?
+
+### 4B. Ödeme Testi
+**En tehlikeli:** Admin onayladı mı ↔ ödeme gerçekten geldi mi?
+
+- Ücretsiz bilet
+- Kredi kartı simülasyon
+- IBAN/havale bekleyen
+- Admin onayı / reddi
+- İade (tam / kısmi)
+- Ödeme onaylandı ama mail gitmedi
+- Mail gitti ama DB update olmadı
+- Telegram gitti ama admin 2x bastı
+
+**Şart:** Idempotency key. Aynı ödeme isteği 2x gelirse 2. ignore olur.
+
+### 4C. QR Check-in Testi
+**Risk:** Statik ve tekrar kullanılabilir QR → dolandırıcılık
+
+Önerilen format:
+```
+ticket_public_id + signed_checkin_token + event_id + nonce
+```
+Check-in sonrası token invalid olur.
+
+Test:
+- Doğru QR ilk okutma → başarılı
+- Aynı QR 2. okutma → reddedildi (zaten kullanıldı)
+- Başka etkinliğin QR'ı → reddedildi
+- İptal bilet QR'ı → reddedildi
+- İnternet kopuk check-in → queue veya hata
+
+### 4D. Güvenlik Testi (OWASP ASVS)
+- CUSTOMER başka kullanıcının rezervasyonunu görebiliyor mu? ❌ OLMAMALI
+- CUSTOMER admin endpoint'e POST atabiliyor mu? ❌ OLMAMALI
+- ORGANIZER başka organizatörün etkinliğini düzenleyebiliyor mu? ❌ OLMAMALI
+- JWT süresi bitince socket bağlantısı devam ediyor mu? ❌ OLMAMALI
+- Admin token çalınırsa iptal mekanizması var mı? ✅ OLMALI
+- Rate limiter IP mı user mı bazlı? → User bazlı + IP fallback
+- CORS wildcard var mı? ❌ OLMAMALI
+- Zod tüm body/query/params'de mi? ✅ OLMALI
+
+### 4E. Load Testi (Gerçek Akış Simülasyonu)
+```
+1000 user etkinlik sayfasına girer
+700 user koltuk haritasını açar
+300 user koltuk seçer
+150 user ödeme akışına geçer
+50 user aynı anda admin onayı bekler
+20 user QR check-in yapar
+```
+
+Metrikler:
+- API p95 latency: < 300-500 ms ✅
+- API p99 latency: < 1000 ms ✅
+- Seat update gecikmesi: < 1 sn ✅
+- Double booking: 0 ✅
+- Payment inconsistency: 0 ✅
+- Socket disconnect recovery: automatic ✅
+- DB CPU: observable ✅
+- Memory leak: none ✅
+
+Araçlar:
+- Unit/API: Vitest + Supertest
+- E2E: Playwright
+- Load: k6 veya Artillery
+- Socket load: Artillery Socket.IO engine
+- Security: OWASP ZAP, npm audit, osv-scanner, Semgrep
+- Container: Trivy
+- DB: pgTAP veya custom transaction testleri
+
+---
+
+## 5️⃣ Mimariye Eklenecek Bileşenler
+
+### 5A. Redis (Zorunlu)
+```
+Geçici koltuk hold cache
+Rate limit store (user bazlı)
+Socket.IO adapter (multi-server)
+Queue/job state (BullMQ)
+Session/token blacklist
+```
+
+### 5B. Queue Sistemi (BullMQ + Redis)
+```
+send-ticket-email
+send-telegram-approval
+expire-seat-holds
+generate-daily-report
+process-refund
+sync-payment-status
+```
+
+### 5C. Outbox Pattern
+Özellikle: DB'de onay ✅ ama email gitmedi ❌
+```
+transaction {
+  bilet.status = APPROVED
+  outboxEvent.type = TICKET_APPROVED
+  outboxEvent.reservationId = X
+}
+worker → gönder → başarılıysa SENT
+başarısızsa retry + alert
+```
+
+### 5D. Audit Log (Zorunlu)
+Her kritik işlem kaydedilmeli:
+```
+Kim? Ne? IP? Hangi Rezervasyon? Önceki durum? Yeni durum? Tarih?
+```
+Özellikle: İade, onay, fiyat değişikliği, koltuk bloklama, check-in
+
+### 5E. Observability
+```
+Request ID (correlation)
+Structured JSON logging (Winston)
+Error tracking: Sentry
+Metrics: Prometheus/Grafana
+DB slow query log
+Socket connection count
+Queue failed job count
+```
+
+---
+
+## 6️⃣ Yeni Özellik Fikirleri (Puanlı Liste)
+
+| Özellik | Puan | Neden |
+|---|---|---|
+| **Satış Açılış Kuyruğu / Waiting Room** | 10 | Popüler etkinlikte sistemi korur |
+| **Koltuk Hold Süresi + Geri Sayım** | 10 | Çifte satış önleme için şart |
+| **Offline/Poor Connection Check-in** | 9.5 | Kapıda internet giderse rezalet |
+| **Admin Audit Log Ekranı** | 9.5 | Para/itiraz süreçlerinde hayat kurtarır |
+| **Organizer Paneli** | 9 | SaaS'a dönüşmek için şart |
+| **Mobil Scanner PWA** | 9 | Kapı operasyonunu rahatlatır |
+| **Çoklu Salon Şablonu / JSON Import** | 8.8 | Kurulum hızını artırır |
+| **Telegram Inline Onay Butonları** | 8.5 | Operasyon hızlanır |
+| **WhatsApp/SMS Bilet Gönderimi** | 8.5 | Türkiye alışkanlığına uygun |
+| **Kupon / Promosyon Kodu** | 8 | Pazarlama ve satış için iyi |
+| **Koltuk Fiyat Katmanları** | 8 | VIP/balkon/protokol için şart |
+| **Finansal Mutabakat Paneli** | 8 | Havale/IBAN takipte şart |
+| **QR Transfer / Bilet Devretme** | 7.5 | Dolandırıcılık riski var |
+| **Dinamik Fiyatlandırma** | 7 | Gelir artırır ama karmaşık |
+| **AI Etkinlik Tanıtım Metni** | 7 | Güzel ama çekirdek sonra |
+| **Koltuk Doluluk Heatmap** | 6.5 | Raporlama için iyi |
+| **Abonelik/Sezonluk Bilet** | 7 | Tiyatro/spor kulübü için değerli |
+| **Çoklu Dil** | 6 | Global hedefse gerek, ama sonra |
+
+**İlk 5 Öncelik:**
+1. Waiting room / satış kuyruğu
+2. Güçlü reservation transaction engine
+3. Offline check-in PWA
+4. Audit log + finansal mutabakat
+5. Organizer paneli
+
+---
+
+## 7️⃣ Ürün Tarafı: Para Modelleri
+
+### Model 1: Kurum İçi Kullanım
+Belediye, okul, dernek, tiyatro, kültür merkezi
+```
+Gelir: Kurulum + Yıllık bakım + Etkinlik başına destek
+```
+
+### Model 2: SaaS
+Her organizatör kendi panelinden etkinlik açar
+```
+Gelir: Aylık abonelik + Bilet başı komisyon + Premium raporlama + SMS/WhatsApp kontör
+```
+
+### Model 3: Yerel Etkinlik Pazaryeri
+Satış kanalı da olursun
+```
+Gelir: Bilet komisyonu + Öne çıkarma ücreti + Sponsorlu etkinlik + Yerel reklam
+```
+
+**Strateji:** Önce kurum içi/yerel → sağlamlaş → SaaS'a çevir. Direkt global SaaS diye çıkarsan destek yükü boğar.
+
+---
+
+## 8️⃣ Admin Panel Zorunlu İşlevler
+
+Şu operations olmadan production yok:
+```
+Canlı satış ekranı
+Koltuk kilitlerini manuel temizleme
+Bekleyen havaleler
+Onay/reddet/iade akışı
+QR check-in canlı sayaç
+Etkinlik bazlı gelir
+Satılan/boş/bloke koltuk görüntü
+Problemli rezervasyonlar
+Mail/Telegram gönderim durumu
+Audit log
+Yetkili kullanıcı yönetimi
+```
+
+**Tehlikeli işlemler 2x onay:**
+```
+Toplu iade
+Etkinlik iptali
+Fiyat değiştirme
+Salon planı değiştirme
+Admin yetkisi verme
+```
+
+---
+
+## 9️⃣ Frontend Kalite Kontrol
+
+### Koltuk Haritası Testleri
+- [x] Mobilde koltuk seçimi rahat mı?
+- [x] Yakınlaştırma/uzaklaştırma var mı?
+- [x] Seçilen koltuk net görünüyor mu?
+- [x] Engelli erişim koltuğu ayrı mı?
+- [x] Dolu/boş/seçili/hold renkleri karışıyor mu?
+- [x] Sayfa yenilenince seçim korunuyor mu?
+- [x] Socket kopunca kullanıcı uyarılıyor mu?
+
+### UX Detayları
+```
+Koltuk seçince altta mini sepet
+Hold süresi geri sayımı
+"Bu koltuk az önce alındı" uyarısı
+Alternatif koltuk önerisi
+Mobilde tek elle kullanım
+Yavaş bağlantı uyarısı
+Ödeme sonrası net başarı ekranı
+PDF/Apple Wallet/Google Wallet opsiyonu
+```
+
+---
+
+## 🔟 Doküman Düzeni Önerisi
+
+Aşağıdaki dosyalar oluşturulmalı:
+```
+TEST_PLAN.md                    ← Tüm test senaryoları
+QA_MATRIX.md                    ← QA kriterleri
+LOAD_TEST_SCENARIOS.md          ← Load testi detayları
+SECURITY_CHECKLIST.md           ← OWASP ASVS mapping
+RESERVATION_ENGINE.md           ← Sistem kalbi (ayrı dosya)
+PAYMENT_FLOW.md                 ← Ödeme akışı
+CHECKIN_FLOW.md                 ← QR check-in akışı
+OBSERVABILITY.md                ← Logging/metrics
+INCIDENT_RESPONSE.md            ← Krize müdahale planı
+BACKUP_RESTORE.md               ← Backup stratejisi
+FEATURE_IDEAS.md                ← Tüm fikirler (puansız)
+HIGH_SCORE_FEATURES.md          ← Önceliklendirilen fikirler
+```
+
+---
+
+## 1️⃣1️⃣ GitHub Actions / CI Hattı
+
+### Her PR'da
+```
+1. npm ci
+2. lint (ESLint)
+3. typecheck (TypeScript)
+4. unit tests (Jest/Vitest)
+5. API integration tests (Supertest)
+6. Prisma migration check
+7. Playwright smoke test
+8. npm audit / osv-scanner
+9. Semgrep security scan
+10. Docker build
+11. Trivy image scan
+```
+
+### Production Öncesi
+```
+Staging deploy
+Migration dry-run
+Seed test
+E2E checkout flow
+Load smoke test (k6 mini)
+Backup restore test
+Manual approval
+Production deploy
+Health check
+Rollback plan (git tag)
+```
+
+---
+
+## 1️⃣2️⃣ Production Çıkış Kontrol Listesi
+
+```
+[ ] PostgreSQL production konfigurasyonu
+[ ] Günlük otomatik backup (WAL archiving)
+[ ] Backup restore testi yapılmış
+[ ] DB migration rollback planı yazılmış
+[ ] Çifte rezervasyon testi = 0 hata
+[ ] QR 2. okutma engelleniyor
+[ ] Admin audit log aktif
+[ ] Tüm admin endpointleri RBAC korumalı
+[ ] Rate limiter Redis tabanlı
+[ ] Socket.IO multi-instance planı var (Redis adapter)
+[ ] Mail/Telegram queue ile gönderiliyor
+[ ] Payment/onay idempotency key sistemi
+[ ] Error tracking (Sentry) aktif
+[ ] Loglarda JWT/secret/ödeme verisi yok
+[ ] .env secret yönetimi (HashiCorp Vault veya AWS Secrets)
+[ ] Staging = production mirroring
+[ ] Database restore test başarılı
+[ ] Load test (k6) başarılı
+[ ] Penetration test (OWASP ZAP baseline)
+[ ] Runbook yazılmış (operasyon el kitabı)
+```
+
+---
+
+## 1️⃣3️⃣ 30 Günlük Geliştirme Planı
+
+### Hafta 1: Sertleştirme
+```
+✅ Reservation transaction engine (UNIQUE INDEX, version control)
+✅ PostgreSQL local = production parity
+✅ Hold expiry worker (background job)
+✅ Idempotency key sistemi (ödeme + onay)
+✅ Baseline güvenlik (Helmet, rate limit, Zod)
+```
+
+### Hafta 2: Test ve Güvenlik
+```
+✅ Race condition testleri (1000 istek / 200 koltuk)
+✅ RBAC/IDOR testleri
+✅ Playwright E2E (full checkout flow)
+✅ OWASP ZAP baseline scan
+✅ Audit log ekranı (admin panelde)
+```
+
+### Hafta 3: Operasyon
+```
+✅ Queue sistemi (BullMQ + Redis)
+✅ Outbox pattern (email fail protection)
+✅ Mail/Telegram retry
+✅ Admin "problemli rezervasyon" ekranı
+✅ Backup/restore test
+```
+
+### Hafta 4: Ürünleşme
+```
+✅ Organizer paneli (temel)
+✅ Koltuk şablonları (JSON import/export)
+✅ Offline check-in PWA
+✅ Finansal mutabakat ekranı
+✅ Demo seed verileri + runbook
+```
+
+---
+
+## 1️⃣4️⃣ Nihai Karar
+
+### ✅ Bu proje ciddi ürün olabilir
+Yerel etkinlik, belediye salonu, okul gösterisi, tiyatro, spor kulübü, dernek → **net karşılığı var.**
+
+### 🚫 Sırası şöyle (BOZMA)
+```
+1️⃣  Önce DOĞRULUK
+2️⃣  Sonra GÜVENLİK
+3️⃣  Sonra OPERASYON
+4️⃣  Sonra YENİ ÖZELLİK
+5️⃣  Sonra SaaS
+```
+
+### 💥 EN BÜYÜK HATA
+> "Admin panel güzel, QR çalışıyor, ödeme simülasyonu tamam → hadi yayınlayalım"
+
+**HAYIR.** Önce sistemi **1000 kişi + 200 koltuk** saldırısı ile döv. 
+- Ayakta kalıyorsa → ürün olur ✅
+- Ayakta kalmıyorsa → temel beton lazımdır ❌
+
+---
+
+*Değerlendirme Tarihi: 2026-07-01 | Konumlandırma: 0.9-hardening | Hazırlık Durumu: Kritik Dönem*
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T08:45:24.410Z
+
+#### 1. 💻 Input validation katmanı
+- **ID:** IDEA-MR1TYN1Y-QFBZ
+- **Puan:** 61/40
+- **Zorluk:** medium
+- **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T08:45:57.435Z
+
+#### 1. 💻 Veritabanı sorgu optimizasyonu
+- **ID:** IDEA-MR1TZCJA-OYC0
+- **Puan:** 44.5/40
+- **Zorluk:** medium
+- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-01T08:51:48.854Z
+
+#### 1. 📱 Mobil responsive kontrolü
+- **ID:** IDEA-MR1U6VON-5NL9
+- **Puan:** 49/40
+- **Zorluk:** easy
+- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+
