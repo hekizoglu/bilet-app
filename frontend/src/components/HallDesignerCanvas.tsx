@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { Stage, Layer, Rect, Text, Group, Circle, Image as KonvaImage } from 'react-konva';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Trash2, Save, Plus, Settings, Copy, MousePointer2, Image as ImageIcon } from 'lucide-react';
@@ -43,7 +43,12 @@ interface HallDesignerCanvasProps {
   onAutoGenerate?: (config: AutoGenerateConfig) => void;
 }
 
-export default function HallDesignerCanvas() {
+interface HallDesignerCanvasHandle {
+  autoGenerateLayout: (config: AutoGenerateConfig) => void;
+}
+
+// Inner component - sarılmış function
+const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesignerCanvasProps>(function HallDesignerCanvas({ onAutoGenerate }, ref) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const hallId = searchParams.get('id');
@@ -311,7 +316,12 @@ export default function HallDesignerCanvas() {
 ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCapacity} kişi yer var)`}`);
   };
 
-  // 📊 İstatistik Hesaplayıcı
+  // � Forward Ref - autoGenerateLayout expose et
+  useImperativeHandle(ref, () => ({
+    autoGenerateLayout
+  }), []);
+
+  // �📊 İstatistik Hesaplayıcı
   const getStatistics = () => {
     const tables = elements.filter(e => e.type !== 'stage' && e.type !== 'chair');
     const chairs = elements.filter(e => e.type === 'chair');
@@ -452,161 +462,10 @@ ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCap
   };
 
   return (
-    <div className="flex gap-6 h-[800px]">
-      {/* Sol Panel: Araçlar ve Form */}
-      <div className="w-80 bg-white rounded-xl shadow-sm border border-gray-100 flex flex-col overflow-hidden">
-        <div className="p-4 border-b border-gray-100 bg-gray-50/50">
-          <h2 className="text-lg font-bold text-gray-800">Salon Ayarları</h2>
-        </div>
-        
-        <div className="p-4 flex-1 overflow-y-auto space-y-6">
-          {/* Temel Bilgiler */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Salon Adı</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full p-2 border border-gray-300 rounded-lg text-sm" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Açık Adres</label>
-              <textarea 
-                value={address}
-                onChange={e => setAddress(e.target.value)}
-                placeholder="Google Haritalar QR kodu için açık adres giriniz..."
-                className="w-full p-2 border border-gray-300 rounded text-sm h-20 resize-none focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Kroki / Arkaplan Resmi URL</label>
-              <div className="flex gap-2">
-                <input type="text" value={backgroundImage} onChange={(e) => setBackgroundImage(e.target.value)} placeholder="https://..." className="w-full p-2 border border-gray-300 rounded-lg text-sm" />
-              </div>
-            </div>
-          </div>
-
-          {/* Ekleme Butonları */}
-          <div>
-            <h3 className="text-sm font-bold text-gray-800 mb-3 border-b pb-2">Eleman Ekle</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => addElement('round_table')} className="text-xs bg-gray-100 hover:bg-gray-200 p-2 rounded border border-gray-200 font-medium text-gray-700">Yuvarlak Masa</button>
-              <button onClick={() => addElement('rect_table')} className="text-xs bg-gray-100 hover:bg-gray-200 p-2 rounded border border-gray-200 font-medium text-gray-700">Dikdörtgen Masa</button>
-              <button onClick={() => addElement('bistro')} className="text-xs bg-gray-100 hover:bg-gray-200 p-2 rounded border border-gray-200 font-medium text-gray-700">Bistro Masa</button>
-              <button onClick={() => addElement('chair')} className="text-xs bg-gray-100 hover:bg-gray-200 p-2 rounded border border-gray-200 font-medium text-gray-700">Tekli Sandalye</button>
-              <button onClick={() => addElement('stage')} className="text-xs bg-gray-100 hover:bg-gray-200 p-2 rounded border border-gray-200 font-medium text-gray-700 col-span-2">Sahne / Alan</button>
-            </div>
-          </div>
-
-          {/* 🎭 Otomatik Oluştur */}
-          <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-4 rounded-lg border-2 border-purple-200">
-            <h3 className="text-sm font-bold text-purple-900 mb-2">⚡ Otomatik Sahne Oluştur</h3>
-            <p className="text-xs text-purple-700 mb-3">Masaları grid pattern'de otomatik yerleştir</p>
-            <button 
-              onClick={() => autoGenerateLayout({
-                hallLengthM: 12,
-                hallWidthM: 8,
-                tableRadiusCm: 120,
-                chairsPerTable: 8,
-                minSpacingCm: 100,
-                stageLengthM: 6,
-                stageWidthM: 2,
-                stageCapacity: 150,
-                numberingType: 'table_and_seats'
-              })}
-              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-2 px-3 rounded-lg text-sm transition shadow-md"
-            >
-              ✨ Otomatik Yerleştir
-            </button>
-          </div>
-
-          {/* 📊 İstatistikler */}
-          {(() => {
-            const stats = getStatistics();
-            return (
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-200">
-                <h3 className="text-sm font-bold text-green-900 mb-3 border-b pb-2">📊 Salon İstatistikleri</h3>
-                <div className="space-y-2 text-xs text-green-800">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">🪑 Masa Sayısı:</span>
-                    <span className="bg-white px-2 py-1 rounded font-bold text-green-700">{stats.tables}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">🪑 Tekli Sandalye:</span>
-                    <span className="bg-white px-2 py-1 rounded font-bold text-green-700">{stats.chairs}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">🎤 Sahne/Alan:</span>
-                    <span className="bg-white px-2 py-1 rounded font-bold text-green-700">{stats.stages}</span>
-                  </div>
-                  <div className="border-t border-green-200 pt-2 mt-2 flex justify-between items-center">
-                    <span className="font-bold">Toplam Kapasite:</span>
-                    <span className="bg-green-600 text-white px-3 py-1 rounded-full font-bold">{stats.totalSeats} 👥</span>
-                  </div>
-                  {stats.tables > 0 && (
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="font-medium">Masa başı ort.:</span>
-                      <span className="bg-white px-2 py-1 rounded">{stats.avgSeatsPerTable} kişi</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Özellikler Paneli */}
-          {selectedElement && (
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 space-y-3">
-              <h3 className="text-sm font-bold text-blue-900 flex justify-between items-center">
-                Seçili Öğe
-                <div className="flex gap-1">
-                  <button onClick={duplicateSelected} className="p-1 hover:bg-blue-200 rounded text-blue-700" title="Çoğalt"><Copy size={14}/></button>
-                  <button onClick={deleteSelected} className="p-1 hover:bg-red-200 rounded text-red-600" title="Sil"><Trash2 size={14}/></button>
-                </div>
-              </h3>
-              
-              <div>
-                <label className="block text-xs font-medium text-blue-800 mb-1">Etiket / İsim</label>
-                <input type="text" value={selectedElement.label} onChange={(e) => updateSelected('label', e.target.value)} className="w-full p-1.5 border border-blue-200 rounded text-sm bg-white" />
-              </div>
-
-              {selectedElement.type !== 'stage' && (
-                <div>
-                  <label className="block text-xs font-medium text-blue-800 mb-1">Kapasite (Kişi)</label>
-                  <input type="number" min="1" value={selectedElement.seatCount || 1} onChange={(e) => updateSelected('seatCount', parseInt(e.target.value))} className="w-full p-1.5 border border-blue-200 rounded text-sm bg-white" />
-                </div>
-              )}
-
-              {selectedElement.type !== 'stage' && selectedElement.type !== 'chair' && (
-                <div>
-                  <label className="block text-xs font-medium text-blue-800 mb-1">Numaralandırma Tipi</label>
-                  <select value={selectedElement.numberingType || 'table_and_seats'} onChange={(e) => updateSelected('numberingType', e.target.value)} className="w-full p-1.5 border border-blue-200 rounded text-sm bg-white">
-                    <option value="table_and_seats">Masa ve Koltuklar Numaralı</option>
-                    <option value="table_only">Sadece Masa Numaralı (Koltuksuz/Serbest)</option>
-                  </select>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="p-4 border-t border-gray-100 bg-gray-50/50 space-y-3">
-          <div className="grid grid-cols-2 gap-2 text-center text-xs">
-            <div className="bg-white p-2 rounded border border-gray-200">
-              <p className="text-gray-500">Masalar</p>
-              <p className="font-bold text-lg text-gray-800">{getStatistics().tables}</p>
-            </div>
-            <div className="bg-white p-2 rounded border border-gray-200">
-              <p className="text-gray-500">Kapasite</p>
-              <p className="font-bold text-lg text-blue-600">{getTotalSeats()}</p>
-            </div>
-          </div>
-          <button onClick={saveLayout} className="w-full bg-blue-600 text-white hover:bg-blue-700 px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition">
-            <Save size={18} /> {hallId ? 'Güncelle' : 'Kaydet'}
-          </button>
-        </div>
-      </div>
-      
-      {/* Sağ Panel: Canvas */}
+    <div className="flex h-full gap-0">
+      {/* Sol: Canvas - Full Height */}
       <div 
-        className="flex-1 bg-gray-200 rounded-xl overflow-hidden shadow-inner border border-gray-300 relative"
+        className="flex-1 bg-gray-200 rounded-lg overflow-hidden shadow-inner border border-gray-300 relative"
         onClick={(e) => {
           if (e.target === e.currentTarget) setSelectedId(null);
         }}
@@ -650,6 +509,108 @@ ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCap
           </Layer>
         </Stage>
       </div>
+
+      {/* Sağ: Kontrol Paneli - Collapsible */}
+      <div className="w-96 bg-white border-l border-gray-200 flex flex-col overflow-hidden shadow-lg">
+        <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-gray-800">⚙️ Salon Ayarları</h2>
+          <Settings size={18} className="text-gray-600" />
+        </div>
+        
+        <div className="p-4 flex-1 overflow-y-auto space-y-4">
+          {/* Temel Bilgiler - Compact */}
+          <div className="space-y-2">
+            <input type="text" placeholder="Salon Adı" value={name} onChange={(e) => setName(e.target.value)} className="w-full p-2 border border-gray-300 rounded text-sm" />
+            <textarea 
+              placeholder="Adres..."
+              value={address}
+              onChange={e => setAddress(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded text-xs h-12 resize-none"
+            />
+            <input type="text" placeholder="Arkaplan Resmi URL" value={backgroundImage} onChange={(e) => setBackgroundImage(e.target.value)} className="w-full p-2 border border-gray-300 rounded text-sm" />
+          </div>
+
+          {/* Eleman Ekleme - Compact Grid */}
+          <div>
+            <p className="text-xs font-bold text-gray-700 mb-2">➕ Eleman Ekle</p>
+            <div className="grid grid-cols-2 gap-1">
+              <button onClick={() => addElement('round_table')} className="text-xs bg-gray-100 hover:bg-gray-200 p-1.5 rounded border border-gray-200 font-medium text-gray-700">🔴 Yuvarlak</button>
+              <button onClick={() => addElement('rect_table')} className="text-xs bg-gray-100 hover:bg-gray-200 p-1.5 rounded border border-gray-200 font-medium text-gray-700">▭ Dikdörtgen</button>
+              <button onClick={() => addElement('bistro')} className="text-xs bg-gray-100 hover:bg-gray-200 p-1.5 rounded border border-gray-200 font-medium text-gray-700">⬟ Bistro</button>
+              <button onClick={() => addElement('chair')} className="text-xs bg-gray-100 hover:bg-gray-200 p-1.5 rounded border border-gray-200 font-medium text-gray-700">🪑 Sandalye</button>
+              <button onClick={() => addElement('stage')} className="text-xs bg-gray-100 hover:bg-gray-200 p-1.5 rounded border border-gray-200 font-medium text-gray-700 col-span-2">🎤 Sahne</button>
+            </div>
+          </div>
+
+          {/* Otomatik Oluştur */}
+          <div className="bg-purple-50 p-3 rounded border border-purple-200">
+            <p className="text-xs font-bold text-purple-900 mb-2">⚡ Otomatik Oluştur</p>
+            <button 
+              onClick={() => autoGenerateLayout({
+                hallLengthM: 12,
+                hallWidthM: 8,
+                tableRadiusCm: 120,
+                chairsPerTable: 8,
+                minSpacingCm: 100,
+                stageLengthM: 6,
+                stageWidthM: 2,
+                stageCapacity: 150,
+                numberingType: 'table_and_seats'
+              })}
+              className="w-full bg-purple-600 text-white hover:bg-purple-700 font-bold py-2 px-2 rounded text-xs transition"
+            >
+              ✨ Yerleştir
+            </button>
+          </div>
+
+          {/* İstatistikler */}
+          {(() => {
+            const stats = getStatistics();
+            return (
+              <div className="bg-green-50 p-3 rounded border border-green-200">
+                <p className="text-xs font-bold text-green-900 mb-2">📊 İstatistikler</p>
+                <div className="grid grid-cols-2 gap-1 text-xs text-green-800">
+                  <div className="bg-white p-1.5 rounded border border-green-100">
+                    <p className="text-gray-500 text-xs">Masalar</p>
+                    <p className="font-bold text-green-700">{stats.tables}</p>
+                  </div>
+                  <div className="bg-white p-1.5 rounded border border-green-100">
+                    <p className="text-gray-500 text-xs">Kapasite</p>
+                    <p className="font-bold text-green-700">{stats.totalSeats}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Seçili Öğe */}
+          {selectedElement && (
+            <div className="bg-blue-50 p-3 rounded border border-blue-100 space-y-2">
+              <p className="text-xs font-bold text-blue-900">🔹 Seçili Öğe: {selectedElement.label}</p>
+              <input type="text" value={selectedElement.label} onChange={(e) => updateSelected('label', e.target.value)} className="w-full p-1.5 border border-blue-200 rounded text-xs" placeholder="Label" />
+              {selectedElement.type !== 'stage' && (
+                <input type="number" min="1" value={selectedElement.seatCount || 1} onChange={(e) => updateSelected('seatCount', parseInt(e.target.value))} className="w-full p-1.5 border border-blue-200 rounded text-xs" placeholder="Kapasite" />
+              )}
+              <div className="flex gap-1">
+                <button onClick={duplicateSelected} className="flex-1 text-xs bg-blue-600 text-white hover:bg-blue-700 p-1 rounded font-medium">📋 Çoğalt</button>
+                <button onClick={deleteSelected} className="flex-1 text-xs bg-red-600 text-white hover:bg-red-700 p-1 rounded font-medium">🗑️ Sil</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Kaydet Butonu */}
+        <div className="p-4 border-t border-gray-100 bg-gray-50">
+          <button onClick={saveLayout} className="w-full bg-blue-600 text-white hover:bg-blue-700 px-4 py-2.5 rounded font-bold flex items-center justify-center gap-2 transition text-sm">
+            <Save size={16} /> {hallId ? 'Güncelle' : 'Kaydet'}
+          </button>
+        </div>
+      </div>
     </div>
   );
-}
+});
+
+// useImperativeHandle - ref'e autoGenerateLayout expose et
+HallDesignerCanvasInner.displayName = 'HallDesignerCanvas';
+
+export default HallDesignerCanvasInner;

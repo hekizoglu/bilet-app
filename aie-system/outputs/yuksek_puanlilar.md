@@ -1,30 +1,30 @@
 # 🔴 Yüksek Puanlı Fikirler (≥28 puan)
 
-Son Güncelleme: 2026-07-01T11:46:57.897Z
+Son Güncelleme: 2026-07-01T11:53:13.583Z
 
-## IDEA-MR20G4J0-NK5G | 🔴 YÜKSEK | Puan: 49
+## IDEA-MR20O6EQ-T2TU | 🔴 YÜKSEK | Puan: 51
 
-**Tarih:** 2026-07-01T11:46:57.900Z
-**Faz:** ux
-**Tür:** 📱 Ürün
+**Tarih:** 2026-07-01T11:53:13.586Z
+**Faz:** stabilization
+**Tür:** 💻 Kod
 **Kaynak:** phase_rule
-**Zorluk:** easy
+**Zorluk:** hard
 
 ### Başlık
-Mobil responsive kontrolü
+Hata yakalama ve retry mekanizması
 
 ### Açıklama
-Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+Kritik endpointler için circuit breaker pattern uygulanmalı.
 
 ### Puanlama Detayı
 | Kriter | Puan |
 |--------|------|
-| Etki | 7/10 |
-| Güvenlik | 2/10 |
-| Kullanıcı Dostu | 9/10 |
-| Demografik | 8/10 |
-| Basitlik | 6/10 |
+| Etki | 9/10 |
+| Güvenlik | 7/10 |
+| Kullanıcı Dostu | 6/10 |
+| Demografik | 5/10 |
+| Basitlik | 5/10 |
 
-**Formül:** (7×2.5) + (2×2.0) + (9×1.5) + (8×1.0) + (6×1.5) − 3 = **49**
+**Formül:** (9×2.5) + (7×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 7 = **51**
 
 ---
