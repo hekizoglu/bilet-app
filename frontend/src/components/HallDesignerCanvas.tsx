@@ -182,6 +182,103 @@ export default function HallDesignerCanvas() {
     }, 0);
   };
 
+  // 🎭 Otomatik Sahne Oluştur
+  const autoGenerateLayout = () => {
+    const CANVAS_WIDTH = 1000;
+    const CANVAS_HEIGHT = 800;
+    const STAGE_HEIGHT = 100;
+    const TABLE_RADIUS = 40;
+    const TABLE_SEATS = 8;
+    const SPACING = 180; // Masalar arası mesafe
+    const COLS = 5; // Kolon sayısı
+    const ROWS = 3; // Satır sayısı
+
+    const newElements: DesignerElement[] = [];
+
+    // 1️⃣ Sahneyi ekle (üstte, orta)
+    newElements.push({
+      id: `stage-${Date.now()}`,
+      type: 'stage',
+      label: 'Sahne',
+      x: (CANVAS_WIDTH - 300) / 2,
+      y: 20,
+      width: 300,
+      height: 60,
+      rotation: 0,
+      numberingType: 'none'
+    });
+
+    // 2️⃣ Masaları grid'de dizle
+    let tableCount = 0;
+    let startY = STAGE_HEIGHT + 80;
+
+    for (let row = 0; row < ROWS; row++) {
+      for (let col = 0; col < COLS; col++) {
+        const x = 80 + col * SPACING;
+        const y = startY + row * SPACING;
+
+        // Canvas sınırlarını kontrol et
+        if (x + TABLE_RADIUS > CANVAS_WIDTH - 50 || y + TABLE_RADIUS > CANVAS_HEIGHT - 50) {
+          continue;
+        }
+
+        tableCount++;
+        newElements.push({
+          id: `round_table-${Date.now()}-${tableCount}`,
+          type: 'round_table',
+          label: `M${tableCount}`,
+          x,
+          y,
+          radius: TABLE_RADIUS,
+          rotation: 0,
+          seatCount: TABLE_SEATS,
+          numberingType: 'table_and_seats'
+        });
+      }
+    }
+
+    // 3️⃣ Kenar sandalyeleri ekle (isteğe bağlı)
+    const addPeripheralChairs = false; // false = sadece masalar
+    if (addPeripheralChairs) {
+      const chairSpacing = 40;
+      // Sol kenar
+      for (let i = 0; i < 6; i++) {
+        newElements.push({
+          id: `chair-${Date.now()}-l${i}`,
+          type: 'chair',
+          label: `K${tableCount + i + 1}`,
+          x: 20,
+          y: STAGE_HEIGHT + 100 + i * chairSpacing,
+          width: 30,
+          height: 30,
+          rotation: 0,
+          numberingType: 'seats_only'
+        });
+      }
+    }
+
+    // Tüm elemanları güncelle
+    setElements(newElements);
+    setSelectedId(null);
+    alert(`✅ ${tableCount} masa otomatik yerleştirildi!`);
+  };
+
+  // 📊 İstatistik Hesaplayıcı
+  const getStatistics = () => {
+    const tables = elements.filter(e => e.type !== 'stage' && e.type !== 'chair');
+    const chairs = elements.filter(e => e.type === 'chair');
+    const stages = elements.filter(e => e.type === 'stage');
+    const totalSeats = getTotalSeats();
+
+    return {
+      tables: tables.length,
+      chairs: chairs.length,
+      stages: stages.length,
+      totalSeats,
+      avgSeatsPerTable: tables.length > 0 ? Math.round(tables.reduce((acc, t) => acc + (t.seatCount || 1), 0) / tables.length) : 0
+    };
+  };
+
   const saveLayout = async () => {
     if (!name.trim()) {
       alert("Lütfen salon adı giriniz.");
@@ -350,6 +447,52 @@ export default function HallDesignerCanvas() {
             </div>
           </div>
 
+          {/* 🎭 Otomatik Oluştur */}
+          <div className="bg-gradient-to-br from-purple-50 to-blue-50 p-4 rounded-lg border-2 border-purple-200">
+            <h3 className="text-sm font-bold text-purple-900 mb-2">⚡ Otomatik Sahne Oluştur</h3>
+            <p className="text-xs text-purple-700 mb-3">Masaları grid pattern'de otomatik yerleştir</p>
+            <button 
+              onClick={autoGenerateLayout}
+              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-bold py-2 px-3 rounded-lg text-sm transition shadow-md"
+            >
+              ✨ Otomatik Yerleştir
+            </button>
+          </div>
+
+          {/* 📊 İstatistikler */}
+          {(() => {
+            const stats = getStatistics();
+            return (
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-lg border-2 border-green-200">
+                <h3 className="text-sm font-bold text-green-900 mb-3 border-b pb-2">📊 Salon İstatistikleri</h3>
+                <div className="space-y-2 text-xs text-green-800">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">🪑 Masa Sayısı:</span>
+                    <span className="bg-white px-2 py-1 rounded font-bold text-green-700">{stats.tables}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">🪑 Tekli Sandalye:</span>
+                    <span className="bg-white px-2 py-1 rounded font-bold text-green-700">{stats.chairs}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">🎤 Sahne/Alan:</span>
+                    <span className="bg-white px-2 py-1 rounded font-bold text-green-700">{stats.stages}</span>
+                  </div>
+                  <div className="border-t border-green-200 pt-2 mt-2 flex justify-between items-center">
+                    <span className="font-bold">Toplam Kapasite:</span>
+                    <span className="bg-green-600 text-white px-3 py-1 rounded-full font-bold">{stats.totalSeats} 👥</span>
+                  </div>
+                  {stats.tables > 0 && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-medium">Masa başı ort.:</span>
+                      <span className="bg-white px-2 py-1 rounded">{stats.avgSeatsPerTable} kişi</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()
+
           {/* Özellikler Paneli */}
           {selectedElement && (
             <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 space-y-3">
@@ -386,8 +529,17 @@ export default function HallDesignerCanvas() {
           )}
         </div>
 
-        <div className="p-4 border-t border-gray-100 bg-gray-50/50">
-          <p className="text-xs text-gray-500 mb-3 text-center">Toplam Kapasite: <strong className="text-gray-800">{getTotalSeats()} Kişi</strong></p>
+        <div className="p-4 border-t border-gray-100 bg-gray-50/50 space-y-3">
+          <div className="grid grid-cols-2 gap-2 text-center text-xs">
+            <div className="bg-white p-2 rounded border border-gray-200">
+              <p className="text-gray-500">Masalar</p>
+              <p className="font-bold text-lg text-gray-800">{getStatistics().tables}</p>
+            </div>
+            <div className="bg-white p-2 rounded border border-gray-200">
+              <p className="text-gray-500">Kapasite</p>
+              <p className="font-bold text-lg text-blue-600">{getTotalSeats()}</p>
+            </div>
+          </div>
           <button onClick={saveLayout} className="w-full bg-blue-600 text-white hover:bg-blue-700 px-4 py-3 rounded-lg font-bold flex items-center justify-center gap-2 transition">
             <Save size={18} /> {hallId ? 'Güncelle' : 'Kaydet'}
           </button>
