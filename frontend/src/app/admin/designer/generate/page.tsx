@@ -3,6 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save } from 'lucide-react';
+import { type AutoGenerateConfig } from '../../../../components/HallDesignerCanvas';
+
+interface CanvasRef {
+  autoGenerateLayout: (config: AutoGenerateConfig) => void;
+  saveLayout?: () => void;
+}
 
 const HallDesignerCanvas = dynamic(
   () => import('../../../../components/HallDesignerCanvas'),
@@ -18,19 +24,17 @@ const HallDesignerCanvas = dynamic(
 
 export default function GeneratePage() {
   const router = useRouter();
-  const canvasRef = useRef<any>(null);
-  const [config, setConfig] = useState<any>(null);
+  const canvasRef = useRef<CanvasRef | null>(null);
+  const [config, setConfig] = useState<AutoGenerateConfig | null>(null);
   const [generated, setGenerated] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('autoGenerateConfig');
-    if (stored) {
-      try {
-        setConfig(JSON.parse(stored));
-      } catch {
-        router.push('/admin/designer');
-      }
-    } else {
+    if (!stored) { router.push('/admin/designer'); return; }
+    try {
+      const parsed = JSON.parse(stored) as AutoGenerateConfig;
+      setConfig(parsed);
+    } catch {
       router.push('/admin/designer');
     }
   }, [router]);
@@ -67,7 +71,7 @@ export default function GeneratePage() {
             </h1>
             {config && (
               <p className="text-gray-400 text-xs">
-                {config.hallLengthM}m × {config.hallWidthM}m &bull; {config.tableCount > 0 ? `${config.tableCount} masa` : 'Otomatik masa'} &bull; Kapasite: max {config.totalCapacity || 2000}
+                {config.hallLengthM}m × {config.hallWidthM}m &bull; {(config.tableCount ?? 0) > 0 ? `${config.tableCount} masa` : 'Otomatik masa'} &bull; Kapasite: max {config.totalCapacity ?? 2000}
               </p>
             )}
           </div>

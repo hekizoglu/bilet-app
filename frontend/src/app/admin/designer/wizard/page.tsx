@@ -471,11 +471,13 @@ function Step5Stage({ data, update }: { data: WizardData; update: (v: Partial<Wi
   );
 }
 
-function Step6Service({ data, update }: { data: WizardData; update: (v: Partial<WizardData>) => void }) {
-  const Counter = ({ label, icon, value, onChange, hint }: {
-    label: string; icon: string; value: number;
-    onChange: (n: number) => void; hint?: string;
-  }) => (
+// Counter bileşeni Step6Service dışında tanımlanmalı (react-hooks/static-components kuralı)
+interface CounterProps {
+  label: string; icon: string; value: number;
+  onChange: (n: number) => void; hint?: string;
+}
+function ServiceCounter({ label, icon, value, onChange, hint }: CounterProps) {
+  return (
     <div className="p-4 bg-white rounded-xl border border-gray-200 shadow-sm">
       <div className="flex items-center justify-between mb-2">
         <div>
@@ -492,16 +494,18 @@ function Step6Service({ data, update }: { data: WizardData; update: (v: Partial<
       </div>
     </div>
   );
+}
 
+function Step6Service({ data, update }: { data: WizardData; update: (v: Partial<WizardData>) => void }) {
   return (
     <div className="space-y-3">
-      <Counter label="Bar / Bistro" icon="🍹" value={data.bistroCount}
+      <ServiceCounter label="Bar / Bistro" icon="🍹" value={data.bistroCount}
         onChange={n => update({ bistroCount: n })}
         hint="İçecek servisi — kenar duvarlara konumlandırılır" />
-      <Counter label="Büfe Masası" icon="🍽️" value={data.buffetCount}
+      <ServiceCounter label="Büfe Masası" icon="🍽️" value={data.buffetCount}
         onChange={n => update({ buffetCount: n })}
         hint="Yiyecek büfesi — kolaya erişim bölgelerinde" />
-      <Counter label="Karşılama Masası" icon="🖥️" value={data.receptionDeskCount}
+      <ServiceCounter label="Karşılama Masası" icon="🖥️" value={data.receptionDeskCount}
         onChange={n => update({ receptionDeskCount: n })}
         hint="Giriş noktaları — check-in ve kayıt" />
 

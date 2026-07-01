@@ -3,9 +3,30 @@
 import { useState, useEffect } from 'react';
 import { Calendar, Plus, X } from 'lucide-react';
 
+interface Event {
+  id: string | number;
+  name: string;
+  date: string;
+  price: number | string;
+  status: string;
+  isSeated: boolean;
+  capacity: number;
+  hallId?: string | number;
+  paymentType?: string;
+  visibility?: string;
+  privateSlug?: string;
+  hall?: { name: string; seatCount?: number };
+}
+
+interface Hall {
+  id: string | number;
+  name: string;
+  seatCount?: number;
+}
+
 export default function EventsPage() {
-  const [events, setEvents] = useState<any[]>([]);
-  const [halls, setHalls] = useState<any[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [halls, setHalls] = useState<Hall[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   // Search & Filter State
@@ -307,7 +328,7 @@ export default function EventsPage() {
                   <div className="flex justify-end gap-2">
                     {event.visibility === 'PRIVATE' && (
                       <button 
-                        onClick={() => handleRegenerateSlug(event.id)} 
+                        onClick={() => handleRegenerateSlug(String(event.id))} 
                         className="text-sm px-3 py-1.5 bg-orange-50 text-orange-700 hover:bg-orange-100 font-medium rounded transition"
                         title="Özel Linki Yenile (Eskisi iptal olur)"
                       >

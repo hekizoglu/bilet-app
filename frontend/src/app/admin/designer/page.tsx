@@ -23,7 +23,7 @@ const HallDesignerCanvas = dynamic(() => import('../../../components/HallDesigne
 });
 
 export default function DesignerPage() {
-  const canvasRef = useRef<any>(null);
+  const canvasRef = useRef<{ autoGenerateLayout: (c: AutoGenerateConfig) => void } | null>(null);
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(true);
   const [isCanvasModalOpen, setIsCanvasModalOpen] = useState(false);
 
@@ -68,7 +68,7 @@ export default function DesignerPage() {
         <div className="p-8 border-b border-gray-200 bg-white">
           <h1 className="text-4xl font-bold text-gray-900">🎪 Salon Tasarımcısı</h1>
           <p className="text-gray-600 mt-3">
-            Salon ayarlarını sol panelden düzenleyin. "Detaylı Sahne Oluştur" butonuna tıklayarak tasarımcı penceresini açın.
+            Salon ayarlarını sol panelden düzenleyin. &ldquo;Detaylı Sahne Oluştur&rdquo; butonuna tıklayarak tasarımcı penceresini açın.
           </p>
         </div>
 
@@ -76,7 +76,7 @@ export default function DesignerPage() {
           <div className="text-center">
             <Maximize2 size={64} className="text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 text-lg mb-6">
-              {isCanvasModalOpen ? 'Tasarımcı penceresi açılıyor...' : 'Başlamak için sol panelden "Detaylı Sahne Oluştur" butonuna tıklayın'}
+              {isCanvasModalOpen ? 'Tasarımcı penceresi açılıyor...' : 'Başlamak için sol panelden Detaylı Sahne Oluştur butonuna tıklayın'}
             </p>
             <button
               onClick={() => setIsCanvasModalOpen(true)}

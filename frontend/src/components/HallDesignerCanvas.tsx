@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { Stage, Layer, Rect, Text, Group, Circle, Image as KonvaImage } from 'react-konva';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Trash2, Save, Plus, Settings, Copy, MousePointer2, Image as ImageIcon } from 'lucide-react';
@@ -27,16 +27,22 @@ interface HallLayout {
   elements: DesignerElement[];
 }
 
-interface AutoGenerateConfig {
+export interface AutoGenerateConfig {
   hallLengthM: number;
   hallWidthM: number;
   tableRadiusCm: number;
   chairsPerTable: number;
+  tableCount?: number;
   minSpacingCm: number;
   stageLengthM: number;
   stageWidthM: number;
+  stageCount?: number;
   stageCapacity: number;
+  bistroCount?: number;
+  totalCapacity?: number;
   numberingType: 'table_only' | 'table_and_seats' | 'seats_only' | 'none';
+  chairNumbering?: boolean;
+  [key: string]: unknown;
 }
 
 interface HallDesignerCanvasProps {
@@ -99,8 +105,9 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
               setElements(layout.elements);
             } else {
               // Geriye dönük uyumluluk (eski chairs dizisi)
-              const oldChairs = JSON.parse(data.layoutJson).chairs || [];
-              setElements(oldChairs.map((c: any) => ({
+              interface OldChair { id: string; x: number; y: number; }
+              const oldChairs: OldChair[] = JSON.parse(data.layoutJson).chairs || [];
+              setElements(oldChairs.map((c) => ({
                 id: c.id,
                 type: 'chair',
                 label: c.id.split('-')[1].slice(-3),
@@ -126,7 +133,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     return null;
   };
 
-  const handleDragEnd = (e: any, id: string) => {
+  const handleDragEnd = (e: { target: { x: () => number; y: () => number; position: (p: { x: number; y: number }) => void } }, id: string) => {
     const newX = Math.round(e.target.x() / SNAP_GRID) * SNAP_GRID;
     const newY = Math.round(e.target.y() / SNAP_GRID) * SNAP_GRID;
     e.target.position({ x: newX, y: newY });
@@ -190,7 +197,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     }
   };
 
-  const updateSelected = (key: keyof DesignerElement, value: any) => {
+  const updateSelected = (key: keyof DesignerElement, value: DesignerElement[keyof DesignerElement]) => {
     if (selectedId) {
       setElements(elements.map(e => e.id === selectedId ? { ...e, [key]: value } : e));
     }
@@ -204,7 +211,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   };
 
   // 🎭 Otomatik Sahne Oluştur - Detailed Config
-  const autoGenerateLayout = (config: AutoGenerateConfig) => {
+  const autoGenerateLayout = useCallback((config: AutoGenerateConfig) => {
     // 📐 Dönüşüm: 1 metre = 80 pixel (ölçeklendirilmiş görünüm)
     const PIXEL_PER_METER = 80;
     const CANVAS_WIDTH = config.hallLengthM * PIXEL_PER_METER;
@@ -314,14 +321,10 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
 • Sahne Kapasitesi: ${STAGE_CAPACITY} kişi
 • ⭐ TOPLAM KAPASİTE: ${totalCapacity} kişi / 2000 max
 ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCapacity} kişi yer var)`}`);
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);  // setElements/setSelectedId are stable — no deps needed
 
-  // � Forward Ref - autoGenerateLayout expose et
-  useImperativeHandle(ref, () => ({
-    autoGenerateLayout
-  }), []);
-
-  // �📊 İstatistik Hesaplayıcı
+  // 📊 İstatistik Hesaplayıcı
   const getStatistics = () => {
     const tables = elements.filter(e => e.type !== 'stage' && e.type !== 'chair');
     const chairs = elements.filter(e => e.type === 'chair');
@@ -337,7 +340,7 @@ ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCap
     };
   };
 
-  const saveLayout = async () => {
+  const saveLayout = useCallback(async () => {
     if (!name.trim()) {
       alert("Lütfen salon adı giriniz.");
       return;
@@ -379,7 +382,14 @@ ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCap
       console.error(e);
       alert("Sunucuya ulaşılamadı.");
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [name, description, address, elements, backgroundImage, isGlobal, hallId, router]);
+
+  // Forward Ref — saveLayout ve autoGenerateLayout expose et
+  useImperativeHandle(ref, () => ({
+    autoGenerateLayout,
+    saveLayout,
+  }), [autoGenerateLayout, saveLayout]);
 
   const selectedElement = elements.find(e => e.id === selectedId);
 
