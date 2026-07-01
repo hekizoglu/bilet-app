@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Calendar, MapPin, Users, ArrowRight, Filter, Zap } from 'lucide-react';
+import { Calendar, MapPin, Users, ArrowRight, Filter, Zap, Tag } from 'lucide-react';
 
 interface Event {
   id: string;

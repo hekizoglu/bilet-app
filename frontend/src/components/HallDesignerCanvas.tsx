@@ -491,7 +491,7 @@ export default function HallDesignerCanvas() {
                 </div>
               </div>
             );
-          })()
+          })()}
 
           {/* Özellikler Paneli */}
           {selectedElement && (

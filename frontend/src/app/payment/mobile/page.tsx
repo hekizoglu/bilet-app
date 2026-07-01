@@ -28,7 +28,6 @@ function MobilePaymentContent() {
   const [cvv, setCvv] = useState("");
   const [holderName, setHolderName] = useState("");
   const [isSubmittingPay, setIsSubmittingPay] = useState(false);
-  const [paySuccess, setPaySuccess] = useState(false);
 
   // PWA: Ana ekrana ekle butonu için install prompt yönetimi
   useEffect(() => {
@@ -228,7 +227,7 @@ function MobilePaymentContent() {
             </div>
           </div>
 
-          {(mailStatus === 'queued' || mailStatus === false) && (
+          {(mailStatus === 'queued' || mailStatus === null) && (
             <div className="bg-orange-500/10 border border-orange-500/20 rounded-xl p-3 text-left text-sm text-orange-200">
               <strong>🔔 Uyarı:</strong> E-posta sistemindeki yoğunluk nedeniyle e-bilet gönderiminiz arka planda işlenmektedir (Lütfen daha sonra Spam klasörünüzü de kontrol edin). Biletinize anında <strong>"Biletlerim"</strong> sekmesinden ulaşabilirsiniz.
             </div>
