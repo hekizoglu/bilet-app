@@ -35,12 +35,20 @@ export default function GeneratePage() {
     }
   }, [router]);
 
+  // Canvas dynamic import sonrası ref hazır olunca tetikle
   useEffect(() => {
-    if (config && !generated && canvasRef.current?.autoGenerateLayout) {
-      canvasRef.current.autoGenerateLayout(config);
-      setGenerated(true);
-    }
-  });
+    if (!config || generated) return;
+    const attempt = () => {
+      if (canvasRef.current?.autoGenerateLayout) {
+        canvasRef.current.autoGenerateLayout(config);
+        setGenerated(true);
+      } else {
+        setTimeout(attempt, 200);
+      }
+    };
+    attempt();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config]);
 
   return (
     <div className="flex flex-col h-screen bg-gray-900">

@@ -387,14 +387,23 @@ ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCap
   const renderRoundTable = (el: DesignerElement, isSelected: boolean) => {
     const r = el.radius || 40;
     const sCount = el.seatCount || 8;
+    const showSeatNums = el.numberingType === 'table_and_seats' || el.numberingType === 'seats_only';
     const seats = [];
     
     for(let i=0; i<sCount; i++) {
       const angle = (i * (360 / sCount)) * (Math.PI / 180);
       const sx = Math.cos(angle) * (r + 15);
       const sy = Math.sin(angle) * (r + 15);
+      const seatLabel = el.numberingType === 'table_and_seats'
+        ? String.fromCharCode(65 + i)       // A, B, C...
+        : String(i + 1);                    // 1, 2, 3...
       seats.push(
-        <Circle key={`seat-${i}`} x={sx} y={sy} radius={10} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={1} />
+        <React.Fragment key={`seat-${i}`}>
+          <Circle x={sx} y={sy} radius={10} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={1} />
+          {showSeatNums && (
+            <Text x={sx - 8} y={sy - 5} width={16} text={seatLabel} fontSize={7} fill="#374151" align="center" />
+          )}
+        </React.Fragment>
       );
     }
 

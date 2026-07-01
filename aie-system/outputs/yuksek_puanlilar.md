@@ -1,30 +1,30 @@
 # 🔴 Yüksek Puanlı Fikirler (≥28 puan)
 
-Son Güncelleme: 2026-07-01T12:14:13.655Z
+Son Güncelleme: 2026-07-01T12:20:58.024Z
 
-## IDEA-MR21F6OP-BQBN | 🔴 YÜKSEK | Puan: 44.5
+## IDEA-MR21NUP6-7IMK | 🔴 YÜKSEK | Puan: 49
 
-**Tarih:** 2026-07-01T12:14:13.658Z
-**Faz:** performance
-**Tür:** 💻 Kod
+**Tarih:** 2026-07-01T12:20:58.026Z
+**Faz:** ux
+**Tür:** 📱 Ürün
 **Kaynak:** phase_rule
-**Zorluk:** medium
+**Zorluk:** easy
 
 ### Başlık
-Veritabanı sorgu optimizasyonu
+Mobil responsive kontrolü
 
 ### Açıklama
-Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
 
 ### Puanlama Detayı
 | Kriter | Puan |
 |--------|------|
-| Etki | 8/10 |
-| Güvenlik | 3/10 |
-| Kullanıcı Dostu | 6/10 |
-| Demografik | 5/10 |
-| Basitlik | 5/10 |
+| Etki | 7/10 |
+| Güvenlik | 2/10 |
+| Kullanıcı Dostu | 9/10 |
+| Demografik | 8/10 |
+| Basitlik | 6/10 |
 
-**Formül:** (8×2.5) + (3×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 3 = **44.5**
+**Formül:** (7×2.5) + (2×2.0) + (9×1.5) + (8×1.0) + (6×1.5) − 3 = **49**
 
 ---
