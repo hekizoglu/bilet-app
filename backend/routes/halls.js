@@ -21,6 +21,9 @@ const hallSchema = z.object({
 // Create Hall
 router.post('/', requireAuth, validate(hallSchema), async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
     const hall = await prisma.hall.create({ data: req.body });
     cache.del('halls');
     res.status(201).json(hall);
@@ -32,6 +35,9 @@ router.post('/', requireAuth, validate(hallSchema), async (req, res) => {
 // Clone Hall
 router.post('/:id/clone', requireAuth, async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
     const original = await prisma.hall.findUnique({
       where: { id: req.params.id }
     });
@@ -98,6 +104,9 @@ router.get('/:id', requireAuth, async (req, res) => {
 // Update Hall
 router.put('/:id', requireAuth, validate(hallSchema), async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
     const hall = await prisma.hall.update({
       where: { id: req.params.id },
       data: req.body

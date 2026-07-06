@@ -32,6 +32,9 @@ const generateSlug = () => crypto.randomBytes(6).toString('hex');
 // Create Event
 router.post('/', requireAuth, validate(eventSchema), async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
     const data = { ...req.body, date: new Date(req.body.date) };
     if (data.visibility === 'PRIVATE') {
       data.privateSlug = generateSlug();
@@ -48,6 +51,9 @@ router.post('/', requireAuth, validate(eventSchema), async (req, res) => {
 // Regenerate Private Slug
 router.post('/:id/regenerate-slug', requireAuth, async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
     const event = await prisma.event.findUnique({ where: { id: req.params.id } });
     if (!event) return res.status(404).json({ error: "Etkinlik bulunamadı" });
     if (event.visibility !== 'PRIVATE') return res.status(400).json({ error: "Bu etkinlik özel değil" });

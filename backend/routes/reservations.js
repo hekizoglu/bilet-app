@@ -314,13 +314,13 @@ router.post('/', validate(resSchema), async (req, res) => {
     }
 
     // Evict availability and reservation list caches
-    cache.clearEventCache(req.body.eventId);
+    cache.clearEventCache(event.id);
     cache.del('admin_reservations');
 
     // Soket Yayını: Sadece o etkinliğe (room) bağlı müşterilere seat_booked mesajı yolla
-    const io = req.app.get('io');
-    if (io) {
-      io.to(req.body.eventId).emit('seat_booked', { seatId: req.body.seatId });
+    if (event.isSeated && req.body.seatId) {
+      const io = req.app.get('io');
+      io.to(event.id).emit('seat_booked', { seatId: req.body.seatId });
     }
 
     // Send Telegram Notification (if cardless)
