@@ -56,8 +56,12 @@ router.post('/:id/clone', requireAuth, async (req, res) => {
 });
 
 // Get all Halls
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
+
     const cached = cache.get('halls');
     if (cached) return res.json(cached);
 
@@ -70,8 +74,12 @@ router.get('/', async (req, res) => {
 });
 
 // Get Hall by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', requireAuth, async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
+
     const cacheKey = `hall_${req.params.id}`;
     const cached = cache.get(cacheKey);
     if (cached) return res.json(cached);

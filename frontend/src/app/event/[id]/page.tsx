@@ -65,12 +65,11 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          eventId: data.eventId,
+          eventIdOrSlug: id,
           customer: form.name,
           email: form.email,
           phone: form.phone,
-          seatId: form.seatId || null,
-          seatName: form.seatName || null
+          seatId: form.seatId || null
         })
       });
       if (res.ok) {
@@ -260,14 +259,14 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                           <button 
                             key={seat.id}
                             type="button"
-                            onClick={() => setForm({ ...form, seatId: seat.id, seatName: seat.id.split('-')[1]?.slice(-3) || seat.id })}
+                            onClick={() => setForm({ ...form, seatId: seat.id, seatName: seat.name })}
                             className={`min-w-[44px] min-h-[44px] px-3 py-2 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
                               form.seatId === seat.id 
                                 ? 'bg-blue-600 text-white border-blue-700 shadow-md shadow-blue-500/20' 
                                 : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
                             }`}
                           >
-                            {seat.id.split('-')[1]?.slice(-3) || seat.id}
+                            {seat.name}
                           </button>
                         ))}
                       </div>

@@ -8,8 +8,11 @@ export default function HallsPage() {
   const [halls, setHalls] = useState<any[]>([]);
 
   const fetchHalls = async () => {
+    const token = getCookie('token');
     try {
-      const res = await fetch('http://localhost:5000/api/halls');
+      const res = await fetch('http://localhost:5000/api/halls', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setHalls(data);

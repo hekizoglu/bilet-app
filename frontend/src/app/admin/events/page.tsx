@@ -47,8 +47,11 @@ export default function EventsPage() {
   const [visibility, setVisibility] = useState('PUBLIC');
 
   const fetchEvents = async () => {
+    const token = getCookie('token');
     try {
-      const res = await fetch('http://localhost:5000/api/events');
+      const res = await fetch('http://localhost:5000/api/events', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setEvents(data);
@@ -59,8 +62,11 @@ export default function EventsPage() {
   };
 
   const fetchHalls = async () => {
+    const token = getCookie('token');
     try {
-      const res = await fetch('http://localhost:5000/api/halls');
+      const res = await fetch('http://localhost:5000/api/halls', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setHalls(data);

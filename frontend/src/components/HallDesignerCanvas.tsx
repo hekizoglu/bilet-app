@@ -89,8 +89,11 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   }, [backgroundImage]);
 
   const fetchHall = async (id: string) => {
+    const token = getCookie('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/halls/${id}`);
+      const res = await fetch(`http://localhost:5000/api/halls/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       if (res.ok) {
         const data = await res.json();
         setName(data.name);

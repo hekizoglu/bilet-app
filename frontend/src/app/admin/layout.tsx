@@ -20,19 +20,37 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const token = getCookie('token');
-      if (token) {
-        const base64Url = token.split('.')[1];
-        if (!base64Url) return; // LOCAL_* veya geçersiz token — decode etme
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        setUserRole(JSON.parse(jsonPayload).role);
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      const base64Url = token.split('.')[1];
+      if (!base64Url) {
+        if (token.startsWith('LOCAL_')) {
+          setUserRole(token.includes('ADMIN') ? 'ADMIN' : 'ORGANIZER');
+          return;
+        }
+        router.push('/login');
+        return;
+      }
+
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      
+      const decoded = JSON.parse(jsonPayload);
+      setUserRole(decoded.role);
+
+      if (decoded.role !== 'ADMIN' && decoded.role !== 'ORGANIZER') {
+        router.push('/profile');
       }
     } catch (e) {
       console.error("Token decoding error:", e);
+      router.push('/login');
     }
-  }, []);
+  }, [router]);
 
   const handleLogout = () => {
     document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";

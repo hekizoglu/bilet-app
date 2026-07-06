@@ -10,6 +10,89 @@ const { CircuitBreaker, retryWithBackoff } = require('../utils/circuitBreaker');
 const taskQueue = require('../utils/queue');
 const Sentry = require('@sentry/node');
 
+// Salon Yerleşim Planındaki koltukları ayrıştıran fonksiyon (Hem elements hem chairs destekli)
+function extractSeatsFromLayout(layoutJson) {
+  let layout;
+  try {
+    layout = typeof layoutJson === 'string' ? JSON.parse(layoutJson) : layoutJson;
+  } catch (e) {
+    return [];
+  }
+  
+  if (!layout) return [];
+  
+  const seats = [];
+  
+  // 1. Yeni elements yapısı (masalar, bistrolar, sandalyeler)
+  if (Array.isArray(layout.elements)) {
+    layout.elements.forEach(el => {
+      if (el.type === 'chair') {
+        seats.push({
+          id: el.id,
+          name: el.label || el.id,
+          displayName: el.label || el.id,
+          x: el.x,
+          y: el.y
+        });
+      } else if (['round_table', 'rect_table', 'bistro'].includes(el.type)) {
+        const seatCount = el.seatCount || 1;
+        const numberingType = el.numberingType || 'table_and_seats';
+        
+        const tableLabel = el.label || 'Masa';
+        let shortTableLabel = tableLabel;
+        if (tableLabel.toLowerCase().startsWith('masa')) {
+          const num = tableLabel.replace(/[^0-9]/g, '');
+          shortTableLabel = 'M' + (num || '');
+        } else if (tableLabel.toLowerCase().startsWith('bistro')) {
+          const num = tableLabel.replace(/[^0-9]/g, '');
+          shortTableLabel = 'B' + (num || '');
+        }
+        
+        for (let i = 0; i < seatCount; i++) {
+          let seatName = '';
+          let displayName = '';
+          if (numberingType === 'table_only') {
+            seatName = `${tableLabel} - Koltuk ${i + 1}`;
+            displayName = `${shortTableLabel}-${i + 1}`;
+          } else if (numberingType === 'table_and_seats') {
+            seatName = `${tableLabel} - Sandalye ${String.fromCharCode(65 + i)}`;
+            displayName = `${shortTableLabel}-${String.fromCharCode(65 + i)}`;
+          } else if (numberingType === 'seats_only') {
+            seatName = `Sandalye ${i + 1}`;
+            displayName = `S${i + 1}`;
+          } else {
+            seatName = `${tableLabel} - Yer ${i + 1}`;
+            displayName = `${shortTableLabel}-${i + 1}`;
+          }
+          
+          seats.push({
+            id: `${el.id}-seat-${i}`,
+            name: seatName,
+            displayName: displayName,
+            x: el.x + (i * 2),
+            y: el.y
+          });
+        }
+      }
+    });
+  } 
+  // 2. Geriye dönük uyumluluk (eski chairs dizisi)
+  else if (Array.isArray(layout.chairs)) {
+    layout.chairs.forEach(c => {
+      const label = c.id.split('-')[1]?.slice(-3) || c.id;
+      seats.push({
+        id: c.id,
+        name: label,
+        displayName: label,
+        x: c.x,
+        y: c.y
+      });
+    });
+  }
+  
+  return seats;
+}
+
 // Dış servisler için Circuit Breaker tanımları (Hata eşiği: 3, soğuma süresi: 20 saniye)
 const emailCircuit = new CircuitBreaker(
   async (transporter, mailOptions) => {
@@ -89,17 +172,23 @@ router.get('/availability/:eventId', async (req, res) => {
       // 2. Koltuklu Algoritması
       if (!event.hall) return res.status(400).json({ error: "Salon bilgisi eksik" });
       
-      // String olarak saklanan layout JSON'u parse et (Faz 1 SQLite kararı)
-      const layout = JSON.parse(event.hall.layoutJson || "{\"chairs\":[]}");
+      const allSeats = extractSeatsFromLayout(event.hall.layoutJson);
       const takenSeatIds = new Set(reservations.map(r => r.seatId));
       
       // Boş koltukları bul
-      const availableSeats = layout.chairs?.filter((chair) => !takenSeatIds.has(chair.id)) || [];
+      const availableSeats = allSeats
+        .filter((seat) => !takenSeatIds.has(seat.id))
+        .map(seat => ({
+          id: seat.id,
+          name: seat.displayName || seat.name,
+          x: seat.x,
+          y: seat.y
+        }));
 
       responseData = {
         isSeated: true,
         hallName: event.hall.name,
-        totalSeats: event.hall.seatCount,
+        totalSeats: allSeats.length,
         sold: takenSeatIds.size,
         availableSeats,
         paymentType: event.paymentType,
@@ -115,11 +204,10 @@ router.get('/availability/:eventId', async (req, res) => {
   }
 });
 
-// Create Reservation
+// Create Reservation Validation Schema
 const resSchema = z.object({
-  eventId: z.string().uuid(),
+  eventIdOrSlug: z.string(), // can be event UUID or privateSlug
   seatId: z.string().optional().nullable(),
-  seatName: z.string().optional().nullable(),
   customer: z.string().min(2),
   email: z.string().email(),
   phone: z.string().optional()
@@ -127,21 +215,52 @@ const resSchema = z.object({
 
 router.post('/', validate(resSchema), async (req, res) => {
   try {
-    const event = await prisma.event.findUnique({
-      where: { id: req.body.eventId }
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.body.eventIdOrSlug);
+    const event = await prisma.event.findFirst({
+      where: isUuid ? { id: req.body.eventIdOrSlug } : { privateSlug: req.body.eventIdOrSlug }
     });
+    
     if (!event) return res.status(404).json({ error: "Etkinlik bulunamadı." });
+
+    // Güvenlik: Eğer etkinlik PRIVATE ise, UUID ile doğrudan bilet almaya izin verme (Bypass koruması)
+    if (event.visibility === 'PRIVATE' && isUuid) {
+      return res.status(403).json({ error: "Bu özel bir etkinliktir. Lütfen davet linkini kullanın." });
+    }
 
     let reservation;
     
     // Perform seat/capacity check and creation inside a transaction
     try {
       reservation = await prisma.$transaction(async (tx) => {
-        // 1. Double Booking Check for seated events
-        if (req.body.seatId) {
+        let resolvedSeatName = null;
+
+        // 1. Koltuklu Etkinlikler İçin Koltuk Doğrulama ve Çifte Rezervasyon Kontrolü
+        if (event.isSeated) {
+          if (!req.body.seatId) {
+            throw new Error("Koltuk seçimi zorunludur.");
+          }
+
+          const hall = await tx.hall.findUnique({
+            where: { id: event.hallId }
+          });
+          if (!hall) {
+            throw new Error("Salon bilgisi bulunamadı.");
+          }
+
+          // Salon yerleşiminden koltuğu çek
+          const allSeats = extractSeatsFromLayout(hall.layoutJson);
+          const seatObj = allSeats.find(s => s.id === req.body.seatId);
+          if (!seatObj) {
+            throw new Error("Geçersiz koltuk seçimi.");
+          }
+
+          // Müşteri tarafından gönderilen seatName'i yok sayıp veritabanından doğrulanmış ismi atayalım
+          resolvedSeatName = seatObj.name;
+
+          // Double Booking Check
           const existing = await tx.reservation.findFirst({
             where: {
-              eventId: req.body.eventId,
+              eventId: event.id,
               seatId: req.body.seatId,
               status: { in: ['Onaylı', 'Beklemede'] }
             }
@@ -151,11 +270,11 @@ router.post('/', validate(resSchema), async (req, res) => {
           }
         }
 
-        // 2. Capacity Check for seatless events
+        // 2. Koltuksuz (Ayakta) Etkinlikler İçin Kapasite Kontrolü
         if (!event.isSeated) {
           const reservationsCount = await tx.reservation.count({
             where: {
-              eventId: req.body.eventId,
+              eventId: event.id,
               status: { in: ['Onaylı', 'Beklemede'] }
             }
           });
@@ -171,9 +290,14 @@ router.post('/', validate(resSchema), async (req, res) => {
         const status = event.paymentType === 'free' ? 'Onaylı' : 'Beklemede';
         const paymentStatus = event.paymentType === 'free' ? 'paid' : 'pending';
 
+        // eventIdOrSlug parametresini temizleyip gerçek eventId ve doğrulanmış seatName ile kaydet
+        const { eventIdOrSlug, ...rest } = req.body;
+
         return tx.reservation.create({
           data: {
-            ...req.body,
+            ...rest,
+            eventId: event.id,
+            seatName: resolvedSeatName,
             ticketCode: require('crypto').randomUUID(),
             status,
             paymentStatus,
@@ -299,6 +423,9 @@ router.post('/', validate(resSchema), async (req, res) => {
 // Admin: Rezervasyonu Onayla ve Bilet Gönder (Faz 7 - Fikir #6)
 router.post('/:id/approve', requireAuth, async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
+    }
     const reservation = await prisma.reservation.update({
       where: { id: req.params.id },
       data: { status: 'Onaylı' },
@@ -362,6 +489,9 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
 // Kapı Görevlisi: QR Bilet Okutma (Check-in)
 router.post('/checkin', requireAuth, async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
+    }
     const { ticketCode } = req.body;
     const reservation = await prisma.reservation.findUnique({ where: { ticketCode } });
 
@@ -383,6 +513,9 @@ router.post('/checkin', requireAuth, async (req, res) => {
 // Admin: Tüm Rezervasyonları Listele (Sayfalamalı)
 router.get('/', requireAuth, async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
+    }
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
@@ -656,6 +789,9 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
 // GET /api/reservations/scanner/:eventId - Scanner (Offline) cihaz için biletleri indir
 router.get('/scanner/:eventId', requireAuth, async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
+    }
     const reservations = await prisma.reservation.findMany({
       where: { eventId: req.params.eventId, status: "Onaylı" },
       select: {
@@ -675,6 +811,9 @@ router.get('/scanner/:eventId', requireAuth, async (req, res) => {
 // POST /api/reservations/bulk-checkin - Offline scanner'dan gelen biletleri sisteme eşitle
 router.post('/bulk-checkin', requireAuth, async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
+    }
     const { ticketCodes } = req.body;
     if (!Array.isArray(ticketCodes) || ticketCodes.length === 0) {
       return res.status(400).json({ error: "Geçersiz ticketCodes listesi" });

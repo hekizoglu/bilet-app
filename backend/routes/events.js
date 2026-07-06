@@ -66,8 +66,12 @@ router.post('/:id/regenerate-slug', requireAuth, async (req, res) => {
 });
 
 // Get all Events (Admin)
-router.get('/', async (req, res) => {
+router.get('/', requireAuth, async (req, res) => {
   try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
+
     const cached = cache.get('events');
     if (cached) return res.json(cached);
 
