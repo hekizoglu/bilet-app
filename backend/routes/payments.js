@@ -60,7 +60,9 @@ function maskIban(iban) {
   if (!iban || iban.length < 10) return iban;
   const prefix = iban.slice(0, 4);
   const suffix = iban.slice(-6);
-  const middle = '*'.repeat(iban.length - 10);
+  const middleLen = iban.length - 10;
+  if (middleLen === 0) return `${prefix} ${suffix}`;
+  const middle = '*'.repeat(middleLen);
   return `${prefix} ${middle.match(/.{1,4}/g).join(' ')} ${suffix}`;
 }
 
