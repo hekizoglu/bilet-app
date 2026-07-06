@@ -3,6 +3,10 @@
 import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import io from 'socket.io-client';
+import dynamic from 'next/dynamic';
+
+// Konva hydration hatalarını önlemek için client-side import yapıyoruz
+const DynamicSeatMapViewer = dynamic(() => import('@/components/SeatMapViewer'), { ssr: false });
 
 export default function CustomerEventPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -20,6 +24,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     couponCode: ''
   });
   const [discount, setDiscount] = useState<{type: string, value: number} | null>(null);
+  const [selectionMode, setSelectionMode] = useState<'list' | 'map'>('list');
 
   const [reservationSuccess, setReservationSuccess] = useState<any>(null);
   const [adminPaymentInfo, setAdminPaymentInfo] = useState<any>(null);
@@ -289,37 +294,76 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
 
           {data.isSeated && (
             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
-              <p className="text-lg font-bold mb-4 text-gray-800">Boş Koltuk Seçimi ({data.availableSeats.length} adet)</p>
-              
-              <div className="space-y-4">
-                {groupedSeats.length > 0 ? (
-                  groupedSeats.map((row, index) => (
-                    <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-2 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[70px]">
-                        Sıra {index + 1}:
-                      </span>
-                      <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin scrollbar-thumb-gray-200">
-                        {row.seats.map((seat: any) => (
-                          <button 
-                            key={seat.id}
-                            type="button"
-                            onClick={() => setForm({ ...form, seatId: seat.id, seatName: seat.name })}
-                            className={`min-w-[44px] min-h-[44px] px-3 py-2 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
-                              form.seatId === seat.id 
-                                ? 'bg-blue-600 text-white border-blue-700 shadow-md shadow-blue-500/20' 
-                                : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
-                            }`}
-                          >
-                            {seat.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm">Boş koltuk kalmadı.</p>
-                )}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+                <p className="text-lg font-bold text-gray-800">Boş Koltuk Seçimi ({data.availableSeats.length} adet)</p>
+                <div className="flex bg-white rounded-lg p-1 border border-gray-200 shadow-sm">
+                  <button 
+                    onClick={() => setSelectionMode('list')}
+                    className={`px-4 py-2 rounded-md text-sm font-semibold transition ${selectionMode === 'list' ? 'bg-blue-600 text-white shadow' : 'text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    Sıralı Seçim
+                  </button>
+                  <button 
+                    onClick={() => setSelectionMode('map')}
+                    className={`px-4 py-2 rounded-md text-sm font-semibold transition ${selectionMode === 'map' ? 'bg-blue-600 text-white shadow' : 'text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    Görselden Seçim
+                  </button>
+                </div>
               </div>
+              
+              {selectionMode === 'map' ? (
+                <div className="bg-white rounded-xl overflow-hidden border border-gray-200 mb-4">
+                  {data.hallLayout ? (
+                    <DynamicSeatMapViewer 
+                      layoutJson={data.hallLayout}
+                      availableSeats={data.availableSeats}
+                      selectedSeatId={form.seatId}
+                      onSeatSelect={(id) => {
+                        const seat = data.availableSeats.find((s: any) => s.id === id);
+                        if (seat) {
+                          setForm({ ...form, seatId: seat.id, seatName: seat.name });
+                          toast.success(`Koltuk ${seat.name} seçildi`);
+                        }
+                      }}
+                    />
+                  ) : (
+                    <div className="p-8 text-center text-gray-500">
+                      Görsel harita verisi bulunamadı. Lütfen Sıralı Seçim kullanın.
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {groupedSeats.length > 0 ? (
+                    groupedSeats.map((row, index) => (
+                      <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-2 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[70px]">
+                          Sıra {index + 1}:
+                        </span>
+                        <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin scrollbar-thumb-gray-200">
+                          {row.seats.map((seat: any) => (
+                            <button 
+                              key={seat.id}
+                              type="button"
+                              onClick={() => setForm({ ...form, seatId: seat.id, seatName: seat.name })}
+                              className={`min-w-[44px] min-h-[44px] px-3 py-2 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+                                form.seatId === seat.id 
+                                  ? 'bg-blue-600 text-white border-blue-700 shadow-md shadow-blue-500/20' 
+                                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
+                              }`}
+                            >
+                              {seat.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-gray-500 text-sm">Boş koltuk kalmadı.</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>

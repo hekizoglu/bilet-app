@@ -201,9 +201,11 @@ router.get('/availability/:eventId', async (req, res) => {
       responseData = {
         isSeated: true,
         hallName: event.hall.name,
-        totalSeats: allSeats.length,
-        sold: takenSeatIds.size,
         availableSeats,
+        totalCapacity: allSeats.length,
+        sold: takenSeatIds.size,
+        available: availableSeats.length,
+        hallLayout: event.hall.layoutJson,
         paymentType: event.paymentType,
         eventId: event.id,
         price: finalDynamicPrice,

@@ -67,24 +67,23 @@ export default function DesignerPage() {
       <div className="flex-1 flex flex-col overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-50">
         <div className="p-8 border-b border-gray-200 bg-white">
           <h1 className="text-4xl font-bold text-gray-900">🎪 Salon Tasarımcısı</h1>
-          <p className="text-gray-600 mt-3">
-            Salon ayarlarını sol panelden düzenleyin. &ldquo;Detaylı Sahne Oluştur&rdquo; butonuna tıklayarak tasarımcı penceresini açın.
-          </p>
-        </div>
-
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="text-center">
-            <Maximize2 size={64} className="text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg mb-6">
-              {isCanvasModalOpen ? 'Tasarımcı penceresi açılıyor...' : 'Başlamak için sol panelden Detaylı Sahne Oluştur butonuna tıklayın'}
+            <p className="text-gray-600 mt-3">
+              Salon ayarlarını sol panelden düzenleyin. &ldquo;🎯 Tasarımcıyı Aç&rdquo; butonuna tıklayarak tasarımcı penceresini açın.
             </p>
-            <button
-              onClick={() => setIsCanvasModalOpen(true)}
-              disabled={!isCanvasModalOpen}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-            >
-              🎯 Tasarımcıyı Aç
-            </button>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="text-center">
+              <Maximize2 size={64} className="text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg mb-6">
+                {isCanvasModalOpen ? 'Tasarımcı penceresi açılıyor...' : 'Başlamak için Tasarımcıyı Aç butonuna tıklayın'}
+              </p>
+              <button
+                onClick={() => setIsCanvasModalOpen(true)}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
+              >
+                🎯 Tasarımcıyı Aç
+              </button>
           </div>
         </div>
       </div>
