@@ -103,7 +103,7 @@ app.use('/api/payments', require('./routes/payments'));
 // Dynamic aggregate dashboard statistics for admin
 app.get('/api/admin/stats', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN') {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
       return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
     }
 
@@ -143,7 +143,7 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
 // GET /api/admin/reports
 app.get('/api/admin/reports', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN') {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
       return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
     }
 

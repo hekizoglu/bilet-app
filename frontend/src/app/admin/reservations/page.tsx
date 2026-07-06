@@ -64,6 +64,34 @@ export default function ReservationsPage() {
     }
   };
 
+  const handleCancel = async (id: string) => {
+    if (!window.confirm("Bu rezervasyonu iptal etmek ve koltuğu serbest bırakmak istediğinize emin misiniz?")) return;
+    try {
+      const getCookie = (name: string) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift();
+        return null;
+      };
+      const token = getCookie('token');
+
+      const res = await fetch(`http://localhost:5000/api/reservations/${id}/cancel`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert('Rezervasyon başarıyla iptal edildi!');
+        fetchReservations(pagination.page); // Refresh list
+      } else {
+        alert('Hata: ' + data.error);
+      }
+    } catch (err) {
+      alert('Bağlantı hatası');
+    }
+  };
+
   const handleManualVerify = async (id: string) => {
     try {
       const getCookie = (name: string) => {
@@ -210,6 +238,14 @@ export default function ReservationsPage() {
                         className="text-sm px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 font-medium rounded transition border border-green-200"
                       >
                         Ödemeyi Doğrula
+                      </button>
+                    )}
+                    {res.status === 'Beklemede' && (
+                      <button 
+                        onClick={() => handleCancel(res.id)}
+                        className="text-sm px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 hover:text-red-800 font-medium rounded transition mt-2 w-full"
+                      >
+                        İptal Et
                       </button>
                     )}
                     {res.status === 'Onaylı' && res.paymentStatus === 'paid' && (

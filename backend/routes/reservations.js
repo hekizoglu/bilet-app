@@ -486,6 +486,39 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
   }
 });
 
+// Admin: Rezervasyonu İptal Et (Ödenmemiş biletleri boşa çıkarmak için)
+router.post('/:id/cancel', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
+    }
+    const existing = await prisma.reservation.findUnique({
+      where: { id: req.params.id }
+    });
+    if (!existing) return res.status(404).json({ error: "Bulunamadı" });
+    if (existing.status !== 'Beklemede') return res.status(400).json({ error: "Sadece Beklemede olan rezervasyonlar iptal edilebilir." });
+
+    const reservation = await prisma.reservation.update({
+      where: { id: req.params.id },
+      data: { status: 'İptal', paymentStatus: 'failed' }
+    });
+
+    // Evict caches
+    cache.clearEventCache(reservation.eventId);
+    cache.del('admin_reservations');
+
+    // Soket Yayını: Koltuğun serbest bırakıldığını bildir
+    const io = req.app.get('io');
+    if (io) {
+      io.to(reservation.eventId).emit('seat_released', { seatId: reservation.seatId });
+    }
+
+    res.json({ success: true, message: "Rezervasyon iptal edildi ve koltuk boşa çıkarıldı." });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
 // Kapı Görevlisi: QR Bilet Okutma (Check-in)
 router.post('/checkin', requireAuth, async (req, res) => {
   try {
