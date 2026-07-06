@@ -1,6 +1,6 @@
 # 📋 Backlog - Yüksek Öncelikli Fikirler
 
-Son Güncelleme: 2026-07-06T09:00:21.420Z
+Son Güncelleme: 2026-07-06T09:08:16.465Z
 
-- [ ] **IDEA-MR8ZP4IY-N9UN** | Input validation katmanı | Puan: 61 | Zorluk: medium
+- [ ] **IDEA-MR8ZZB2N-XROQ** | Veritabanı sorgu optimizasyonu | Puan: 44.5 | Zorluk: medium
 

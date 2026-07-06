@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Calendar, MapPin, Users, ArrowRight, Filter, Zap, Tag } from 'lucide-react';
+import { Calendar, MapPin, Users, ArrowRight, Filter, Zap, Tag, LogIn, User } from 'lucide-react';
 
 interface Event {
   id: string;
@@ -21,9 +21,13 @@ export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
     fetchEvents();
+    // Check login state
+    const token = document.cookie.split('; ').find(row => row.startsWith('token='));
+    setIsLoggedIn(!!token);
   }, []);
 
   async function fetchEvents() {
@@ -108,8 +112,31 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header / Navbar */}
+      <div className="absolute top-0 right-0 p-4 md:p-6 w-full flex justify-end z-10 pointer-events-none">
+        <div className="pointer-events-auto">
+          {isLoggedIn ? (
+            <Link 
+              href="/profile"
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full backdrop-blur-md border border-white/20 transition text-sm font-semibold shadow-lg"
+            >
+              <User size={18} />
+              Hesabım / Yönetim
+            </Link>
+          ) : (
+            <Link 
+              href="/login"
+              className="flex items-center gap-2 bg-white text-blue-900 px-5 py-2.5 rounded-full hover:bg-gray-100 transition font-bold shadow-lg"
+            >
+              <LogIn size={18} />
+              Giriş Yap
+            </Link>
+          )}
+        </div>
+      </div>
+
       {/* Hero Section */}
-      <div className="bg-blue-900 text-white py-20 px-4 text-center">
+      <div className="bg-blue-900 text-white pt-24 pb-20 px-4 text-center relative">
         <h1 className="text-4xl md:text-5xl font-extrabold mb-4">Hoş Geldiniz</h1>
         <p className="text-xl text-blue-200 mb-8 max-w-2xl mx-auto">
           En sevdiğiniz konserler, tiyatrolar ve özel organizasyonlar için biletlerinizi hemen ayırtın.

@@ -27,7 +27,7 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3005')
   .split(',')
   .map(o => o.trim());
 
