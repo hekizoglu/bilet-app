@@ -71,7 +71,18 @@ router.get('/', requireAuth, async (req, res) => {
     const cached = cache.get('halls');
     if (cached) return res.json(cached);
 
-    const halls = await prisma.hall.findMany();
+    const halls = await prisma.hall.findMany({
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        seatCount: true,
+        address: true,
+        isGlobal: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
     cache.set('halls', halls, 5 * 60 * 1000);
     res.json(halls);
   } catch (error) {

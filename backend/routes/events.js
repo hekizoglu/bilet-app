@@ -81,7 +81,14 @@ router.get('/', requireAuth, async (req, res) => {
     const cached = cache.get('events');
     if (cached) return res.json(cached);
 
-    const events = await prisma.event.findMany({ include: { hall: true }, orderBy: { createdAt: 'desc' } });
+    const events = await prisma.event.findMany({ 
+      include: { 
+        hall: {
+          select: { id: true, name: true, seatCount: true, address: true, isGlobal: true }
+        }
+      }, 
+      orderBy: { createdAt: 'desc' } 
+    });
     cache.set('events', events, 5 * 60 * 1000); // 5 min cache
     res.json(events);
   } catch (error) {
@@ -96,8 +103,16 @@ router.get('/public', async (req, res) => {
     if (cached) return res.json(cached);
 
     const events = await prisma.event.findMany({
-      where: { visibility: 'PUBLIC', status: 'Aktif' },
-      include: { hall: true },
+      where: { 
+        visibility: 'PUBLIC', 
+        status: 'Aktif',
+        date: { gte: new Date() }
+      },
+      include: { 
+        hall: {
+          select: { id: true, name: true, seatCount: true, address: true, isGlobal: true }
+        }
+      },
       orderBy: { date: 'asc' }
     });
     cache.set('public_events', events, 5 * 60 * 1000);

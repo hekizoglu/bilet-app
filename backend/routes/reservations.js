@@ -221,6 +221,14 @@ router.post('/', validate(resSchema), async (req, res) => {
     });
     
     if (!event) return res.status(404).json({ error: "Etkinlik bulunamadı." });
+    
+    if (event.status !== 'Aktif') {
+      return res.status(400).json({ error: "Bu etkinlik şu anda satışa açık değildir." });
+    }
+    
+    if (new Date(event.date) < new Date()) {
+      return res.status(400).json({ error: "Bu etkinlik geçmişte kalmıştır, bilet alamazsınız." });
+    }
 
     // Güvenlik: Eğer etkinlik PRIVATE ise, UUID ile doğrudan bilet almaya izin verme (Bypass koruması)
     if (event.visibility === 'PRIVATE' && isUuid) {
@@ -589,7 +597,13 @@ router.get('/my', requireAuth, async (req, res) => {
   try {
     const reservations = await prisma.reservation.findMany({
       where: { email: req.user.email },
-      include: { event: { include: { hall: true } } },
+      include: {
+        event: { 
+          include: { 
+            hall: { select: { id: true, name: true, address: true } } 
+          } 
+        }
+      },
       orderBy: { createdAt: 'desc' }
     });
     res.json(reservations);
