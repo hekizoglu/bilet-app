@@ -1,30 +1,30 @@
 # 🔴 Yüksek Puanlı Fikirler (≥28 puan)
 
-Son Güncelleme: 2026-07-06T08:31:50.405Z
+Son Güncelleme: 2026-07-06T09:00:21.415Z
 
-## IDEA-MR8YOGB0-3LQX | 🔴 YÜKSEK | Puan: 51
+## IDEA-MR8ZP4IY-N9UN | 🔴 YÜKSEK | Puan: 61
 
-**Tarih:** 2026-07-06T08:31:50.412Z
-**Faz:** stabilization
+**Tarih:** 2026-07-06T09:00:21.418Z
+**Faz:** security
 **Tür:** 💻 Kod
 **Kaynak:** phase_rule
-**Zorluk:** hard
+**Zorluk:** medium
 
 ### Başlık
-Hata yakalama ve retry mekanizması
+Input validation katmanı
 
 ### Açıklama
-Kritik endpointler için circuit breaker pattern uygulanmalı.
+Tüm kullanıcı girişleri için merkezi validasyon katmanı.
 
 ### Puanlama Detayı
 | Kriter | Puan |
 |--------|------|
-| Etki | 9/10 |
-| Güvenlik | 7/10 |
-| Kullanıcı Dostu | 6/10 |
-| Demografik | 5/10 |
-| Basitlik | 5/10 |
+| Etki | 8/10 |
+| Güvenlik | 10/10 |
+| Kullanıcı Dostu | 5/10 |
+| Demografik | 6/10 |
+| Basitlik | 7/10 |
 
-**Formül:** (9×2.5) + (7×2.0) + (6×1.5) + (5×1.0) + (5×1.5) − 7 = **51**
+**Formül:** (8×2.5) + (10×2.0) + (5×1.5) + (6×1.0) + (7×1.5) − 3 = **61**
 
 ---

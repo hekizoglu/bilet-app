@@ -100,15 +100,19 @@ function addCriticalIdeasToRoadmap(highScoreIdeas) {
   const rules = JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
   if (!rules.autoAddToRoadmap.enabled) return;
   
-  // 25 puan ve üzeri fikirleri filtrele
-  const criticalIdeas = highScoreIdeas.filter(idea => idea.score >= 25);
-  
-  if (criticalIdeas.length === 0) return;
-  
-  console.log(`  🔴 ${criticalIdeas.length} adet KEŞFİ fikir Roadmap'a ekleniyor...`);
-  
-  // Roadmap'ın sonuna eklemek için döngü tanımlı bölümünü bul
   let roadmapContent = fs.readFileSync(roadmapPath, 'utf8');
+  
+  // 25 puan ve üzeri olan, ve ROADMAP'te halihazırda bulunmayan fikirleri filtrele
+  const criticalIdeas = highScoreIdeas.filter(idea => {
+    return idea.score >= 25 && !roadmapContent.includes(idea.idea.title);
+  });
+  
+  if (criticalIdeas.length === 0) {
+    console.log(`  🟢 Yeni kritik fikir bulunamadı (mevcut olanlar zaten Roadmap'te var).`);
+    return;
+  }
+  
+  console.log(`  🔴 ${criticalIdeas.length} adet yeni KEŞFİ fikir Roadmap'a ekleniyor...`);
   
   const loopSection = `
 ## 🔄 Döngü Tarafından Otomatik Eklenen İşler
