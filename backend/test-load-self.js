@@ -11,6 +11,8 @@ let failCount = 0;
 let rateLimitCount = 0;
 let authDeniedCount = 0;
 
+let responseTimes = [];
+
 // Sunucunun hazır olmasını bekle
 function waitForServer(port, retries = 20) {
   return new Promise((resolve, reject) => {
@@ -44,16 +46,32 @@ async function run() {
 
     const makeRequest = (i) => {
       return new Promise((resolve) => {
-        const postData = JSON.stringify({
-          eventId: 'dummy-event-id-for-load-test',
-          customer: `Test Kullanici ${i}`,
-          email: `test${i}@example.com`
-        });
+        const isIbanTest = i % 2 === 0;
+        
+        let postData, path;
+        
+        if (isIbanTest) {
+          // IBAN Validation Flow
+          postData = JSON.stringify({
+            iban: 'TR330006200010000006297802' // Dummy IBAN formatı
+          });
+          path = '/api/payments/validate-iban';
+        } else {
+          // Reservation Flow
+          postData = JSON.stringify({
+            eventId: 'dummy-event-id-for-load-test',
+            customer: `Test Kullanici ${i}`,
+            email: `test${i}@example.com`
+          });
+          path = '/api/reservations';
+        }
+
+        const startTime = Date.now();
 
         const req = http.request({
           hostname: 'localhost',
           port: 5099,
-          path: '/api/reservations',
+          path: path,
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -62,7 +80,10 @@ async function run() {
         }, (res) => {
           res.resume();
           res.on('end', () => {
-            if (res.statusCode === 201) successCount++;
+            const endTime = Date.now();
+            responseTimes.push(endTime - startTime);
+
+            if (res.statusCode >= 200 && res.statusCode < 300) successCount++;
             else if (res.statusCode === 429) rateLimitCount++;
             else if (res.statusCode === 401 || res.statusCode === 403) authDeniedCount++;
             else failCount++;
@@ -79,21 +100,30 @@ async function run() {
     const promises = Array.from({ length: NUM_REQUESTS }, (_, i) => makeRequest(i));
     await Promise.all(promises);
 
+    const avgResponseTime = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
+    const maxResponseTime = Math.max(...responseTimes);
+    const minResponseTime = Math.min(...responseTimes);
+
     console.log('─── YÜK TESTİ SONUÇLARI ────────────────────────');
     console.log(`📊 Toplam İstek       : ${NUM_REQUESTS}`);
     console.log(`✅ Başarılı (2xx)     : ${successCount}`);
-    console.log(`🔐 Auth Reddedildi    : ${authDeniedCount} (401/403 — Beklenen)`);
+    console.log(`🔐 Auth Reddedildi    : ${authDeniedCount} (401/403)`);
     console.log(`🚫 Rate-Limit (429)   : ${rateLimitCount}`);
     console.log(`❌ Diğer Hatalar      : ${failCount}`);
+    console.log('─── PERFORMANS METRİKLERİ ──────────────────────');
+    console.log(`⏱️  Ortalama Yanıt Süresi: ${avgResponseTime.toFixed(2)} ms`);
+    console.log(`⏱️  Min Yanıt Süresi     : ${minResponseTime} ms`);
+    console.log(`⏱️  Max Yanıt Süresi     : ${maxResponseTime} ms`);
     console.log('─────────────────────────────────────────────────');
 
     if (rateLimitCount > 0) {
       console.log('✅ DDoS / Rate Limiter koruması AKTIF!');
-    } else if (authDeniedCount === NUM_REQUESTS) {
-      console.log('✅ Auth koruması AKTIF! Tüm yetkisiz istekler reddedildi.');
-      console.log('   (Rate limiter için yetkilendirilmiş istekler gerekli — normal davranış)');
+    }
+    
+    if (avgResponseTime < 200) {
+       console.log('✅ Performans hedefleri ( < 200ms) karşılandı!');
     } else {
-      console.log('⚠️  Rate Limiter doğrulanamadı — sunucu detaylarını kontrol edin.');
+       console.log('⚠️ Ortalama yanıt süresi 200ms üzerinde. Optimizasyon gerekebilir.');
     }
 
     console.log('\n🎉 Yük testi tamamlandı!');

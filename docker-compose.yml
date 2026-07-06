@@ -5,6 +5,7 @@ services:
     image: postgres:16-alpine
     container_name: bilet_db
     restart: unless-stopped
+    profiles: ["production"]
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-bilet_db}
       POSTGRES_USER: ${POSTGRES_USER:-bilet_user}
@@ -17,16 +18,34 @@ services:
       timeout: 5s
       retries: 5
 
+  db_staging:
+    image: postgres:16-alpine
+    container_name: bilet_db_staging
+    restart: unless-stopped
+    profiles: ["staging"]
+    environment:
+      POSTGRES_DB: bilet_staging
+      POSTGRES_USER: staging_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-staging_pass}
+    volumes:
+      - db_staging_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U staging_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: bilet_backend
     restart: unless-stopped
+    profiles: ["production", "staging"]
     ports:
       - "${PORT:-5000}:5000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - PORT=${PORT:-5000}
       - JWT_SECRET=${JWT_SECRET}
       - DATABASE_URL=${DATABASE_URL}
@@ -42,6 +61,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+        required: false
+      db_staging:
+        condition: service_healthy
+        required: false
     volumes:
       - backend_data:/app/prisma
 
@@ -51,10 +74,11 @@ services:
       dockerfile: Dockerfile
     container_name: bilet_frontend
     restart: unless-stopped
+    profiles: ["production", "staging"]
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}
       - NEXT_PUBLIC_SOCKET_URL=${NEXT_PUBLIC_SOCKET_URL:-http://localhost:5000}
     depends_on:
@@ -62,4 +86,5 @@ services:
 
 volumes:
   db_data:
+  db_staging_data:
   backend_data:

@@ -57,30 +57,30 @@ FAZ 15 (Performans), FAZ 16 (Güvenlik), FAZ 17 (Validasyon), FAZ 18 (UX) şu an
 
 ## 🔄 Döngü Tarafından Otomatik Eklenen İşler
 
-#### 1. 💻 Hata yakalama ve retry mekanizması
+#### 1. 💻 [x] Hata yakalama ve retry mekanizması
 - **ID:** IDEA-MR1YC8SI-I2J7
 - **Puan:** 51/40
 - **Zorluk:** hard
-- **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı.
+- **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı. (Uygulandı: reservations.js & payments.js)
 
 ---
 
-*Son Güncelleme: 2026-07-01*
+*Son Güncelleme: 2026-07-06*
 
-#### 2. 💻 Input validation katmanı
+#### 2. 💻 [x] Input validation katmanı
 - **ID:** IDEA-MR1YDJ2I-065I
 - **Puan:** 61/40
 - **Zorluk:** medium
-- **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı.
+- **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı. (Uygulandı: validate.js Zod schema)
 
-#### 3. 💻 Veritabanı sorgu optimizasyonu
+#### 3. 💻 [x] Veritabanı sorgu optimizasyonu
 - **ID:** IDEA-MR1YETDP-TBSL
 - **Puan:** 44.5/40
 - **Zorluk:** medium
-- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi.
+- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi. (Uygulandı: schema.prisma)
 
-#### 4. 📱 Mobil responsive kontrolü
+#### 4. 📱 [x] Mobil responsive kontrolü
 - **ID:** IDEA-MR1YG3NP-K5KW
 - **Puan:** 49/40
 - **Zorluk:** easy
-- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi. (Uygulandı: event detail page responsive Tailwind)
