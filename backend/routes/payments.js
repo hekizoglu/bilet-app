@@ -217,9 +217,14 @@ router.post('/bank-webhook', validate(webhookSchema), async (req, res) => {
       return res.json({ success: true, message: "Ödeme zaten onaylanmış durumda." });
     }
 
-    // Rezervasyonu güncelle
-    const updated = await prisma.reservation.update({
-      where: { id: reservation.id },
+    // Rezervasyonu atomic olarak güncelle (sadece pending ise)
+    // Prisma'da update'e ek where koşulu eklemek için updateMany veya özel yapı gerekir, ama id benzersiz olduğu için update de yeterli.
+    // Ancak sadece 'pending' olanları güncellemek için updateMany kullanıp dönen count'a bakmak en güvenlisidir.
+    const updateResult = await prisma.reservation.updateMany({
+      where: { 
+        id: reservation.id,
+        paymentStatus: 'pending'
+      },
       data: {
         paymentStatus: 'paid',
         status: 'Onaylı',
@@ -228,9 +233,18 @@ router.post('/bank-webhook', validate(webhookSchema), async (req, res) => {
       }
     });
 
+    if (updateResult.count === 0) {
+      return res.json({ success: true, message: "Ödeme daha önce onaylanmış veya işlenemedi." });
+    }
+
+    // Güncellenmiş rezervasyon verisini tam olarak almak için tekrar fetch edelim (updateMany objeyi döndürmez)
+    const updatedReservation = await prisma.reservation.findUnique({
+      where: { id: reservation.id }
+    });
+
     // QR Kodu Base64 formatında oluştur ve E-posta Gönder
     const QRCode = require('qrcode');
-    const qrDataUrl = await QRCode.toDataURL(reservation.ticketCode);
+    const qrDataUrl = await QRCode.toDataURL(updatedReservation.ticketCode);
 
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({

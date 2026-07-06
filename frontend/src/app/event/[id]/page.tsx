@@ -10,6 +10,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
   
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', seatId: '', seatName: '' });
 
   const [reservationSuccess, setReservationSuccess] = useState<any>(null);
@@ -57,6 +58,8 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     try {
       const res = await fetch('http://localhost:5000/api/reservations', {
         method: 'POST',
@@ -85,11 +88,31 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
       }
     } catch (err) {
       alert("Bağlantı hatası");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Yükleniyor...</div>;
-  if (data.error) return <div className="text-red-500 p-8 text-center">{data.error}</div>;
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+    </div>
+  );
+
+  if (data.error) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="bg-white p-8 rounded-3xl shadow-sm text-center max-w-md w-full border border-gray-100">
+        <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Bilet Bulunamadı</h2>
+        <p className="text-gray-500 mb-6">{data.error}</p>
+        <button onClick={() => router.push('/')} className="bg-gray-900 text-white px-6 py-2 rounded-xl font-semibold hover:bg-gray-800 transition w-full">
+          Ana Sayfaya Dön
+        </button>
+      </div>
+    </div>
+  );
 
   if (reservationSuccess) {
     return (
@@ -285,8 +308,19 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                      placeholder="05xxxxxxxxx (İsteğe bağlı)"
                      onChange={e => setForm({...form, phone: e.target.value})} />
             </div>
-            <button type="submit" className="w-full bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 transition shadow-md shadow-green-500/10 text-sm cursor-pointer">
-              Rezervasyonu Tamamla
+            <button 
+              type="submit" 
+              disabled={isSubmitting}
+              className={`w-full text-white font-bold py-3 rounded-xl transition shadow-md text-sm flex items-center justify-center gap-2 ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 shadow-green-500/10 cursor-pointer'}`}
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  İşleniyor...
+                </>
+              ) : (
+                'Rezervasyonu Tamamla'
+              )}
             </button>
           </form>
         </div>

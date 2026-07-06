@@ -596,6 +596,34 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
           });
         }, 3, 1000);
 
+        // Eğer cardless (telegram bildirimli) ise Telegram'a da düşür
+        if (reservation.event.paymentType === 'cardless') {
+          try {
+            const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+            if (adminUser?.telegramBotToken && adminUser?.telegramChatId) {
+              const payload = JSON.stringify({
+                chat_id: adminUser.telegramChatId,
+                text: `⚠️ İptal/İade Bildirimi:\n\n👤 ${reservation.customer}\n🎫 Bilet ID: ${reservation.ticketCode.slice(0,8)}\n💰 İade Tutarı: ${amount} ₺\n📝 Neden: ${reason || 'Belirtilmedi'}`,
+                parse_mode: "HTML"
+              });
+              const options = {
+                hostname: 'api.telegram.org',
+                port: 443,
+                path: `/bot${adminUser.telegramBotToken}/sendMessage`,
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+              };
+              
+              // Arka planda devre kesici (circuit breaker) ve retry mekanizmasıyla gönder
+              taskQueue.add(async () => {
+                await retryWithBackoff(() => telegramCircuit.execute(options, payload), 3, 2000);
+              }).catch(console.error);
+            }
+          } catch (telErr) {
+            console.error("Telegram iptal bildirimi gönderilemedi:", telErr);
+          }
+        }
+
         res.json({
           success: true,
           message: "Bilet başarıyla iade edildi ve iptal e-postası gönderildi.",
