@@ -9,6 +9,10 @@ const cache = require('../utils/cache');
 const { CircuitBreaker, retryWithBackoff } = require('../utils/circuitBreaker');
 const taskQueue = require('../utils/queue');
 const Sentry = require('@sentry/node');
+const { Mutex } = require('async-mutex');
+const { calculateFinalPrice } = require('../services/pricingService');
+
+const reservationMutex = new Mutex();
 
 // Salon Yerleşim Planındaki koltukları ayrıştıran fonksiyon (Hem elements hem chairs destekli)
 function extractSeatsFromLayout(layoutJson) {
@@ -141,32 +145,39 @@ router.get('/availability/:eventId', async (req, res) => {
 
     if (!event) return res.status(404).json({ error: "Etkinlik bulunamadı" });
     
-    if (!event) return res.status(404).json({ error: "Etkinlik bulunamadı" });
-
     // Güvenlik: Eğer etkinlik PRIVATE ise, URL'de mutlaka privateSlug kullanılmalı. 
     // Yani isUuid true ise ve etkinlik PRIVATE ise erişimi reddet (admin paneli hariç - ileride adminler girebilir ama public bilet alamaz)
     if (event.visibility === 'PRIVATE' && isUuid) {
       return res.status(403).json({ error: "Bu özel bir etkinliktir. Lütfen davet linkini kullanın." });
     }
 
-    // Satılmış/Bekleyen rezervasyonları çek
     const reservations = await prisma.reservation.findMany({
       where: { eventId: event.id, status: { in: ['Onaylı', 'Beklemede'] } }
     });
 
     let responseData;
+    let finalDynamicPrice = event.price;
 
-    // 1. Koltuksuz (Genel Giriş) Algoritması
+    // Koltuksuz (Ayakta) Etkinlik
     if (!event.isSeated) {
-      const totalSold = reservations.length;
-      const availableCount = event.capacity - totalSold;
+      const sold = await prisma.reservation.count({
+        where: {
+          eventId: event.id,
+          status: { in: ['Onaylı', 'Beklemede'] }
+        }
+      });
+      
+      finalDynamicPrice = calculateDynamicPrice(event.price, event.maxPrice, event.dynamicPricingThreshold, sold, event.capacity);
+
       responseData = { 
         isSeated: false, 
-        capacity: event.capacity, 
-        sold: totalSold, 
-        available: Math.max(0, availableCount),
+        totalCapacity: event.capacity, 
+        sold, 
+        available: Math.max(0, event.capacity - sold),
         paymentType: event.paymentType,
-        eventId: event.id
+        eventId: event.id,
+        price: finalDynamicPrice,
+        basePrice: event.price
       };
     } else {
       // 2. Koltuklu Algoritması
@@ -185,6 +196,8 @@ router.get('/availability/:eventId', async (req, res) => {
           y: seat.y
         }));
 
+      finalDynamicPrice = calculateDynamicPrice(event.price, event.maxPrice, event.dynamicPricingThreshold, reservations.length, allSeats.length);
+
       responseData = {
         isSeated: true,
         hallName: event.hall.name,
@@ -192,7 +205,9 @@ router.get('/availability/:eventId', async (req, res) => {
         sold: takenSeatIds.size,
         availableSeats,
         paymentType: event.paymentType,
-        eventId: event.id
+        eventId: event.id,
+        price: finalDynamicPrice,
+        basePrice: event.price
       };
     }
 
@@ -210,10 +225,12 @@ const resSchema = z.object({
   seatId: z.string().optional().nullable(),
   customer: z.string().min(2),
   email: z.string().email(),
-  phone: z.string().optional()
+  phone: z.string().optional(),
+  couponCode: z.string().optional()
 });
 
 router.post('/', validate(resSchema), async (req, res) => {
+  const release = await reservationMutex.acquire();
   try {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.body.eventIdOrSlug);
     const event = await prisma.event.findFirst({
@@ -298,8 +315,48 @@ router.post('/', validate(resSchema), async (req, res) => {
         const status = event.paymentType === 'free' ? 'Onaylı' : 'Beklemede';
         const paymentStatus = event.paymentType === 'free' ? 'paid' : 'pending';
 
+        // Kupon İşlemi
+        let paymentDetailsObj = {
+          basePrice: event.price,
+          finalPrice: event.price,
+          discountAmount: 0
+        };
+
+        if (req.body.couponCode) {
+          const coupon = await tx.coupon.findUnique({ where: { code: req.body.couponCode } });
+          if (!coupon) throw new Error("Geçersiz kupon kodu.");
+          if (!coupon.isActive) throw new Error("Bu kupon artık aktif değil.");
+          if (coupon.validUntil && new Date(coupon.validUntil) < new Date()) throw new Error("Bu kuponun süresi dolmuş.");
+          if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) throw new Error("Bu kuponun kullanım limiti dolmuş.");
+
+          // İndirim hesapla (Servis katmanı)
+          const { finalPrice, discountAmount } = calculateFinalPrice(event.price, coupon);
+          
+          paymentDetailsObj.finalPrice = finalPrice;
+          paymentDetailsObj.discountAmount = discountAmount;
+          paymentDetailsObj.couponCode = coupon.code;
+
+          // Kullanım sayısını artır
+          await tx.coupon.update({
+            where: { id: coupon.id },
+            data: { usedCount: { increment: 1 } }
+          });
+        }
+
         // eventIdOrSlug parametresini temizleyip gerçek eventId ve doğrulanmış seatName ile kaydet
-        const { eventIdOrSlug, ...rest } = req.body;
+        const { eventIdOrSlug, couponCode, ...rest } = req.body;
+
+        // Sadakat Puanı Hesaplama (Satın alınan tutarın %5'i kadar puan)
+        const earnedPoints = paymentDetailsObj.finalPrice > 0 ? (paymentDetailsObj.finalPrice * 0.05) : 0;
+
+        // Kullanıcıyı emaili ile bul ve puanını artır (Eğer kayıtlı bir kullanıcı ise)
+        const user = await tx.user.findUnique({ where: { email: rest.email } });
+        if (user && earnedPoints > 0) {
+          await tx.user.update({
+            where: { email: rest.email },
+            data: { points: { increment: earnedPoints } }
+          });
+        }
 
         return tx.reservation.create({
           data: {
@@ -307,9 +364,11 @@ router.post('/', validate(resSchema), async (req, res) => {
             eventId: event.id,
             seatName: resolvedSeatName,
             ticketCode: require('crypto').randomUUID(),
-            status,
-            paymentStatus,
-            paymentReference
+            status: paymentDetailsObj.finalPrice === 0 ? 'Onaylı' : status, // Tamamen ücretsizse onaylı yap
+            paymentStatus: paymentDetailsObj.finalPrice === 0 ? 'paid' : paymentStatus,
+            paymentReference,
+            paymentDetails: JSON.stringify(paymentDetailsObj),
+            earnedPoints
           }
         });
       }, {
@@ -326,10 +385,20 @@ router.post('/', validate(resSchema), async (req, res) => {
     cache.del('admin_reservations');
 
     // Soket Yayını: Sadece o etkinliğe (room) bağlı müşterilere seat_booked mesajı yolla
+    const io = req.app.get('io');
     if (event.isSeated && req.body.seatId) {
-      const io = req.app.get('io');
       io.to(event.id).emit('seat_booked', { seatId: req.body.seatId });
     }
+
+    // Admin dashboard için analitik yayını
+    try {
+      const pDetails = reservation.paymentDetails ? JSON.parse(reservation.paymentDetails) : { finalPrice: event.price };
+      io.to('admin_room').emit('new_sale', {
+        amount: pDetails.finalPrice || event.price,
+        eventId: event.id,
+        status: reservation.status
+      });
+    } catch(e) {}
 
     // Send Telegram Notification (if cardless)
     if (event.paymentType === 'cardless') {
@@ -425,6 +494,8 @@ router.post('/', validate(resSchema), async (req, res) => {
     res.status(201).json({ success: true, reservation, mailSent: mailStatus });
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  } finally {
+    release();
   }
 });
 
@@ -520,6 +591,47 @@ router.post('/:id/cancel', requireAuth, async (req, res) => {
     if (io) {
       io.to(reservation.eventId).emit('seat_released', { seatId: reservation.seatId });
     }
+
+    // Waitlist (Bekleme Listesi) Kontrolü ve Bildirimi
+    const taskQueue = require('../utils/queue');
+    taskQueue.addJob('notifyWaitlist', async () => {
+      const waitlistEntry = await prisma.waitlist.findFirst({
+        where: { eventId: reservation.eventId, status: 'PENDING' },
+        orderBy: { createdAt: 'asc' }
+      });
+
+      if (waitlistEntry) {
+        await prisma.waitlist.update({
+          where: { id: waitlistEntry.id },
+          data: { status: 'NOTIFIED' }
+        });
+
+        const eventData = await prisma.event.findUnique({ where: { id: reservation.eventId } });
+        const nodemailer = require('nodemailer');
+        const transporter = nodemailer.createTransport({
+          host: 'smtp.ethereal.email',
+          port: 587,
+          auth: { user: 'mylene.stamm@ethereal.email', pass: 'Hk3V78Jqyv28pS7T1G' }
+        });
+        
+        await transporter.sendMail({
+          from: '"Bilet Sistemi" <noreply@bilet.local>',
+          to: waitlistEntry.email,
+          subject: `🎟️ Müjde! ${eventData.name} İçin Bilet Açıldı!`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h2 style="color: #2563eb; text-align: center;">Müjde, Bilet Bulduk!</h2>
+              <p>Merhaba <b>${waitlistEntry.customerName}</b>,</p>
+              <p>Bekleme listesinde olduğunuz <b>${eventData.name}</b> etkinliği için bir bilet şu anda boşa çıktı!</p>
+              <p>Bu bilet <b>ilk gelen alır</b> prensibiyle satıştadır. Hemen aşağıdaki butona tıklayarak satın alabilirsiniz:</p>
+              <div style="text-align: center; margin-top: 30px;">
+                <a href="http://localhost:3000/event/${eventData.id}" style="display:inline-block; padding:12px 24px; background-color:#2563eb; color:white; text-decoration:none; font-weight:bold; border-radius:8px;">Etkinliğe Git ve Bilet Al</a>
+              </div>
+            </div>
+          `
+        });
+      }
+    });
 
     res.json({ success: true, message: "Rezervasyon iptal edildi ve koltuk boşa çıkarıldı." });
   } catch (error) {
@@ -634,6 +746,21 @@ router.post('/:id/request-payment', requireAuth, async (req, res) => {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
   }
 });
+
+function calculateDynamicPrice(basePrice, maxPrice, thresholdPercent, soldCount, totalCapacity) {
+  if (!maxPrice || !thresholdPercent || totalCapacity === 0) return basePrice;
+  const currentPercent = (soldCount / totalCapacity) * 100;
+  if (currentPercent < thresholdPercent) return basePrice;
+  
+  // Linear increase from threshold to 100%
+  const percentAboveThreshold = currentPercent - thresholdPercent;
+  const remainingPercent = 100 - thresholdPercent;
+  const ratio = Math.min(1, percentAboveThreshold / remainingPercent); // Max 1
+  
+  const dynamicPrice = basePrice + ((maxPrice - basePrice) * ratio);
+  // Round to nearest integer for cleaner UX
+  return Math.round(dynamicPrice);
+}
 
 // GET /api/reservations/:id/payment-status
 router.get('/:id/payment-status', async (req, res) => {
@@ -830,6 +957,46 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// POST /api/reservations/checkin
+// Kapıda QR okutularak bilet kullanıldı (isUsed) işaretleme
+router.post('/checkin', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
+
+    const { ticketCode } = req.body;
+    if (!ticketCode) {
+      return res.status(400).json({ error: "Bilet kodu gerekli" });
+    }
+
+    const reservation = await prisma.reservation.findUnique({
+      where: { ticketCode }
+    });
+
+    if (!reservation) {
+      return res.status(404).json({ error: "Geçersiz bilet kodu" });
+    }
+
+    if (reservation.status !== 'Onaylı') {
+      return res.status(400).json({ error: `Bu biletin durumu uygun değil: ${reservation.status}` });
+    }
+
+    if (reservation.isUsed) {
+      return res.status(400).json({ error: "Bu bilet daha önce kullanılmış!" });
+    }
+
+    const updated = await prisma.reservation.update({
+      where: { ticketCode },
+      data: { isUsed: true, usedAt: new Date() }
+    });
+
+    res.json({ success: true, message: "Check-in başarılı", reservation: updated });
+  } catch (error) {
+    res.status(500).json({ error: "Check-in işlemi sırasında hata oluştu", details: error.message });
   }
 });
 

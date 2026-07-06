@@ -11,7 +11,15 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', phone: '', seatId: '', seatName: '' });
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    seatId: '',
+    seatName: '',
+    couponCode: ''
+  });
+  const [discount, setDiscount] = useState<{type: string, value: number} | null>(null);
 
   const [reservationSuccess, setReservationSuccess] = useState<any>(null);
   const [adminPaymentInfo, setAdminPaymentInfo] = useState<any>(null);
@@ -58,19 +66,28 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+    if (data.isSeated && !form.seatId) {
+      alert("Lütfen bir koltuk seçin.");
+      return;
+    }
+    
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
+      const payload: any = {
+        eventIdOrSlug: id,
+        customer: form.name,
+        email: form.email,
+        phone: form.phone,
+        couponCode: form.couponCode || undefined
+      };
+      if (data.isSeated) {
+        payload.seatId = form.seatId;
+      }
       const res = await fetch('http://localhost:5000/api/reservations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventIdOrSlug: id,
-          customer: form.name,
-          email: form.email,
-          phone: form.phone,
-          seatId: form.seatId || null
-        })
+        body: JSON.stringify(payload)
       });
       if (res.ok) {
         const result = await res.json();
@@ -84,6 +101,33 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
       else {
         const err = await res.json();
         alert(`Hata: ${err.error || 'Bilinmeyen hata'}`);
+      }
+    } catch (err) {
+      alert("Bağlantı hatası");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleWaitlist = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/events/${id}/waitlist`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: form.name,
+          email: form.email,
+          phone: form.phone
+        })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        alert("Bekleme listesine başarıyla eklendiniz! Bilet iptali olursa anında haber vereceğiz.");
+        window.location.reload();
+      } else {
+        alert(`Hata: ${result.error || 'Bilinmeyen hata'}`);
       }
     } catch (err) {
       alert("Bağlantı hatası");
@@ -280,9 +324,96 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
           )}
         </div>
 
-        {/* Sağ Sütun: Rezervasyon Formu */}
+        {/* Sağ Sütun: Rezervasyon Formu veya Bekleme Listesi */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-          <h2 className="text-xl font-bold text-gray-900">Müşteri Bilgileri</h2>
+          {(data.isSeated ? data.availableSeats?.length === 0 : data.available === 0) ? (
+            <>
+              <h2 className="text-xl font-bold text-gray-900">Etkinlik Dolu 🎫</h2>
+              <p className="text-sm text-gray-500">Tüm biletler tükenmiştir. İptal olan biletlerden anında haberdar olmak için bekleme listesine katılabilirsiniz. Bilet açıldığı an e-posta alacaksınız.</p>
+              
+              <form onSubmit={handleWaitlist} className="space-y-4 mt-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Ad Soyad</label>
+                  <input required type="text" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm" 
+                         onChange={e => setForm({...form, name: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">E-Posta</label>
+                  <input required type="email" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                         onChange={e => setForm({...form, email: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Telefon</label>
+                  <input type="tel" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                         placeholder="05xxxxxxxxx (İsteğe bağlı)"
+                         onChange={e => setForm({...form, phone: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">İndirim Kuponu (Opsiyonel)</label>
+                  <div className="flex gap-2">
+                    <input type="text" className="flex-1 border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm uppercase"
+                           placeholder="KOD"
+                           value={form.couponCode}
+                           onChange={e => setForm({...form, couponCode: e.target.value.toUpperCase()})} />
+                    <button type="button" 
+                            onClick={async () => {
+                              if (!form.couponCode) return;
+                              const res = await fetch('http://localhost:5000/api/coupons/validate', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({ code: form.couponCode })
+                              });
+                              const result = await res.json();
+                              if (res.ok) {
+                                setDiscount({ type: result.discountType, value: result.discountValue });
+                                alert("Kupon başarıyla uygulandı!");
+                              } else {
+                                alert(result.error);
+                                setDiscount(null);
+                                setForm({...form, couponCode: ''});
+                              }
+                            }}
+                            className="bg-gray-100 px-4 rounded-xl font-bold hover:bg-gray-200 transition">Uygula</button>
+                  </div>
+                  {discount && (
+                    <p className="text-green-600 text-xs mt-2 font-bold">Kupon aktif: {discount.type === 'PERCENTAGE' ? `%${discount.value} indirim` : `${discount.value} TL indirim`}</p>
+                  )}
+                </div>
+                
+                {/* Fiyat Özeti */}
+                <div className="border-t border-gray-100 pt-4 mt-4">
+                  <div className="flex justify-between items-center text-sm mb-1">
+                    <span className="text-gray-500">Bilet Fiyatı:</span>
+                    <span className="font-semibold">{data.price} ₺</span>
+                  </div>
+                  {discount && (
+                    <div className="flex justify-between items-center text-sm text-green-600 mb-1">
+                      <span>İndirim:</span>
+                      <span>-{discount.type === 'PERCENTAGE' ? (data.price * discount.value / 100).toFixed(2) : discount.value.toFixed(2)} ₺</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-lg font-bold text-gray-900 mt-2">
+                    <span>Toplam Ödenecek:</span>
+                    <span>
+                      {discount 
+                        ? Math.max(0, data.price - (discount.type === 'PERCENTAGE' ? (data.price * discount.value / 100) : discount.value)).toFixed(2)
+                        : data.price} ₺
+                    </span>
+                  </div>
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className={`w-full text-white font-bold py-3 rounded-xl transition shadow-md text-sm flex items-center justify-center gap-2 ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600 shadow-orange-500/10 cursor-pointer'}`}
+                >
+                  {isSubmitting ? 'İşleniyor...' : 'Bekleme Listesine Katıl'}
+                </button>
+              </form>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl font-bold text-gray-900">Müşteri Bilgileri</h2>
           
           {form.seatId && (
             <div className="p-3 bg-blue-50 text-blue-800 rounded-xl text-sm font-semibold border border-blue-100">
@@ -322,6 +453,8 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
               )}
             </button>
           </form>
+          </>
+          )}
         </div>
       </div>
     </div>

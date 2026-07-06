@@ -81,9 +81,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   const navItems = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    { name: 'Canlı Analitik', href: '/admin/analytics', icon: LayoutDashboard },
     { name: 'Etkinlikler', href: '/admin/events', icon: Calendar },
     { name: 'Salonlar', href: '/admin/halls', icon: MapIcon },
     { name: 'Rezervasyonlar', href: '/admin/reservations', icon: Users },
+    { name: 'Kuponlar', href: '/admin/coupons', icon: Users }, // Replace icon later if needed
     { name: 'Ayarlar', href: '/admin/settings', icon: Settings },
   ];
 

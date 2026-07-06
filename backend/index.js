@@ -24,6 +24,9 @@ const { requireAuth } = require('./middlewares/auth');
 const rateLimit = require('express-rate-limit');
 const http = require('http');
 const { Server } = require('socket.io');
+const xss = require('xss-clean');
+
+// Winston Logger was here
 
 const app = express();
 const server = http.createServer(app);
@@ -62,6 +65,11 @@ io.on('connection', (socket) => {
     socket.join(eventId);
     logger.info(`Socket ${socket.id} joined event ${eventId}`);
   });
+
+  socket.on('join_admin', () => {
+    socket.join('admin_room');
+    logger.info(`Socket ${socket.id} joined admin_room`);
+  });
 });
 
 // Rate Limiter Ayarı (DDoS Koruması)
@@ -98,6 +106,8 @@ app.use('/api/halls', hallRoutes);
 app.use('/api/reservations', reservationRoutes);
 app.use('/api/users', require('./routes/users'));
 app.use('/api/payments', require('./routes/payments'));
+app.use('/api/coupons', require('./routes/coupons'));
+app.use('/api/telegram', require('./routes/telegram'));
 
 // GET /api/admin/stats
 // Dynamic aggregate dashboard statistics for admin
@@ -150,9 +160,17 @@ app.get('/api/admin/reports', requireAuth, async (req, res) => {
     const { PrismaClient } = require('@prisma/client');
     const prismaInstance = new PrismaClient();
 
-    // Tüm rezervasyonları çek (etkinlik bilgisiyle)
+    // Tüm rezervasyonları çek (sadece gereken alanlar)
     const reservations = await prismaInstance.reservation.findMany({
-      include: { event: true }
+      select: {
+        paymentStatus: true,
+        paymentDetails: true,
+        paymentMethod: true,
+        createdAt: true,
+        event: {
+          select: { price: true }
+        }
+      }
     });
 
     let totalPaid = 0;
@@ -233,6 +251,10 @@ app.get('/api/admin/dashboard', requireAuth, (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
+  res.json({ status: 'OK' });
+});
+
+app.get('/', (req, res) => {
   res.json({ status: 'OK' });
 });
 

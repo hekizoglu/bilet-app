@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react';
 import { Ticket, Calendar, MapPin, Loader2, Navigation } from 'lucide-react';
 import Link from 'next/link';
 import { QRCodeCanvas } from 'qrcode.react';
+import QRCode from "react-qr-code";
 
 export default function ProfilePage() {
   const [reservations, setReservations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
+  const [userDetails, setUserDetails] = useState<any>(null);
 
   useEffect(() => {
     fetchReservations();
@@ -23,9 +25,20 @@ export default function ProfilePage() {
 
   const fetchReservations = async () => {
     try {
+      const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+      if (!token) return;
+
+      const userRes = await fetch('http://localhost:5000/api/users/me', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (userRes.ok) {
+        const data = await userRes.json();
+        setUserDetails(data);
+      }
+
       const res = await fetch('http://localhost:5000/api/reservations/my', {
         headers: {
-          'Authorization': `Bearer ${getCookie('token')}`
+          'Authorization': `Bearer ${token}`
         }
       });
       if (res.ok) {
@@ -74,6 +87,28 @@ export default function ProfilePage() {
         Biletlerim
       </h1>
 
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6 grid md:grid-cols-2 gap-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+          </div>
+          <div>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Telegram</p>
+            <p className="text-gray-900 font-medium">@{userDetails?.telegramUsername || "Bağlı Değil"}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-yellow-50 text-yellow-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
+          </div>
+          <div>
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Sadakat Puanı</p>
+            <p className="text-gray-900 font-bold text-lg">{userDetails?.points || 0} Puan</p>
+          </div>
+        </div>
+      </div>
+
       {reservations.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
           <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -86,7 +121,7 @@ export default function ProfilePage() {
         <div className="grid gap-4">
           {reservations.map((res: any) => (
             <div key={res.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div>
+              <div className="flex-1">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">{res.event?.name}</h3>
                 <div className="flex flex-col gap-1 text-sm text-gray-600">
                   <span className="flex items-center gap-1.5"><Calendar size={16} /> {new Date(res.event?.date).toLocaleString('tr-TR')}</span>
@@ -102,6 +137,17 @@ export default function ProfilePage() {
                   )}
                 </div>
               </div>
+
+              {res.status === 'Onaylı' && (
+                <div className="flex-shrink-0 bg-gray-50 p-3 rounded-xl border border-gray-100 flex flex-col items-center justify-center min-w-[120px]">
+                  <QRCode 
+                    value={res.ticketCode || "invalid_code"} 
+                    size={80} 
+                    style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+                    viewBox={`0 0 100 100`}
+                  />
+                </div>
+              )}
               
               <div className="flex flex-col items-end gap-2 min-w-[120px]">
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -147,7 +193,6 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Ticket Modal */}
       {selectedTicket && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full border border-gray-100 shadow-xl relative animate-in fade-in zoom-in duration-200">

@@ -122,4 +122,45 @@ router.get('/public', async (req, res) => {
   }
 });
 
+// POST /api/events/:id/waitlist
+router.post('/:id/waitlist', async (req, res) => {
+  try {
+    const { customerName, email, phone } = req.body;
+    const eventId = req.params.id;
+
+    if (!customerName || !email) {
+      return res.status(400).json({ error: "İsim ve E-posta zorunludur." });
+    }
+
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!event) return res.status(404).json({ error: "Etkinlik bulunamadı." });
+
+    if (event.status !== 'Aktif' || new Date(event.date) < new Date()) {
+      return res.status(400).json({ error: "Bu etkinlik için bekleme listesine katılamazsınız." });
+    }
+
+    // Check if user is already on the waitlist
+    const existing = await prisma.waitlist.findFirst({
+      where: { eventId, email, status: 'PENDING' }
+    });
+
+    if (existing) {
+      return res.status(400).json({ error: "Bu e-posta adresi ile zaten bekleme listesindesiniz." });
+    }
+
+    const entry = await prisma.waitlist.create({
+      data: {
+        eventId,
+        customerName,
+        email,
+        phone
+      }
+    });
+
+    res.json({ success: true, message: "Bekleme listesine başarıyla eklendiniz." });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
 module.exports = router;

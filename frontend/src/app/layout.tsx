@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Toaster } from 'sonner';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bilet Yönetim Sistemi",
-  description: "Etkinlik bilet yönetimi, rezervasyon ve koltuk planlama platformu",
+  title: "Bilet Uygulaması",
+  description: "Bilet alma ve yönetme platformu.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -52,6 +53,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col">
         {children}
+        <Toaster position="top-center" richColors />
         {/* Phase 13.8: PWA Service Worker kayıt scripti */}
         <script
           dangerouslySetInnerHTML={{
@@ -70,4 +72,3 @@ export default function RootLayout({
     </html>
   );
 }
-

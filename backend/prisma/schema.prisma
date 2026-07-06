@@ -16,6 +16,8 @@ model Setting {
 model User {
   id                    String    @id @default(uuid())
   email                 String    @unique
+  name                  String?
+  password              String?
   role                  String    @default("CUSTOMER")
   iban                  String?
   telegramUsername      String?
@@ -24,7 +26,10 @@ model User {
   paymentMethod         String?
   isPaymentInfoVerified Boolean   @default(false)
   paymentInfoVerifiedAt DateTime?
+  points                Float     @default(0)
   createdAt             DateTime  @default(now())
+
+  @@index([role])
 }
 
 model Hall {
@@ -53,11 +58,19 @@ model Event {
   hallId       String?       // Koltuksuz ise NULL olabilir
   hall         Hall?         @relation(fields: [hallId], references: [id])
   paymentType  String        @default("free") // "free", "creditcard", "cardless"
+  
+  // Dynamic Pricing
+  dynamicPricingThreshold Int? // Yüzde kaç doluluğa ulaşınca fiyat artacak? (örn: 70)
+  maxPrice     Float?        // Fiyat maksimum ne kadar olabilir?
+  
   reservations Reservation[]
+  waitlists    Waitlist[]
   createdAt    DateTime      @default(now())
 
   @@index([hallId])
   @@index([status])
+  @@index([date])
+  @@index([privateSlug])
 }
 
 model Reservation {
@@ -76,6 +89,7 @@ model Reservation {
   paidAt          DateTime?
   paymentReference String?
   paymentDetails  String?   // SQLite için JSON string
+  earnedPoints    Float     @default(0) // Bu rezervasyondan kazanılan puan
   isUsed          Boolean   @default(false) // Bilet kapıda okutuldu mu? (Check-in)
   usedAt          DateTime? // Bilet ne zaman okutuldu?
   createdAt       DateTime  @default(now())
@@ -84,4 +98,34 @@ model Reservation {
   @@index([email])
   @@index([paymentReference])
   @@index([status])
+}
+
+model Waitlist {
+  id           String   @id @default(uuid())
+  eventId      String
+  customerName String
+  email        String
+  phone        String?
+  status       String   @default("PENDING") // PENDING, NOTIFIED
+  createdAt    DateTime @default(now())
+
+  event        Event    @relation(fields: [eventId], references: [id])
+
+  @@index([eventId])
+  @@index([status])
+  @@index([email])
+}
+
+model Coupon {
+  id            String   @id @default(uuid())
+  code          String   @unique // e.g., YAZ20
+  discountType  String   // "PERCENTAGE" or "FIXED"
+  discountValue Float
+  maxUses       Int?     // NULL means unlimited
+  usedCount     Int      @default(0)
+  validUntil    DateTime?
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@index([code])
 }
