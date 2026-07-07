@@ -6,6 +6,7 @@ const { requireAuth } = require('../middlewares/auth');
 const { encrypt, decrypt } = require('../utils/encryption');
 const { z } = require('zod');
 const { validate } = require('../middlewares/validate');
+const logger = require('../utils/logger');
 
 const profileSchema = z.object({
   iban: z.string().optional().nullable(),
@@ -34,7 +35,7 @@ router.get('/admin-payment-info', async (req, res) => {
       email: admin.email
     });
   } catch (err) {
-    console.error("Error fetching admin payment info:", err);
+    logger.error(`Error fetching admin payment info: ${err.message}`);
     res.status(500).json({ error: 'Ödeme bilgileri getirilemedi.' });
   }
 });
@@ -70,7 +71,7 @@ router.get('/profile', requireAuth, async (req, res) => {
 
     res.json(safeUser);
   } catch (err) {
-    console.error("Error fetching user profile:", err);
+    logger.error(`Error fetching user profile: ${err.message}`);
     res.status(500).json({ error: 'Profil bilgileri getirilemedi.' });
   }
 });
@@ -114,7 +115,7 @@ router.put('/profile', requireAuth, validate(profileSchema), async (req, res) =>
 
     res.json({ success: true, message: 'Profil başarıyla güncellendi.' });
   } catch (err) {
-    console.error("Error updating user profile:", err);
+    logger.error(`Error updating user profile: ${err.message}`);
     res.status(500).json({ error: 'Profil güncellenirken bir hata oluştu.' });
   }
 });
@@ -148,7 +149,7 @@ router.post('/switch-role', requireAuth, async (req, res) => {
 
     res.json({ success: true, token: jwtToken, role: newRole });
   } catch (err) {
-    console.error("Error switching role:", err);
+    logger.error(`Error switching role: ${err.message}`);
     res.status(500).json({ error: 'Rol geçişi başarısız oldu.' });
   }
 });

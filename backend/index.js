@@ -147,7 +147,7 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
       totalEarnings
     });
   } catch (err) {
-    console.error("Dashboard istatistik hatası:", err);
+    logger.error(`Dashboard istatistik hatası: ${err.message}`);
     res.status(500).json({ error: 'İstatistikler hesaplanamadı.' });
   }
 });
@@ -241,7 +241,7 @@ app.get('/api/admin/reports', requireAuth, async (req, res) => {
       monthlyReports: Object.entries(monthlyReports).map(([month, data]) => ({ month, ...data }))
     });
   } catch (err) {
-    console.error("Dashboard rapor hatası:", err);
+    logger.error(`Dashboard rapor hatası: ${err.message}`);
     res.status(500).json({ error: 'Raporlar hesaplanamadı.' });
   }
 });
@@ -252,12 +252,17 @@ app.get('/api/admin/dashboard', requireAuth, (req, res) => {
 });
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK' });
-});
-
-app.get('/', (req, res) => {
-  res.json({ status: 'OK' });
+app.get('/api/health', async (req, res) => {
+  try {
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+    await prisma.$queryRaw`SELECT 1`;
+    await prisma.$disconnect();
+    res.json({ status: 'OK', db: 'Connected', uptime: process.uptime() });
+  } catch (error) {
+    logger.error("Health check failed: " + error.message);
+    res.status(503).json({ status: 'ERROR', db: 'Disconnected', error: error.message });
+  }
 });
 
 // Sentry Debug Route

@@ -11,6 +11,7 @@ const taskQueue = require('../utils/queue');
 const Sentry = require('@sentry/node');
 const { Mutex } = require('async-mutex');
 const { calculateFinalPrice } = require('../services/pricingService');
+const logger = require('../utils/logger');
 
 const reservationMutex = new Mutex();
 
@@ -489,7 +490,7 @@ router.post('/', validate(resSchema), async (req, res) => {
             `
           });
         }, 3, 1000);
-        console.log("Ücretsiz bilet maili gönderildi:", nodemailer.getTestMessageUrl(mailInfo));
+        logger.info(`Ucretsiz bilet maili gonderildi: ${nodemailer.getTestMessageUrl(mailInfo)}`);
       });
     }
 
@@ -558,7 +559,7 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
       }, 3, 1000);
       res.json({ success: true, message: "Onaylandı ve E-posta Gönderildi", previewUrl: nodemailer.getTestMessageUrl(info) });
     } catch (mailErr) {
-      console.error("Onayla bilet mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
+      logger.error(`Onayla bilet mail gonderme hatasi (Circuit Breaker/Retry): ${mailErr.message}`);
       res.json({ success: true, message: "Onaylandı ancak e-posta gönderilemedi.", reservation });
     }
 
@@ -924,12 +925,12 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
               };
               
               // Arka planda devre kesici (circuit breaker) ve retry mekanizmasıyla gönder
-              taskQueue.add(async () => {
+              taskQueue.addJob('sendRefundTelegramNotice', async () => {
                 await retryWithBackoff(() => telegramCircuit.execute(options, payload), 3, 2000);
-              }).catch(console.error);
+              });
             }
           } catch (telErr) {
-            console.error("Telegram iptal bildirimi gönderilemedi:", telErr);
+            logger.error(`Telegram iptal bildirimi gonderilemedi: ${telErr.message}`);
           }
         }
 
@@ -940,7 +941,7 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
           reservation: updated
         });
       } catch (mailErr) {
-        console.error("Mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
+        logger.error(`Mail gonderme hatasi (Circuit Breaker/Retry): ${mailErr.message}`);
         Sentry.captureException(mailErr);
         res.json({
           success: true,
@@ -949,7 +950,7 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
         });
       }
     } catch (setupErr) {
-      console.error("İade mail kurulum hatası:", setupErr.message);
+      logger.error(`Iade mail kurulum hatasi: ${setupErr.message}`);
       res.json({
         success: true,
         message: "Bilet başarıyla iade edildi ancak bilgilendirme e-postası gönderilemedi.",
@@ -1053,3 +1054,4 @@ router.post('/bulk-checkin', requireAuth, async (req, res) => {
 });
 
 module.exports = router;
+
