@@ -5,7 +5,7 @@ import { Stage, Layer, Rect, Text, Group, Circle, Image as KonvaImage } from 're
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Trash2, Save, Plus, Settings, Copy, MousePointer2, Image as ImageIcon } from 'lucide-react';
 
-type ElementType = "round_table" | "rect_table" | "bistro" | "chair" | "stage";
+type ElementType = "round_table" | "rect_table" | "bistro" | "chair" | "stage" | "dance_floor" | "emergency_exit" | "entrance";
 type NumberingType = "table_only" | "table_and_seats" | "seats_only" | "none";
 
 interface DesignerElement {
@@ -71,6 +71,12 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   // Arka plan görseli
   const [bgImageObj, setBgImageObj] = useState<HTMLImageElement | null>(null);
 
+  // 🗺️ Pan & Zoom state
+  const [stageScale, setStageScale] = useState(1);
+  const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const lastPointerPos = useRef<{ x: number; y: number } | null>(null);
+
   const SNAP_GRID = 10;
 
   useEffect(() => {
@@ -90,8 +96,9 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
 
   const fetchHall = async (id: string) => {
     const token = getCookie('token');
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     try {
-      const res = await fetch(`http://localhost:5000/api/halls/${id}`, {
+      const res = await fetch(`${API_BASE}/api/halls/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -176,6 +183,21 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
       baseElement.width = 200;
       baseElement.height = 80;
       baseElement.numberingType = 'none';
+    } else if (type === 'dance_floor') {
+      baseElement.width = 160;
+      baseElement.height = 160;
+      baseElement.label = '💃 Dans Pisti';
+      baseElement.numberingType = 'none';
+    } else if (type === 'emergency_exit') {
+      baseElement.width = 50;
+      baseElement.height = 30;
+      baseElement.label = '🆘 Acil Çıkış';
+      baseElement.numberingType = 'none';
+    } else if (type === 'entrance') {
+      baseElement.width = 60;
+      baseElement.height = 30;
+      baseElement.label = '🚪 Ana Giriş';
+      baseElement.numberingType = 'none';
     }
 
     setElements([...elements, baseElement]);
@@ -213,119 +235,207 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     }, 0);
   };
 
-  // 🎭 Otomatik Sahne Oluştur - Detailed Config
+  // 🗺️ Wheel zoom handler
+  const handleWheel = (e: { evt: WheelEvent }) => {
+    e.evt.preventDefault();
+    const scaleBy = 1.08;
+    const oldScale = stageScale;
+    const newScale = e.evt.deltaY < 0 ? oldScale * scaleBy : oldScale / scaleBy;
+    const clampedScale = Math.max(0.2, Math.min(5, newScale));
+    setStageScale(clampedScale);
+  };
+
+  const handleStageMouseDown = (e: { target: { getStage: () => { getPointerPosition: () => { x: number; y: number } | null } }; evt: MouseEvent }) => {
+    // Middle mouse or space+left for pan
+    if (e.evt.button === 1 || (e.evt.button === 0 && e.evt.altKey)) {
+      setIsPanning(true);
+      const stage = e.target.getStage();
+      lastPointerPos.current = stage.getPointerPosition();
+    } else {
+      if (e.target === e.target.getStage?.() || (e.target as unknown as { name?: () => string }).name?.() === 'bgImage') setSelectedId(null);
+    }
+  };
+
+  const handleStageMouseMove = (e: { target: { getStage: () => { getPointerPosition: () => { x: number; y: number } | null } } }) => {
+    if (!isPanning || !lastPointerPos.current) return;
+    const stage = e.target.getStage();
+    const pos = stage.getPointerPosition();
+    if (!pos) return;
+    setStagePos(prev => ({
+      x: prev.x + (pos.x - lastPointerPos.current!.x),
+      y: prev.y + (pos.y - lastPointerPos.current!.y),
+    }));
+    lastPointerPos.current = pos;
+  };
+
+  const handleStageMouseUp = () => setIsPanning(false);
+
+  // 🎭 Otomatik Sahne Oluştur - Sihirbazdan gelen tam config
   const autoGenerateLayout = useCallback((config: AutoGenerateConfig) => {
-    // 📐 Dönüşüm: 1 metre = 80 pixel (ölçeklendirilmiş görünüm)
     const PIXEL_PER_METER = 80;
     const CANVAS_WIDTH = config.hallLengthM * PIXEL_PER_METER;
     const CANVAS_HEIGHT = config.hallWidthM * PIXEL_PER_METER;
-    
-    // Masa ölçüleri: santimetre → pixel
-    const TABLE_RADIUS = (config.tableRadiusCm / 100) * PIXEL_PER_METER / 2; // cm to m to pixels
-    const TABLE_SEATS = config.chairsPerTable;
-    const MIN_SPACING = (config.minSpacingCm / 100) * PIXEL_PER_METER; // cm to m to pixels
-    
-    // Sahne ölçüleri
-    const STAGE_WIDTH = config.stageLengthM * PIXEL_PER_METER;
-    const STAGE_HEIGHT = config.stageWidthM * PIXEL_PER_METER;
-    let STAGE_CAPACITY = Math.min(config.stageCapacity, 2000); // ⚠️ MAX 2000 CAP
 
-    // 🎯 KAPASİTE KONTROLÜ
-    const MAX_TOTAL_CAPACITY = 2000;
-    const MAX_SEATED_CAPACITY = MAX_TOTAL_CAPACITY - STAGE_CAPACITY;
+    const TABLE_RADIUS = Math.max(20, (config.tableRadiusCm / 100) * PIXEL_PER_METER / 2);
+    const TABLE_SEATS = config.chairsPerTable;
+    const MIN_SPACING = Math.max(20, (config.minSpacingCm / 100) * PIXEL_PER_METER);
+
+    const STAGE_W = config.stageLengthM * PIXEL_PER_METER;
+    const STAGE_H = config.stageWidthM * PIXEL_PER_METER;
+    const stageCount = config.stageCount ?? 1;
+    const stagePosition = (config.stagePosition as string) || 'front';
+
+    const MAX_CAPACITY = Math.min(config.totalCapacity ?? 2000, 2000);
 
     const newElements: DesignerElement[] = [];
+    let nextId = Date.now();
 
-    // 1️⃣ SAHNE YERLEŞTIR (Üstte, Orta)
-    if (STAGE_CAPACITY > 0) {
+    // ─── 1. SAHNE ────────────────────────────────────────────────────────
+    let stageTopBoundary = 0;    // sahne alanının alt sınırı (masalar buradan başlar)
+    let stageBotBoundary = CANVAS_HEIGHT; // alt sahne için üst sınır
+    let stageLeftBound  = 0;
+    let stageRightBound = CANVAS_WIDTH;
+
+    if (stageCount > 0) {
+      let sx = 0, sy = 0;
+      if (stagePosition === 'front' || stagePosition === 'back') {
+        sx = (CANVAS_WIDTH - STAGE_W) / 2;
+        sy = stagePosition === 'front' ? 20 : CANVAS_HEIGHT - STAGE_H - 20;
+        if (stagePosition === 'front') stageTopBoundary = STAGE_H + 50;
+        else stageBotBoundary = CANVAS_HEIGHT - STAGE_H - 50;
+      } else if (stagePosition === 'side_left') {
+        sx = 20;
+        sy = (CANVAS_HEIGHT - STAGE_H) / 2;
+        stageLeftBound = STAGE_W + 50;
+      } else if (stagePosition === 'side_right') {
+        sx = CANVAS_WIDTH - STAGE_W - 20;
+        sy = (CANVAS_HEIGHT - STAGE_H) / 2;
+        stageRightBound = CANVAS_WIDTH - STAGE_W - 50;
+      } else if (stagePosition === 'center') {
+        sx = (CANVAS_WIDTH - STAGE_W) / 2;
+        sy = (CANVAS_HEIGHT - STAGE_H) / 2;
+        // Merkez sahne: masalar etrafa yerleştirilir — alt+üst boşluk azalt
+        stageTopBoundary = sy - TABLE_RADIUS * 2 - MIN_SPACING;
+      }
       newElements.push({
-        id: `stage-${Date.now()}`,
+        id: `stage-${nextId++}`,
         type: 'stage',
-        label: `Sahne (${STAGE_CAPACITY} kişi)`,
-        x: (CANVAS_WIDTH - STAGE_WIDTH) / 2,
-        y: 30,
-        width: STAGE_WIDTH,
-        height: STAGE_HEIGHT,
-        rotation: 0,
-        seatCount: STAGE_CAPACITY,
-        numberingType: 'none'
+        label: `🎤 Sahne`,
+        x: sx, y: sy,
+        width: STAGE_W, height: STAGE_H,
+        rotation: 0, seatCount: 0, numberingType: 'none'
       });
     }
 
-    // 2️⃣ MASALARI GRID'DE YERLEŞTIR
-    // Sahne sonrası boş alan
-    const AVAILABLE_HEIGHT = CANVAS_HEIGHT - (STAGE_HEIGHT + 60);
-    const AVAILABLE_WIDTH = CANVAS_WIDTH - 100;
-
-    // Grid hesapla: Masalar + spacing
-    const TABLE_DIAMETER = TABLE_RADIUS * 2;
-    let COLS = Math.max(1, Math.floor(AVAILABLE_WIDTH / (TABLE_DIAMETER + MIN_SPACING)));
-    let ROWS = Math.max(1, Math.floor(AVAILABLE_HEIGHT / (TABLE_DIAMETER + MIN_SPACING)));
-
-    // 🎯 KAPASİTE LIMITI: Masa sayısını kapasiteye göre ayarla
-    const maxTablesForCapacity = Math.floor(MAX_SEATED_CAPACITY / TABLE_SEATS);
-    const calculatedTotalTables = COLS * ROWS;
-
-    if (calculatedTotalTables * TABLE_SEATS > MAX_SEATED_CAPACITY) {
-      // Kapasiteyi aşıyorsa, satır sayısını kırp
-      ROWS = Math.max(1, Math.floor(maxTablesForCapacity / COLS));
+    // ─── 2. DANS PİSTİ ────────────────────────────────────────────────────
+    const danceFloorM = config.danceFloorM as number | undefined;
+    if (config.hasDanceFloor && danceFloorM && danceFloorM > 0) {
+      const DW = danceFloorM * PIXEL_PER_METER;
+      const DH = danceFloorM * PIXEL_PER_METER;
+      const dx = (CANVAS_WIDTH - DW) / 2;
+      const dy = stageTopBoundary + 20;
+      newElements.push({
+        id: `dance_floor-${nextId++}`,
+        type: 'dance_floor',
+        label: `💃 Dans Pisti`,
+        x: dx, y: dy,
+        width: DW, height: DH,
+        rotation: 0, seatCount: 0, numberingType: 'none'
+      });
+      stageTopBoundary = dy + DH + 30;
     }
 
+    // ─── 3. MASALAR ───────────────────────────────────────────────────────
+    const TABLE_DIAMETER = TABLE_RADIUS * 2;
+    const areaLeft   = stageLeftBound + 30;
+    const areaTop    = stageTopBoundary + 20;
+    const areaRight  = stageRightBound - 30;
+    const areaBottom = stageBotBoundary - 20;
+    const areaW = areaRight - areaLeft;
+    const areaH = areaBottom - areaTop;
+
+    const COLS = Math.max(1, Math.floor(areaW / (TABLE_DIAMETER + MIN_SPACING)));
+    const maxRows = Math.max(1, Math.floor(areaH / (TABLE_DIAMETER + MIN_SPACING)));
+    const maxTables = Math.floor(MAX_CAPACITY / Math.max(1, TABLE_SEATS));
+
     let tableCount = 0;
-    const startX = 50;
-    const startY = STAGE_HEIGHT + 80;
-    let totalSeatedCapacity = 0;
-
-    for (let row = 0; row < ROWS; row++) {
+    let totalSeats = 0;
+    outer:
+    for (let row = 0; row < maxRows; row++) {
       for (let col = 0; col < COLS; col++) {
-        // ⚠️ Kapasiteyi aşacaksa masa ekleme
-        if (totalSeatedCapacity + TABLE_SEATS > MAX_SEATED_CAPACITY) {
-          break;
-        }
-
-        const x = startX + col * (TABLE_DIAMETER + MIN_SPACING);
-        const y = startY + row * (TABLE_DIAMETER + MIN_SPACING);
-
-        // Canvas sınırlarını kontrol et
-        if (x + TABLE_RADIUS > CANVAS_WIDTH - 30 || y + TABLE_RADIUS > CANVAS_HEIGHT - 30) {
-          continue;
-        }
-
+        if (tableCount >= maxTables) break outer;
+        const tx = areaLeft + col * (TABLE_DIAMETER + MIN_SPACING) + TABLE_RADIUS;
+        const ty = areaTop  + row * (TABLE_DIAMETER + MIN_SPACING) + TABLE_RADIUS;
+        if (tx + TABLE_RADIUS > areaRight || ty + TABLE_RADIUS > areaBottom) continue;
         tableCount++;
-        totalSeatedCapacity += TABLE_SEATS;
+        totalSeats += TABLE_SEATS;
         newElements.push({
-          id: `round_table-${Date.now()}-${tableCount}`,
+          id: `round_table-${nextId++}`,
           type: 'round_table',
           label: `T${tableCount}`,
-          x,
-          y,
+          x: tx - TABLE_RADIUS, y: ty - TABLE_RADIUS,
           radius: TABLE_RADIUS,
-          rotation: 0,
-          seatCount: TABLE_SEATS,
+          rotation: 0, seatCount: TABLE_SEATS,
           numberingType: config.numberingType
         });
       }
-      // Kapasite limitini aştıysa satırları da kes
-      if (totalSeatedCapacity + TABLE_SEATS > MAX_SEATED_CAPACITY) {
-        break;
-      }
     }
 
-    // Tüm elemanları güncelle
+    // ─── 4. BİSTRO / BAR ─────────────────────────────────────────────────
+    const bistroCount = config.bistroCount ?? 0;
+    for (let i = 0; i < bistroCount; i++) {
+      const bx = 30 + i * 70;
+      const by = CANVAS_HEIGHT - 60;
+      newElements.push({
+        id: `bistro-${nextId++}`,
+        type: 'bistro',
+        label: `🍹 Bar ${i + 1}`,
+        x: bx, y: by,
+        radius: 25, rotation: 0, seatCount: 4, numberingType: 'none'
+      });
+    }
+
+    // ─── 5. ACİL ÇIKIŞLAR ─────────────────────────────────────────────────
+    const exitCount = (config.emergencyExitCount as number | undefined) ?? 0;
+    const exits = exitCount + ((config.mainEntranceCount as number | undefined) ?? 0);
+    const allExitPositions = [
+      { x: 0,             y: CANVAS_HEIGHT / 2 - 20 },
+      { x: CANVAS_WIDTH - 50, y: CANVAS_HEIGHT / 2 - 20 },
+      { x: CANVAS_WIDTH / 2 - 25, y: 0 },
+      { x: CANVAS_WIDTH / 2 - 25, y: CANVAS_HEIGHT - 30 },
+      { x: 0,             y: 40 },
+      { x: CANVAS_WIDTH - 50, y: CANVAS_HEIGHT - 60 },
+    ];
+    for (let i = 0; i < Math.min(exits, allExitPositions.length); i++) {
+      const pos = allExitPositions[i];
+      const isMain = i < ((config.mainEntranceCount as number | undefined) ?? 0);
+      newElements.push({
+        id: `${isMain ? 'entrance' : 'emergency_exit'}-${nextId++}`,
+        type: isMain ? 'entrance' : 'emergency_exit',
+        label: isMain ? `🚪 Giriş ${i + 1}` : `🆘 Çıkış ${i + 1}`,
+        x: pos.x, y: pos.y,
+        width: 50, height: 30,
+        rotation: 0, seatCount: 0, numberingType: 'none'
+      });
+    }
+
     setElements(newElements);
     setSelectedId(null);
-    
-    const totalCapacity = totalSeatedCapacity + STAGE_CAPACITY;
-    alert(`✅ Salon Oluşturuldu!
-📊 Bilgiler:
-• Alan: ${config.hallLengthM}m × ${config.hallWidthM}m (${(config.hallLengthM * config.hallWidthM).toFixed(1)}m²)
-• Masa Sayısı: ${tableCount}
-• Oturan Kapasite: ${totalSeatedCapacity} kişi
-• Sahne Kapasitesi: ${STAGE_CAPACITY} kişi
-• ⭐ TOPLAM KAPASİTE: ${totalCapacity} kişi / 2000 max
-${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCapacity} kişi yer var)`}`);
+    // Canvas'ı sığacak şekilde zoom reset
+    setStageScale(Math.min(900 / CANVAS_WIDTH, 750 / CANVAS_HEIGHT, 1));
+    setStagePos({ x: 20, y: 20 });
+
+    const summary = [
+      `✅ Salon Oluşturuldu!`,
+      `• Alan: ${config.hallLengthM}m × ${config.hallWidthM}m`,
+      `• Masa: ${tableCount} adet | Kapasite: ${totalSeats} kişi`,
+      stageCount > 0 ? `• Sahne: ${stageCount} adet (${config.stageLengthM}×${config.stageWidthM}m)` : '',
+      bistroCount > 0 ? `• Bar/Bistro: ${bistroCount} adet` : '',
+      exits > 0 ? `• Çıkış/Giriş: ${exits} adet` : '',
+    ].filter(Boolean).join('\n');
+    alert(summary);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);  // setElements/setSelectedId are stable — no deps needed
+  }, []);
 
   // 📊 İstatistik Hesaplayıcı
   const getStatistics = () => {
@@ -356,13 +466,15 @@ ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCap
       description,
       address,
       seatCount: elements.reduce((acc, el) => acc + (el.seatCount || 1), 0),
-      layoutJson: JSON.stringify({ canvas: { width: 1000, height: 600 }, elements }),
+      layoutJson: JSON.stringify({ canvas: { width: 1000, height: 800 }, elements }),
       backgroundImage,
       isGlobal
     };
 
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
     try {
-      const url = hallId ? `http://localhost:5000/api/halls/${hallId}` : 'http://localhost:5000/api/halls';
+      const url = hallId ? `${API_BASE}/api/halls/${hallId}` : `${API_BASE}/api/halls`;
       const method = hallId ? 'PUT' : 'POST';
 
       const res = await fetch(url, {
@@ -438,10 +550,31 @@ ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCap
     const seats = [];
     const topBottomCount = Math.floor(sCount / 2);
     const spacing = w / (topBottomCount + 1);
+    const showSeatNums = el.numberingType === 'table_and_seats' || el.numberingType === 'seats_only';
     
     for(let i=0; i<topBottomCount; i++) {
-      seats.push(<Rect key={`t-${i}`} x={spacing * (i+1) - 10} y={-25} width={20} height={20} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={1} cornerRadius={4} />);
-      seats.push(<Rect key={`b-${i}`} x={spacing * (i+1) - 10} y={h + 5} width={20} height={20} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={1} cornerRadius={4} />);
+      const topLabel = el.numberingType === 'table_and_seats' ? String.fromCharCode(65 + i) : String(i + 1);
+      const topX = spacing * (i+1) - 10;
+      seats.push(
+        <React.Fragment key={`t-${i}`}>
+          <Rect x={topX} y={-25} width={20} height={20} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={1} cornerRadius={4} />
+          {showSeatNums && (
+            <Text x={topX} y={-19} width={20} text={topLabel} fontSize={8} fill="#374151" align="center" />
+          )}
+        </React.Fragment>
+      );
+      
+      const bottomIdx = i + topBottomCount;
+      const bottomLabel = el.numberingType === 'table_and_seats' ? String.fromCharCode(65 + bottomIdx) : String(bottomIdx + 1);
+      const bottomX = spacing * (i+1) - 10;
+      seats.push(
+        <React.Fragment key={`b-${i}`}>
+          <Rect x={bottomX} y={h + 5} width={20} height={20} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={1} cornerRadius={4} />
+          {showSeatNums && (
+            <Text x={bottomX} y={h + 11} width={20} text={bottomLabel} fontSize={8} fill="#374151" align="center" />
+          )}
+        </React.Fragment>
+      );
     }
 
     return (
@@ -474,6 +607,39 @@ ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCap
     );
   };
 
+  const renderDanceFloor = (el: DesignerElement, isSelected: boolean) => {
+    const w = el.width || 160;
+    const h = el.height || 160;
+    return (
+      <Group>
+        <Rect width={w} height={h} fill="#f0abfc" stroke={isSelected ? "#a21caf" : "#d946ef"} strokeWidth={isSelected ? 3 : 2} cornerRadius={12} opacity={0.7} />
+        <Text text={el.label} width={w} y={h / 2 - 8} align="center" fontSize={15} fill="#581c87" fontStyle="bold" />
+      </Group>
+    );
+  };
+
+  const renderEmergencyExit = (el: DesignerElement, isSelected: boolean) => {
+    const w = el.width || 50;
+    const h = el.height || 30;
+    return (
+      <Group>
+        <Rect width={w} height={h} fill="#fef2f2" stroke={isSelected ? "#dc2626" : "#ef4444"} strokeWidth={isSelected ? 3 : 2} cornerRadius={4} />
+        <Text text={el.label} width={w} y={h / 2 - 7} align="center" fontSize={11} fill="#991b1b" fontStyle="bold" />
+      </Group>
+    );
+  };
+
+  const renderEntrance = (el: DesignerElement, isSelected: boolean) => {
+    const w = el.width || 50;
+    const h = el.height || 30;
+    return (
+      <Group>
+        <Rect width={w} height={h} fill="#f0fdf4" stroke={isSelected ? "#16a34a" : "#22c55e"} strokeWidth={isSelected ? 3 : 2} cornerRadius={4} />
+        <Text text={el.label} width={w} y={h / 2 - 7} align="center" fontSize={11} fill="#14532d" fontStyle="bold" />
+      </Group>
+    );
+  };
+
   const renderChair = (el: DesignerElement, isSelected: boolean) => {
     return (
       <Group>
@@ -492,20 +658,34 @@ ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCap
           if (e.target === e.currentTarget) setSelectedId(null);
         }}
       >
-        <Stage 
-          width={1000} 
-          height={800} 
-          onMouseDown={(e) => {
-            if (e.target === e.target.getStage() || e.target.name() === 'bgImage') setSelectedId(null);
-          }}
+        {/* 🔍 Zoom Kontrolleri */}
+        <div className="absolute top-3 right-3 z-10 flex flex-col gap-1">
+          <button onClick={() => setStageScale(s => Math.min(5, +(s * 1.2).toFixed(2)))} className="w-8 h-8 bg-white rounded shadow text-gray-700 font-bold text-lg hover:bg-gray-100 flex items-center justify-center">+</button>
+          <button onClick={() => { setStageScale(1); setStagePos({ x: 0, y: 0 }); }} className="w-8 h-8 bg-white rounded shadow text-gray-500 text-xs font-bold hover:bg-gray-100 flex items-center justify-center">⊙</button>
+          <button onClick={() => setStageScale(s => Math.max(0.2, +(s / 1.2).toFixed(2)))} className="w-8 h-8 bg-white rounded shadow text-gray-700 font-bold text-lg hover:bg-gray-100 flex items-center justify-center">−</button>
+        </div>
+        <div className="absolute bottom-3 left-3 z-10 text-xs text-gray-400 bg-white/70 rounded px-2 py-1">
+          Zoom: {Math.round(stageScale * 100)}% | Alt+Sürükle veya tekerlek ile gezin
+        </div>
+
+        <Stage
+          width={1000}
+          height={800}
+          scaleX={stageScale}
+          scaleY={stageScale}
+          x={stagePos.x}
+          y={stagePos.y}
+          onWheel={handleWheel}
+          onMouseDown={handleStageMouseDown}
+          onMouseMove={handleStageMouseMove}
+          onMouseUp={handleStageMouseUp}
+          style={{ cursor: isPanning ? 'grabbing' : 'default' }}
         >
           <Layer>
-            {/* Arka Plan Kroki */}
             {bgImageObj && (
               <KonvaImage image={bgImageObj} x={0} y={0} width={1000} height={800} opacity={0.5} name="bgImage" />
             )}
 
-            {/* Elemanlar */}
             {elements.map(el => {
               const isSelected = el.id === selectedId;
               return (
@@ -514,16 +694,19 @@ ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCap
                   x={el.x}
                   y={el.y}
                   rotation={el.rotation || 0}
-                  draggable
+                  draggable={!isPanning}
                   onDragStart={() => setSelectedId(el.id)}
                   onDragEnd={(e) => handleDragEnd(e, el.id)}
-                  onClick={() => setSelectedId(el.id)}
+                  onClick={() => { if (!isPanning) setSelectedId(el.id); }}
                   onTap={() => setSelectedId(el.id)}
                 >
                   {el.type === 'round_table' && renderRoundTable(el, isSelected)}
                   {el.type === 'rect_table' && renderRectTable(el, isSelected)}
                   {el.type === 'stage' && renderStage(el, isSelected)}
                   {el.type === 'bistro' && renderBistro(el, isSelected)}
+                  {el.type === 'dance_floor' && renderDanceFloor(el, isSelected)}
+                  {el.type === 'emergency_exit' && renderEmergencyExit(el, isSelected)}
+                  {el.type === 'entrance' && renderEntrance(el, isSelected)}
                   {el.type === 'chair' && renderChair(el, isSelected)}
                 </Group>
               );
@@ -558,9 +741,12 @@ ${totalCapacity === 2000 ? '🔴 (Maksimum Kapasite)' : `🟢 (${2000 - totalCap
             <div className="grid grid-cols-2 gap-1">
               <button onClick={() => addElement('round_table')} className="text-xs bg-gray-100 hover:bg-gray-200 p-1.5 rounded border border-gray-200 font-medium text-gray-700">🔴 Yuvarlak</button>
               <button onClick={() => addElement('rect_table')} className="text-xs bg-gray-100 hover:bg-gray-200 p-1.5 rounded border border-gray-200 font-medium text-gray-700">▭ Dikdörtgen</button>
-              <button onClick={() => addElement('bistro')} className="text-xs bg-gray-100 hover:bg-gray-200 p-1.5 rounded border border-gray-200 font-medium text-gray-700">⬟ Bistro</button>
+              <button onClick={() => addElement('bistro')} className="text-xs bg-gray-100 hover:bg-gray-200 p-1.5 rounded border border-gray-200 font-medium text-gray-700">🍹 Bistro</button>
               <button onClick={() => addElement('chair')} className="text-xs bg-gray-100 hover:bg-gray-200 p-1.5 rounded border border-gray-200 font-medium text-gray-700">🪑 Sandalye</button>
               <button onClick={() => addElement('stage')} className="text-xs bg-gray-100 hover:bg-gray-200 p-1.5 rounded border border-gray-200 font-medium text-gray-700 col-span-2">🎤 Sahne</button>
+              <button onClick={() => addElement('dance_floor')} className="text-xs bg-purple-50 hover:bg-purple-100 p-1.5 rounded border border-purple-200 font-medium text-purple-700">💃 Dans Pisti</button>
+              <button onClick={() => addElement('emergency_exit')} className="text-xs bg-red-50 hover:bg-red-100 p-1.5 rounded border border-red-200 font-medium text-red-700">🆘 Acil Çıkış</button>
+              <button onClick={() => addElement('entrance')} className="text-xs bg-green-50 hover:bg-green-100 p-1.5 rounded border border-green-200 font-medium text-green-700 col-span-2">🚪 Ana Giriş</button>
             </div>
           </div>
 

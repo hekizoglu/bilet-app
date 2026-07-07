@@ -276,18 +276,32 @@ function Step3Dimensions({ data, update }: { data: WizardData; update: (v: Parti
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Uzunluk (m)</label>
           <input
-            type="number" min={5} max={200} step={0.5}
+            type="number" min={5} max={1000} step={0.5}
             value={data.hallLengthM}
-            onChange={e => update({ hallLengthM: parseFloat(e.target.value) || 10 })}
+            onChange={e => {
+              const val = parseFloat(e.target.value) || 0;
+              if (val * data.hallWidthM > 20000) {
+                update({ hallLengthM: 20000 / data.hallWidthM });
+              } else {
+                update({ hallLengthM: val });
+              }
+            }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Genişlik (m)</label>
           <input
-            type="number" min={5} max={200} step={0.5}
+            type="number" min={5} max={1000} step={0.5}
             value={data.hallWidthM}
-            onChange={e => update({ hallWidthM: parseFloat(e.target.value) || 10 })}
+            onChange={e => {
+              const val = parseFloat(e.target.value) || 0;
+              if (val * data.hallLengthM > 20000) {
+                update({ hallWidthM: 20000 / data.hallLengthM });
+              } else {
+                update({ hallWidthM: val });
+              }
+            }}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           />
         </div>
@@ -371,7 +385,7 @@ function Step4Seating({ data, update }: { data: WizardData; update: (v: Partial<
                 className="w-full px-2 py-1.5 border border-purple-300 rounded-lg text-sm" />
             </div>
             <div>
-              <label className="block text-xs text-gray-700 mb-1">Masa Başı Kişi</label>
+              <label className="block text-xs text-gray-700 mb-1">Masa Başı Sandalye (Kaç Kişilik?)</label>
               <input type="number" min={2} max={20} step={1}
                 value={data.chairsPerTable}
                 onChange={e => update({ chairsPerTable: parseInt(e.target.value) || 8 })}
@@ -379,8 +393,10 @@ function Step4Seating({ data, update }: { data: WizardData; update: (v: Partial<
             </div>
           </div>
           <div>
-            <label className="block text-xs text-gray-700 mb-1">Masalar Arası Mesafe: {data.minSpacingCm}cm</label>
-            <input type="range" min={60} max={250} step={10}
+            <label className="block text-xs text-gray-700 mb-1">
+              Masalar Arası Mesafe: {(data.minSpacingCm / 100).toFixed(1)}m ({data.minSpacingCm} cm)
+            </label>
+            <input type="range" min={60} max={1500} step={10}
               value={data.minSpacingCm}
               onChange={e => update({ minSpacingCm: parseInt(e.target.value) })}
               className="w-full" />

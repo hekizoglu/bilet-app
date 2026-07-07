@@ -120,10 +120,11 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
     const { PrismaClient } = require('@prisma/client');
     const prismaInstance = new PrismaClient(); // local prisma reference
 
-    const [eventsCount, hallsCount, pendingReservations] = await Promise.all([
+    const [eventsCount, hallsCount, pendingReservations, totalReservations] = await Promise.all([
       prismaInstance.event.count(),
       prismaInstance.hall.count(),
-      prismaInstance.reservation.count({ where: { status: 'Beklemede' } })
+      prismaInstance.reservation.count({ where: { status: 'Beklemede' } }),
+      prismaInstance.reservation.count()
     ]);
 
     // Toplam Ciro Hesaplama (Onaylı biletlerin toplam fiyatı)
@@ -142,6 +143,7 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
       eventsCount,
       hallsCount,
       pendingReservations,
+      totalReservations,
       totalEarnings
     });
   } catch (err) {
@@ -266,7 +268,11 @@ app.get('/api/debug-sentry', (req, res) => {
 // Sentry Error Handler (must be before any other error middleware)
 Sentry.setupExpressErrorHandler(app);
 
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  logger.info(`Backend servisi ${PORT} portunda çalışıyor.`);
-});
+if (process.env.NODE_ENV !== 'test') {
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => {
+    logger.info(`Backend servisi ${PORT} portunda çalışıyor.`);
+  });
+}
+
+module.exports = { app, server };

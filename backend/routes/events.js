@@ -84,7 +84,7 @@ router.get('/', requireAuth, async (req, res) => {
         const events = await prisma.event.findMany({ 
           include: { 
             hall: {
-              select: { id: true, name: true, seatCount: true, address: true, isGlobal: true, layoutJson: true }
+              select: { id: true, name: true, seatCount: true, address: true, isGlobal: true }
             }
           }, 
           orderBy: { createdAt: 'desc' } 
@@ -110,7 +110,7 @@ router.get('/public', async (req, res) => {
       },
       include: { 
         hall: {
-          select: { id: true, name: true, seatCount: true, address: true, isGlobal: true, layoutJson: true }
+          select: { id: true, name: true, seatCount: true, address: true, isGlobal: true }
         }
       },
       orderBy: { date: 'asc' }

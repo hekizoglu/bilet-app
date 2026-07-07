@@ -1,4 +1,4 @@
-﻿# Known Errors and Fixes (ERRORS.md)
+# Known Errors and Fixes (ERRORS.md)
 
 ## Purpose
 This document logs encountered build compilation errors, API faults, database locking issues, and their associated resolutions to prevent repeating ineffective fixes.
@@ -55,5 +55,68 @@ Configured Prisma schema to support dynamic datasource selection, defaulting to 
 #### Prevention
 Run pre-flight check script `node backend/test-load.js` before executing full API testing cycles.
 
-Last updated: TODO
-Related files: [BUILD_TEST_FIX.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/BUILD_TEST_FIX.md), [DECISIONS.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/DECISIONS.md)
+Last updated: 2026-07-07
+Related files: [BUILD_TEST_FIX.md](BUILD_TEST_FIX.md), [DECISIONS.md](DECISIONS.md)
+
+---
+
+> **🔴 Hata Politikası:** Herhangi bir geliştirme adımında hata oluşursa bu dosyaya kaydedilir ve süreç duraklamadan devam eder.
+
+---
+
+## 2026-07-07 Oturum Hataları
+
+### ERR-002: Analytics `stats.totalRevenue.toFixed()` TypeError
+
+* **Environment:** Local Dev
+* **Status:** Resolved
+
+#### Symptoms
+`Cannot read properties of undefined (reading 'toFixed')` — `src/app/admin/analytics/page.tsx:78`
+
+#### Root Cause
+Backend `/api/admin/stats` endpoint'i `totalEarnings` alanı döndürüyordu ancak frontend `totalRevenue` anahtarını arıyordu. Eşleşme olmadığı için değer `undefined` kaldı.
+
+#### Fix & Resolution
+- Frontend'de `data.totalRevenue` → `data.totalEarnings || 0` olarak düzeltildi.
+- `.toFixed(2)` çağrılarına `(stats.totalRevenue || 0).toFixed(2)` şeklinde defensive fallback eklendi.
+- Backend'e `totalReservations` alanı eklendi.
+
+#### Prevention
+API response şemalarını frontend'deki beklentiyle eşleştiren TypeScript interface'leri kullanılmalı.
+
+---
+
+### ERR-003: Sihirbaz → Canvas: Sahne/Dans Pisti/Çıkış Elemanları Gelmiyordu
+
+* **Environment:** Local Dev
+* **Status:** Resolved
+
+#### Symptoms
+Sihirbazdan geçildikten sonra canvas'ta yalnızca masalar görünüyordu; sahne, dans pisti, bistro, acil çıkışlar eksikti.
+
+#### Root Cause
+`autoGenerateLayout` fonksiyonu yalnızca `stageCapacity > 0` koşulunda sahne ekliyordu. Sihirbaz `stageCount` ve `stagePosition` gönderirken `stageCapacity = 0` olarak iletiyordu. Diğer elemanlar (bistro, dans pisti, çıkışlar) için hiç kod yoktu.
+
+#### Fix & Resolution
+- `autoGenerateLayout` tamamen yeniden yazıldı; `stageCount`, `stagePosition`, `hasDanceFloor`, `bistroCount`, `emergencyExitCount`, `mainEntranceCount` alanları artık işleniyor.
+- `dance_floor`, `emergency_exit`, `entrance` yeni eleman tipleri eklendi.
+
+---
+
+### ERR-004: Canvas Pan/Zoom Navigasyonu Yoktu
+
+* **Environment:** Local Dev
+* **Status:** Resolved
+
+#### Symptoms
+Salon tasarımcısında büyük salonlarda canvas sağa sola oynatılamıyor, zoom yapılamıyordu.
+
+#### Root Cause
+Konva `<Stage>` bileşenine `scaleX/Y`, `x/y`, `onWheel`, `onMouseMove` event'leri tanımlanmamıştı.
+
+#### Fix & Resolution
+- `stageScale`, `stagePos`, `isPanning` state'leri eklendi.
+- `handleWheel` (tekerlek zoom), `handleStageMouseDown/Move/Up` (Alt+sürükle pan) fonksiyonları eklendi.
+- Sağ üst köşeye +/⊙/− zoom butonları, sol alt köşeye zoom yüzdesi göstergesi eklendi.
+

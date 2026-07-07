@@ -121,23 +121,59 @@ Aşağıdaki fikirler AIE sistemi tarafından otomatik olarak tespit edilip çö
 - ✅ Arama ve filtreleme UX iyileştirmesi (51.5/40 puan)
 - ✅ Mobil responsive kontrolü (49/40 puan)
 
+### FAZ 14: Hata Düzeltme ve Refactoring
+- [x] 14.1 Auth Modülü Hata Düzeltme
+- [x] 14.2 Reservation Modülü Hata Düzeltme
+- [x] 14.3 Hall Modülü Hata Düzeltme
+
+### Geçmiş Döngü Fikirleri (Ek)
+- [x] Hata yakalama ve retry mekanizması (IDEA-MR1YC8SI-I2J7)
+- [x] Input validation katmanı (IDEA-MR1YDJ2I-065I)
+- [x] Veritabanı sorgu optimizasyonu (IDEA-MR1YETDP-TBSL)
+- [x] Mobil responsive kontrolü (IDEA-MR1YG3NP-K5KW)
+
+### FAZ 15: Performans Optimizasyonu
+- [x] Prisma sorgularında N+1 sorgu önleme (`layoutJson` çıkarma)
+- [x] `Reservation` tablosuna compound index ekleme (`@@index([eventId, status])`)
+- [x] Backend `index.js` listen() çağrısı test ortamı için izole edildi
+
+### FAZ 16: Güvenlik Güçlendirmesi
+- [x] Tüm hardcoded `localhost:5000` URL'leri `process.env.NEXT_PUBLIC_API_URL` ile dinamikleştirildi
+- [x] `layout.tsx` içindeki switch-role API çağrısı dinamik yapıldı
+- [x] Analytics ve Socket.io bağlantıları dinamik URL'ye geçirildi
+
+### FAZ 17: İş Mantığı Validasyonları
+- [x] `HallDesignerCanvas.tsx` canvas yükseklik limiti 600→800 yükseltildi
+- [x] Dikdörtgen masalarda koltuk numarası çizilmeme hatası giderildi
+- [x] Alan oluşturma sihirbazında max 20.000 m² alan sınırı eklendi
+- [x] Masalar arası mesafe range'i 250cm → 1500cm'e genişletildi
+- [x] Salon tasarımı: sahne, dans pisti, bistro, acil çıkış elemanları sihirbazdan aktarılıyor
+- [x] Canvas pan/zoom navigasyonu (tekerlek + Alt+sürükle) eklendi
+- [x] `dance_floor`, `emergency_exit`, `entrance` yeni eleman tipleri eklendi
+
+### FAZ 18: Frontend UX İyileştirmeleri  
+- [x] Admin analytics sayfası `totalRevenue.toFixed()` TypeError hatası giderildi
+- [x] Backend `/api/admin/stats` endpoint'i `totalReservations` alanını döndürecek şekilde güncellendi
+- [x] Sihirbaz adım 4: masa başı sandalye sayısı sorusu netleştirildi
+
 ---
 
 ## 📊 İstatistikler
 
-- **Toplam Tamamlanan Faze:** 13
+- **Toplam Tamamlanan Faze:** 18 (FAZ 1-18 arşivlendi)
 - **Toplam Arşivlenen Fikirler:** 100+
 - **Otomatik Döngü Deteksiyon:** 21+ döngü
-- **Toplam Puan Kaybedilen Hatalar:** 500+ puan
-- **Çözüm Süresi:** 8-9 saat (otomatik)
+- **Aktif Bug Düzeltmeleri (Oturum):** 8+
+- **Son Arşiv Tarihi:** 2026-07-07
 
 ---
 
 ## 🔗 İlgili Dosyalar
 
-- **ROADMAP.md:** Aktif FAZ 14-18 ve güncel fikirleri
+- **ROADMAP.md:** Aktif FAZ 19-26 (Go-Live) görevleri
 - **README.md:** Sistem özeti ve kurulum talimatları
 - **PROJECT_MEMORY.md:** Proje genel notları
+- **ERRORS.md:** Bilinen hatalar ve çözümler
 
 ---
 

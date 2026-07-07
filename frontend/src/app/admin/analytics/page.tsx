@@ -18,22 +18,24 @@ export default function AdminAnalyticsPage() {
     const fetchInitialStats = async () => {
       try {
         const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
-        const res = await fetch('http://localhost:5000/api/admin/stats', {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${API_BASE}/api/admin/stats`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
           const data = await res.json();
           setStats(prev => ({
             ...prev,
-            totalSales: data.totalReservations,
-            totalRevenue: data.totalRevenue
+            totalSales: data.totalReservations || 0,
+            totalRevenue: data.totalEarnings || 0
           }));
         }
       } catch (err) {}
     };
     fetchInitialStats();
 
-    const socket = io('http://localhost:5000', {
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const socket = io(API_BASE, {
       withCredentials: true
     });
 
@@ -75,7 +77,7 @@ export default function AdminAnalyticsPage() {
             <TrendingUp />
           </div>
           <h3 className="text-gray-500 font-bold text-sm uppercase tracking-wider mb-1">Toplam Ciro</h3>
-          <p className="text-4xl font-black text-gray-900">{stats.totalRevenue.toFixed(2)} ₺</p>
+          <p className="text-4xl font-black text-gray-900">{(stats.totalRevenue || 0).toFixed(2)} ₺</p>
         </div>
 
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
@@ -110,7 +112,7 @@ export default function AdminAnalyticsPage() {
                   <span className="font-mono text-sm text-gray-500">{ev.time}</span>
                   <span className="font-medium text-gray-900 text-sm">Etkinlik ID: {ev.eventId}</span>
                 </div>
-                <span className="font-bold text-green-600">+{ev.amount.toFixed(2)} ₺</span>
+                <span className="font-bold text-green-600">+{(ev.amount || 0).toFixed(2)} ₺</span>
               </div>
             ))}
           </div>

@@ -1,86 +1,193 @@
-# Strategic Roadmap (ROADMAP.md) - AKTIF GÖREVLER
+# Strategic Roadmap (ROADMAP.md) — AKTİF GÖREVLER
 
-**Durum:** FAZ 14-18 Devam Ediyor  
-**Tamamlananlar:** Lütfen [ARCHIVE_ROADMAP.md](ARCHIVE_ROADMAP.md) dosyasına bakınız  
-**Son Güncelleme:** 2026-07-01
+**Durum:** FAZ 19-26 (Production Readiness & Go-Live) ⏳ Başlanmadı  
+**Tamamlananlar:** Lütfen [ARCHIVE_ROADMAP.md](ARCHIVE_ROADMAP.md) dosyasına bakınız (FAZ 1-18)  
+**Hata Kaydı:** [ERRORS.md](ERRORS.md) — her hata buraya loglanır, süreç durmaz  
+**Son Güncelleme:** 2026-07-07
+
+> **Kural:** Herhangi bir adımda hata oluşursa `ERRORS.md` dosyasına kaydet ve bir sonraki adıma geç. Asla durma.
 
 ---
 
 ## 📋 Proje Durumu Özeti
 
-| Faz | Başlık | Durum | lerleme |
+| Faz | Başlık | Durum | İlerleme |
 |-----|--------|-------|----------|
-| 1-13 | Tamamlandı | ✅ Bitmiş | 100% |
-| **14** | **Hata Düzeltme & Refactoring** | 🔄 Devam | 75% |
-| **15** | **Performans Optimizasyonu** | 🔄 Devam | 70% |
-| **16** | **Güvenlik Güçlendirmesi** | 🔄 Devam | 65% |
-| **17** | **ş Mantığı Validasyonları** | 🔄 Devam | 70% |
-| **18** | **Frontend UX yileştirmeleri** | 🔄 Devam | 60% |
+| 1-18 | Tamamlandı / Arşivlendi | ✅ Bitmiş | 100% |
+| **19** | **Temel Altyapı & Veritabanı Geçişi** | ⏳ Başlanmadı | 0% |
+| **20** | **Backend Performansı & PM2** | ⏳ Başlanmadı | 0% |
+| **21** | **Nginx Ters Proxy & SSL** | ⏳ Başlanmadı | 0% |
+| **22** | **Next.js Frontend Prod Build** | ⏳ Başlanmadı | 0% |
+| **23** | **Güvenlik Sıkılaştırma** | ⏳ Başlanmadı | 0% |
+| **24** | **İzlenebilirlik & Sağlık Kontrolleri** | ⏳ Başlanmadı | 0% |
+| **25** | **CI/CD Pipeline Tamamlama** | ⏳ Başlanmadı | 0% |
+| **26** | **Son Doğrulama & Yayın (Launch)** | ⏳ Başlanmadı | 0% |
 
 ---
 
-## 🚀 AKTIF FAZE TANIMLARI
+## 🔄 Cron Görevi Çalışma Modeli
 
-## FAZ 14: Hata Düzeltme ve Refactoring
-**Priorüte:** YÜKSEK  
-**Hedef Bitiş:** 2026-07-07  
-**Puan:** 150/150 (3 Modül × 40 puan)
-
-### 14.1 Auth Modülü Hata Düzeltme (✅ Tamamlandı)
-- [x] Auth middleware'de try-catch bloklarını güçlendir
-- [x] JWT token validation edge cases'i test et
-- **Puan:** 40/40 ✅
-
-### 14.2 Reservation Modülü Hata Düzeltme (✅ Tamamlandı)
-- [x] Double booking senaryolarını test et
-- [x] ş mantığı validasyonlarını merkezi hale getir
-- **Puan:** 40/40 ✅
-
-### 14.3 Hall Modülü Hata Düzeltme (✅ Tamamlandı)
-- [x] Error response formatını standardize et
-- [x] Seat mapping validation'ı kontrol et
-- **Puan:** 40/40 ✅
+```
+CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ 23] ─► [FAZ 24] ─► [FAZ 25] ─► [FAZ 26] ─► ✅ CANLI
+         ↕ hata         ↕ hata        ↕ hata
+         ERRORS.md'e    ERRORS.md'e   ERRORS.md'e
+         yaz & devam    yaz & devam   yaz & devam
+```
 
 ---
 
-## FAZ 15-18: DEVAM EDIYOR
+## ═══ FAZ 19: Temel Altyapı & Veritabanı Geçişi ═══
+**Sıra:** 1 | **Önkoşul:** Yok | **Tahmini Süre:** 2-3 saat
 
-FAZ 15 (Performans), FAZ 16 (Güvenlik), FAZ 17 (Validasyon), FAZ 18 (UX) şu anda AIE otomatik döngüsü tarafından işlenmektedir.
+- [ ] `.env.production.example` dosyasını gerçek değerlerle doldurulmuş `.env.production` olarak sunucuya kopyala
+- [ ] `NODE_ENV=production` tüm backend ve frontend başlangıç komutlarında zorunlu olarak ayarla
+- [ ] `JWT_SECRET` için `openssl rand -base64 64` ile 64+ karakterlik güçlü secret üret
+- [ ] `ALLOWED_ORIGINS` değişkenini gerçek production domain'iyle güncelle
+- [ ] Frontend `.env.production` dosyasında `NEXT_PUBLIC_API_URL` ve `NEXT_PUBLIC_SOCKET_URL` değerlerini üretim URL'leriyle ayarla
+- [ ] Sunucuda PostgreSQL 16 container'ı `docker compose --profile production up db -d` ile başlat
+- [ ] `schema.prisma` içinde `provider = "sqlite"` → `provider = "postgresql"` olarak değiştir
+- [ ] `DATABASE_URL` ortam değişkenini PostgreSQL bağlantı string'i olarak ayarla
+- [ ] `npx prisma migrate deploy` ile şemayı üretim veritabanına uygula
+- [ ] Mevcut SQLite verilerini PostgreSQL'e taşı (prisma db seed veya manuel SQL)
+
+**✅ Tamamlanma Kriteri:** `NODE_ENV=production` ile backend ayağa kalkıyor ve PostgreSQL'e bağlanıyor.
+
+---
+
+## ═══ FAZ 20: Backend Performansı & PM2 ═══
+**Sıra:** 2 | **Önkoşul:** FAZ 19 ✅
+
+- [ ] `npm install -g pm2` ile PM2'yi sunucuya kur
+- [ ] Proje kökünde `ecosystem.config.js` dosyası oluştur (cluster mode, max instances)
+- [ ] `pm2 start ecosystem.config.js --env production` ile başlat
+- [ ] `pm2 startup` ile sunucu yeniden başlatılmasında otomatik başlatmayı etkinleştir
+- [ ] `pm2 save` ile proses listesini kaydet
+- [ ] `--trace-sync-io` bayrağıyla senkron I/O çağrılarını tespit et ve gider
+
+**✅ Tamamlanma Kriteri:** `pm2 status` tüm prosesleri `online` gösteriyor.
+
+---
+
+## ═══ FAZ 21: Nginx Ters Proxy & SSL Yapılandırması ═══
+**Sıra:** 3 | **Önkoşul:** FAZ 20 ✅
+
+- [ ] Sunucuya Nginx kur
+- [ ] Backend (`:5000`) için `/api/` ve `/socket.io/` proxy'i yapılandır
+- [ ] Frontend (`:3000`) için root proxy'i yapılandır
+- [ ] WebSocket upgrade (socket.io) desteğini etkinleştir
+- [ ] `nginx -t` ile konfigürasyonu doğrula
+- [ ] Let's Encrypt ile SSL sertifikası edin: `certbot --nginx -d biletapp.com`
+- [ ] Otomatik sertifika yenileme `certbot renew --dry-run` testini geç
+- [ ] HTTP → HTTPS yönlendirmesini etkinleştir (301 redirect)
+- [ ] Gzip/Brotli sıkıştırmasını Nginx seviyesinde etkinleştir
+
+**✅ Tamamlanma Kriteri:** `https://biletapp.com` üzerinden güvenli erişim sağlanıyor.
+
+---
+
+## ═══ FAZ 22: Next.js Frontend Production Build ═══
+**Sıra:** 4 | **Önkoşul:** FAZ 21 ✅
+
+- [ ] `npm --prefix frontend run build` komutunu prod env ile çalıştır
+- [ ] Build çıktısında TypeScript hataları ve ESLint uyarıları 0 olduğunu doğrula
+- [ ] `npm --prefix frontend run start` ile production modu test et
+- [ ] Tüm `<img>` tag'lerinin `next/image` ile değiştirildiğini kontrol et
+- [ ] Google Fonts kullanımını `next/font` ile self-hosted hale getir
+- [ ] Lighthouse ile Core Web Vitals ölç (LCP < 2.5s hedefle)
+- [ ] Her route segment klasörüne `error.tsx` bileşeni ekle
+- [ ] Proje kökünde `global-error.tsx` oluştur
+
+**✅ Tamamlanma Kriteri:** `next build` hatasız, Lighthouse skoru > 80.
+
+---
+
+## ═══ FAZ 23: Güvenlik Sıkılaştırma ═══
+**Sıra:** 5 | **Önkoşul:** FAZ 22 ✅
+
+- [ ] `helmet()` middleware'inin `backend/index.js`'de aktif olduğunu doğrula
+- [ ] `Content-Security-Policy` başlığını yapılandır
+- [ ] [securityheaders.com](https://securityheaders.com) üzerinden test et, A+ rating hedefle
+- [ ] `ALLOWED_ORIGINS`'in yalnızca production domain'lerini içerdiğini doğrula
+- [ ] Wildcard (`*`) CORS yapılandırması olmadığını test et
+- [ ] Rate limit değerlerini production trafiğine göre ayarla (100 req/15min genel, 5 req/min checkout)
+- [ ] `/api/auth/login` endpoint'ine özel sıkı rate limit ekle
+- [ ] `trufflehog` veya `git-secrets` ile repo taraması yap
+- [ ] `.gitignore`'da `.env*` dosyalarının görmezden gelindiğini doğrula
+
+**✅ Tamamlanma Kriteri:** A+ güvenlik rating, `trufflehog` clean, rate limit testleri geçiyor.
+
+---
+
+## ═══ FAZ 24: İzlenebilirlik & Sağlık Kontrolleri ═══
+**Sıra:** 6 | **Önkoşul:** FAZ 23 ✅
+
+- [ ] `backend/index.js`'e `/api/health` endpoint'i ekle (DB bağlantısı + uptime kontrolü)
+- [ ] Nginx/Docker health check'e bu endpoint'i ekle
+- [ ] `npm install winston winston-daily-rotate-file` backend'e ekle
+- [ ] `backend/logger.js` modülü oluştur (JSON format, level: prod=warn, dev=debug)
+- [ ] Tüm `console.log`, `console.error` çağrılarını `logger.info`, `logger.error` ile değiştir
+- [ ] [sentry.io](https://sentry.io) üzerinde proje oluştur, DSN anahtarını al
+- [ ] `@sentry/node` backend'e, `@sentry/nextjs` frontend'e ekle
+- [ ] Test hatası fırlatarak Sentry dashboard'unda göründüğünü doğrula
+
+**✅ Tamamlanma Kriteri:** `/api/health` 200 dönüyor, Winston logları akıyor, Sentry test hatası yakalandı.
+
+---
+
+## ═══ FAZ 25: CI/CD Pipeline Tamamlama ═══
+**Sıra:** 7 | **Önkoşul:** FAZ 24 ✅
+
+- [ ] `.github/workflows/deploy.yml` dosyasını gerçek adımlarla tamamla
+  - SSH → sunucu → `git pull` → `npm ci` → `pm2 reload` → `nginx reload`
+- [ ] GitHub Secrets'a sunucu IP, SSH key, `.env.production` değerlerini ekle
+- [ ] Test PR'ı ile CI/CD pipeline'ı çalıştır ve başarıyla tamamlandığını doğrula
+- [ ] Sunucuda `backup.sh` betiği oluştur (pg_dump, 30 gün saklama)
+- [ ] `crontab -e` ile günlük gece 02:00'de otomatik yedekleme kur: `0 2 * * * /scripts/backup.sh`
+- [ ] Yedeği manuel geri yükleyerek veri bütünlüğünü doğrula
+- [ ] PM2 `reload` komutunun mevcut bağlantıları kesmeden çalıştığını doğrula
+
+**✅ Tamamlanma Kriteri:** `main`'e push → 5dk'da otomatik deploy, yedek `/backups/` altında oluşuyor.
+
+---
+
+## ═══ FAZ 26: Son Doğrulama & Yayın (Launch) ═══
+**Sıra:** 8 | **Önkoşul:** FAZ 25 ✅
+
+- [ ] Admin → Etkinlik oluştur → Salon tasarımcısı → Yayınla tam akışını test et
+- [ ] Müşteri → Etkinlik görüntüle → Koltuk seç → Ödeme başlat akışını test et
+- [ ] QR Kod doğrulama akışını test et
+- [ ] Canlı analitik dashboard'unun socket.io ile çalıştığını doğrula
+- [ ] Apache Benchmark yük testi: `ab -n 1000 -c 50 https://biletapp.com/api/events`
+- [ ] Lighthouse mobile skoru ≥ 80 doğrula
+- [ ] Domain'in A kaydını sunucu IP'sine yönlendir
+- [ ] `www` ve apex domain her ikisinin de HTTPS ile çalıştığını doğrula
+- [ ] Gizlilik politikası ve kullanım şartları sayfaları oluştur
+- [ ] Cookie kullanımı için consent banner ekle
+
+**✅ Tamamlanma Kriteri:** Sistem `https://biletapp.com` üzerinde tam çalışıyor.
+
+---
+
+## 🗓️ Cron Görevi Takvimi
+
+| Sıra | Faz | Tahmini Süre | Tetikleyici |
+|------|-----|--------------|-------------|
+| 1 | FAZ 19 – Env & DB | 2-3s | Manuel başlatma |
+| 2 | FAZ 20 – PM2 | 1-2s | FAZ 19 ✅ ise oto |
+| 3 | FAZ 21 – Nginx/SSL | 1-2s | FAZ 20 ✅ ise oto |
+| 4 | FAZ 22 – Frontend | 1s | FAZ 21 ✅ ise oto |
+| 5 | FAZ 23 – Güvenlik | 2-3s | FAZ 22 ✅ ise oto |
+| 6 | FAZ 24 – Monitoring | 2-3s | FAZ 23 ✅ ise oto |
+| 7 | FAZ 25 – CI/CD | 2-4s | FAZ 24 ✅ ise oto |
+| 8 | FAZ 26 – Launch | 2-4s | FAZ 25 ✅ ise oto |
+
+**Toplam Tahmini Süre:** 13-22 saat
 
 ---
 
 ## 🔗 Dosya Referansları
 
-- **ARCHIVE_ROADMAP.md** - FAZ 1-13 ve tamamlanan görevler
-- **README.md** - Sistem özeti
-- **HIGH_SCORE_IDEAS.md** - Gelecek fikirler
-
-## 🔄 Döngü Tarafından Otomatik Eklenen İşler
-
-#### 1. 💻 [x] Hata yakalama ve retry mekanizması
-- **ID:** IDEA-MR1YC8SI-I2J7
-- **Puan:** 51/40
-- **Zorluk:** hard
-- **Açıklama:** Kritik endpointler için circuit breaker pattern uygulanmalı. (Uygulandı: reservations.js & payments.js)
-
----
-
-*Son Güncelleme: 2026-07-06*
-
-#### 2. 💻 [x] Input validation katmanı
-- **ID:** IDEA-MR1YDJ2I-065I
-- **Puan:** 61/40
-- **Zorluk:** medium
-- **Açıklama:** Tüm kullanıcı girişleri için merkezi validasyon katmanı. (Uygulandı: validate.js Zod schema)
-
-#### 3. 💻 [x] Veritabanı sorgu optimizasyonu
-- **ID:** IDEA-MR1YETDP-TBSL
-- **Puan:** 44.5/40
-- **Zorluk:** medium
-- **Açıklama:** Prisma sorgularında N+1 problemi kontrolü ve index analizi. (Uygulandı: schema.prisma)
-
-#### 4. 📱 [x] Mobil responsive kontrolü
-- **ID:** IDEA-MR1YG3NP-K5KW
-- **Puan:** 49/40
-- **Zorluk:** easy
-- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi. (Uygulandı: event detail page responsive Tailwind)
+- **[ARCHIVE_ROADMAP.md](ARCHIVE_ROADMAP.md)** — FAZ 1-18 arşivi
+- **[ERRORS.md](ERRORS.md)** — Hata logu (durdurma olmadan yazılır)
+- **[SECURITY.md](SECURITY.md)** — Güvenlik politikaları
+- **[README.md](README.md)** — Sistem özeti
