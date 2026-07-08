@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { Stage, Layer, Rect, Text, Group, Circle, Image as KonvaImage } from 'react-konva';
+import { Stage, Layer, Rect, Text, Group, Circle, Image as KonvaImage, Line } from 'react-konva';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Trash2, Save, Plus, Settings, Copy, MousePointer2, Image as ImageIcon } from 'lucide-react';
 
@@ -53,6 +53,13 @@ interface HallDesignerCanvasHandle {
   autoGenerateLayout: (config: AutoGenerateConfig) => void;
 }
 
+type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+
+const MIN_ELEMENT_SIZE = 30;
+const MIN_RADIUS = 20;
+const CANVAS_WIDTH = 1000;
+const CANVAS_HEIGHT = 800;
+
 // Inner component - sarılmış function
 const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesignerCanvasProps>(function HallDesignerCanvas({ onAutoGenerate }, ref) {
   const searchParams = useSearchParams();
@@ -66,7 +73,8 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   const [backgroundImage, setBackgroundImage] = useState('');
   
   const [elements, setElements] = useState<DesignerElement[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectionBox, setSelectionBox] = useState<{ visible: boolean, x1: number, y1: number, x2: number, y2: number }>({ visible: false, x1: 0, y1: 0, x2: 0, y2: 0 });
   
   // Arka plan görseli
   const [bgImageObj, setBgImageObj] = useState<HTMLImageElement | null>(null);
@@ -75,7 +83,10 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   const [stageScale, setStageScale] = useState(1);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const lastPointerPos = useRef<{ x: number; y: number } | null>(null);
+  const dragSelectionOriginRef = useRef<Record<string, { x: number; y: number }>>({});
 
   const SNAP_GRID = 10;
 
@@ -143,11 +154,48 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     return null;
   };
 
-  const handleDragEnd = (e: { target: { x: () => number; y: () => number; position: (p: { x: number; y: number }) => void } }, id: string) => {
-    const newX = Math.round(e.target.x() / SNAP_GRID) * SNAP_GRID;
-    const newY = Math.round(e.target.y() / SNAP_GRID) * SNAP_GRID;
-    e.target.position({ x: newX, y: newY });
-    setElements(elements.map(el => el.id === id ? { ...el, x: newX, y: newY } : el));
+  const handleDragStart = (id: string) => {
+    const targetIds = selectedIds.includes(id) ? selectedIds : [id];
+    dragSelectionOriginRef.current = Object.fromEntries(
+      elements
+        .filter((el) => targetIds.includes(el.id))
+        .map((el) => [el.id, { x: el.x, y: el.y }])
+    );
+    if (!selectedIds.includes(id)) {
+      setSelectedIds([id]);
+    }
+  };
+
+  const handleDragMove = (e: { target: { x: () => number; y: () => number } }, id: string) => {
+    const targetIds = selectedIds.includes(id) ? selectedIds : [id];
+    const origin = dragSelectionOriginRef.current[id];
+    if (!origin) return;
+    const deltaX = e.target.x() - origin.x;
+    const deltaY = e.target.y() - origin.y;
+
+    setElements((prev) =>
+      prev.map((el) => {
+        if (!targetIds.includes(el.id)) return el;
+        const base = dragSelectionOriginRef.current[el.id];
+        if (!base) return el;
+        return { ...el, x: base.x + deltaX, y: base.y + deltaY };
+      })
+    );
+  };
+
+  const handleDragEnd = (id: string) => {
+    const targetIds = selectedIds.includes(id) ? selectedIds : [id];
+    setElements((prev) =>
+      prev.map((el) => {
+        if (!targetIds.includes(el.id)) return el;
+        return {
+          ...el,
+          x: Math.round(el.x / SNAP_GRID) * SNAP_GRID,
+          y: Math.round(el.y / SNAP_GRID) * SNAP_GRID,
+        };
+      })
+    );
+    dragSelectionOriginRef.current = {};
   };
 
   const addElement = (type: ElementType) => {
@@ -201,30 +249,36 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     }
 
     setElements([...elements, baseElement]);
-    setSelectedId(id);
+    setSelectedIds([id]);
   };
 
   const deleteSelected = () => {
-    if (selectedId) {
-      setElements(elements.filter(e => e.id !== selectedId));
-      setSelectedId(null);
+    if (selectedIds.length > 0) {
+      setElements(elements.filter(e => !selectedIds.includes(e.id)));
+      setSelectedIds([]);
     }
   };
 
   const duplicateSelected = () => {
-    if (selectedId) {
-      const target = elements.find(e => e.id === selectedId);
-      if (target) {
-        const newEl = { ...target, id: `${target.type}-${Date.now()}`, x: target.x + 20, y: target.y + 20 };
-        setElements([...elements, newEl]);
-        setSelectedId(newEl.id);
-      }
+    if (selectedIds.length > 0) {
+      const newElements: DesignerElement[] = [];
+      const newIds: string[] = [];
+      selectedIds.forEach(id => {
+        const target = elements.find(e => e.id === id);
+        if (target) {
+          const newEl: DesignerElement = { ...target, id: `${target.type}-${Date.now()}-${Math.floor(Math.random() * 1000)}`, x: target.x + 20, y: target.y + 20 };
+          newElements.push(newEl);
+          newIds.push(newEl.id);
+        }
+      });
+      setElements([...elements, ...newElements]);
+      setSelectedIds(newIds);
     }
   };
 
   const updateSelected = (key: keyof DesignerElement, value: DesignerElement[keyof DesignerElement]) => {
-    if (selectedId) {
-      setElements(elements.map(e => e.id === selectedId ? { ...e, [key]: value } : e));
+    if (selectedIds.length > 0) {
+      setElements(elements.map(e => selectedIds.includes(e.id) ? { ...e, [key]: value } : e));
     }
   };
 
@@ -233,6 +287,107 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
       if (el.type === 'stage') return acc;
       return acc + (el.seatCount || 1);
     }, 0);
+  };
+
+  const getElementBounds = (el: DesignerElement) => {
+    const radius = el.radius || 0;
+    const width = el.width ?? radius * 2;
+    const height = el.height ?? radius * 2;
+    return { x: el.x, y: el.y, width, height };
+  };
+
+  const alignSelected = (mode: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
+    if (selectedIds.length < 2) return;
+
+    const selectedElements = elements.filter((el) => selectedIds.includes(el.id));
+    const bounds = selectedElements.map(getElementBounds);
+
+    const minX = Math.min(...bounds.map((b) => b.x));
+    const maxX = Math.max(...bounds.map((b) => b.x + b.width));
+    const minY = Math.min(...bounds.map((b) => b.y));
+    const maxY = Math.max(...bounds.map((b) => b.y + b.height));
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    setElements((prev) =>
+      prev.map((el) => {
+        if (!selectedIds.includes(el.id)) return el;
+        const box = getElementBounds(el);
+        const next = { ...el };
+
+        if (mode === 'left') next.x = minX;
+        if (mode === 'right') next.x = maxX - box.width;
+        if (mode === 'center') next.x = centerX - box.width / 2;
+        if (mode === 'top') next.y = minY;
+        if (mode === 'bottom') next.y = maxY - box.height;
+        if (mode === 'middle') next.y = centerY - box.height / 2;
+
+        next.x = Math.round(next.x / SNAP_GRID) * SNAP_GRID;
+        next.y = Math.round(next.y / SNAP_GRID) * SNAP_GRID;
+        return next;
+      })
+    );
+  };
+
+  const resizeElement = (id: string, handle: ResizeHandle, deltaX: number, deltaY: number) => {
+    setElements((prev) =>
+      prev.map((el) => {
+        if (el.id !== id) return el;
+
+        if (el.radius) {
+          const radiusDelta = Math.max(deltaX, deltaY) / 2;
+          const nextRadius = Math.max(MIN_RADIUS, Math.round((el.radius + radiusDelta) / 5) * 5);
+          return { ...el, radius: nextRadius };
+        }
+
+        const width = el.width || MIN_ELEMENT_SIZE;
+        const height = el.height || MIN_ELEMENT_SIZE;
+        let nextX = el.x;
+        let nextY = el.y;
+        let nextWidth = width;
+        let nextHeight = height;
+
+        if (handle === 'top-left') {
+          nextX += deltaX;
+          nextY += deltaY;
+          nextWidth -= deltaX;
+          nextHeight -= deltaY;
+        } else if (handle === 'top-right') {
+          nextY += deltaY;
+          nextWidth += deltaX;
+          nextHeight -= deltaY;
+        } else if (handle === 'bottom-left') {
+          nextX += deltaX;
+          nextWidth -= deltaX;
+          nextHeight += deltaY;
+        } else {
+          nextWidth += deltaX;
+          nextHeight += deltaY;
+        }
+
+        if (nextWidth < MIN_ELEMENT_SIZE) {
+          if (handle === 'top-left' || handle === 'bottom-left') {
+            nextX -= MIN_ELEMENT_SIZE - nextWidth;
+          }
+          nextWidth = MIN_ELEMENT_SIZE;
+        }
+
+        if (nextHeight < MIN_ELEMENT_SIZE) {
+          if (handle === 'top-left' || handle === 'top-right') {
+            nextY -= MIN_ELEMENT_SIZE - nextHeight;
+          }
+          nextHeight = MIN_ELEMENT_SIZE;
+        }
+
+        return {
+          ...el,
+          x: Math.round(nextX / SNAP_GRID) * SNAP_GRID,
+          y: Math.round(nextY / SNAP_GRID) * SNAP_GRID,
+          width: Math.round(nextWidth / SNAP_GRID) * SNAP_GRID,
+          height: Math.round(nextHeight / SNAP_GRID) * SNAP_GRID,
+        };
+      })
+    );
   };
 
   // 🗺️ Wheel zoom handler
@@ -245,30 +400,76 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     setStageScale(clampedScale);
   };
 
-  const handleStageMouseDown = (e: { target: { getStage: () => { getPointerPosition: () => { x: number; y: number } | null } }; evt: MouseEvent }) => {
+  const handleStageMouseDown = (e: any) => {
     // Middle mouse or space+left for pan
     if (e.evt.button === 1 || (e.evt.button === 0 && e.evt.altKey)) {
       setIsPanning(true);
       const stage = e.target.getStage();
       lastPointerPos.current = stage.getPointerPosition();
     } else {
-      if (e.target === e.target.getStage?.() || (e.target as unknown as { name?: () => string }).name?.() === 'bgImage') setSelectedId(null);
+      const isResizeHandle = typeof e.target.name === 'function' && String(e.target.name()).startsWith('resize-handle');
+      if (isResizeHandle) return;
+      const isBg = e.target === e.target.getStage?.() || e.target.name?.() === 'bgImage' || e.target.name?.() === 'hallBoundsGroup' || e.target.name?.() === 'hallBoundsRect';
+      if (isBg) {
+        if (!e.evt.shiftKey && !e.evt.ctrlKey) setSelectedIds([]);
+        const stage = e.target.getStage();
+        const pos = stage.getPointerPosition();
+        if (pos) {
+          const scale = stage.scaleX();
+          const stagePos = stage.position();
+          const logicalX = (pos.x - stagePos.x) / scale;
+          const logicalY = (pos.y - stagePos.y) / scale;
+          setSelectionBox({ visible: true, x1: logicalX, y1: logicalY, x2: logicalX, y2: logicalY });
+        }
+      }
     }
   };
 
-  const handleStageMouseMove = (e: { target: { getStage: () => { getPointerPosition: () => { x: number; y: number } | null } } }) => {
-    if (!isPanning || !lastPointerPos.current) return;
+  const handleStageMouseMove = (e: any) => {
     const stage = e.target.getStage();
     const pos = stage.getPointerPosition();
-    if (!pos) return;
-    setStagePos(prev => ({
-      x: prev.x + (pos.x - lastPointerPos.current!.x),
-      y: prev.y + (pos.y - lastPointerPos.current!.y),
-    }));
-    lastPointerPos.current = pos;
+    
+    if (isPanning && lastPointerPos.current) {
+      if (!pos) return;
+      setStagePos(prev => ({
+        x: prev.x + (pos.x - lastPointerPos.current!.x),
+        y: prev.y + (pos.y - lastPointerPos.current!.y),
+      }));
+      lastPointerPos.current = pos;
+    } else if (selectionBox.visible) {
+      if (!pos) return;
+      const scale = stage.scaleX();
+      const stagePos = stage.position();
+      const logicalX = (pos.x - stagePos.x) / scale;
+      const logicalY = (pos.y - stagePos.y) / scale;
+      setSelectionBox(prev => ({ ...prev, x2: logicalX, y2: logicalY }));
+    }
   };
 
-  const handleStageMouseUp = () => setIsPanning(false);
+  const handleStageMouseUp = (e: any) => {
+    setIsPanning(false);
+    if (selectionBox.visible) {
+      setSelectionBox(prev => ({ ...prev, visible: false }));
+      
+      const xMin = Math.min(selectionBox.x1, selectionBox.x2);
+      const xMax = Math.max(selectionBox.x1, selectionBox.x2);
+      const yMin = Math.min(selectionBox.y1, selectionBox.y2);
+      const yMax = Math.max(selectionBox.y1, selectionBox.y2);
+
+      const newlySelected = elements.filter(el => {
+        const radius = el.radius || 25;
+        const w = el.width || radius * 2;
+        const h = el.height || radius * 2;
+        return (el.x + w >= xMin && el.x <= xMax && el.y + h >= yMin && el.y <= yMax);
+      }).map(el => el.id);
+
+      if (e.evt.shiftKey || e.evt.ctrlKey) {
+        setSelectedIds(prev => Array.from(new Set([...prev, ...newlySelected])));
+      } else {
+        setSelectedIds(newlySelected);
+      }
+    }
+  };
 
   // 🎭 Otomatik Sahne Oluştur - Sihirbazdan gelen tam config
   const autoGenerateLayout = useCallback((config: AutoGenerateConfig) => {
@@ -420,7 +621,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     }
 
     setElements(newElements);
-    setSelectedId(null);
+    setSelectedIds([]);
     // Canvas'ı sığacak şekilde zoom reset
     setStageScale(Math.min(900 / CANVAS_WIDTH, 750 / CANVAS_HEIGHT, 1));
     setStagePos({ x: 20, y: 20 });
@@ -466,7 +667,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
       description,
       address,
       seatCount: elements.reduce((acc, el) => acc + (el.seatCount || 1), 0),
-      layoutJson: JSON.stringify({ canvas: { width: 1000, height: 800 }, elements }),
+      layoutJson: JSON.stringify({ canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }, elements }),
       backgroundImage,
       isGlobal
     };
@@ -506,7 +707,10 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     saveLayout,
   }), [autoGenerateLayout, saveLayout]);
 
-  const selectedElement = elements.find(e => e.id === selectedId);
+  const selectedElement = selectedIds.length > 0
+    ? elements.find(e => e.id === selectedIds[0]) ?? null
+    : null;
+  const hasSelection = selectedIds.length > 0;
 
   // --- Çizim Yardımcı Fonksiyonları ---
   const renderRoundTable = (el: DesignerElement, isSelected: boolean) => {
@@ -649,13 +853,98 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     );
   };
 
+  const renderResizeHandles = (el: DesignerElement) => {
+    const showHandles = selectedIds.length === 1
+      ? selectedIds.includes(el.id)
+      : hoveredId === el.id;
+    if (!showHandles) return null;
+
+    if (el.radius) {
+      const radius = el.radius;
+      return (
+        <Group>
+          <Line
+            points={[radius * 0.7, radius * 0.7, radius + 18, radius + 18]}
+            stroke="#2563eb"
+            strokeWidth={2}
+            dash={[4, 3]}
+            listening={false}
+          />
+          <Circle
+            x={radius + 18}
+            y={radius + 18}
+            radius={8}
+            fill="#2563eb"
+            stroke="white"
+            strokeWidth={2}
+            name="resize-handle-bottom-right"
+            draggable
+            dragOnTop={false}
+            onDragStart={() => {
+              setSelectedIds([el.id]);
+              setIsResizing(true);
+            }}
+            onDragMove={(e) => resizeElement(el.id, 'bottom-right', e.target.x() - (radius + 18), e.target.y() - (radius + 18))}
+            onDragEnd={(e) => {
+              setIsResizing(false);
+              e.target.position({ x: radius + 18, y: radius + 18 });
+            }}
+          />
+        </Group>
+      );
+    }
+
+    const width = el.width || MIN_ELEMENT_SIZE;
+    const height = el.height || MIN_ELEMENT_SIZE;
+    const handles: Array<{ key: ResizeHandle; x: number; y: number; cursor: string }> = [
+      { key: 'top-left', x: 0, y: 0, cursor: 'nwse-resize' },
+      { key: 'top-right', x: width, y: 0, cursor: 'nesw-resize' },
+      { key: 'bottom-left', x: 0, y: height, cursor: 'nesw-resize' },
+      { key: 'bottom-right', x: width, y: height, cursor: 'nwse-resize' },
+    ];
+
+    return handles.map((handle) => (
+      <Rect
+        key={handle.key}
+        x={handle.x - 6}
+        y={handle.y - 6}
+        width={12}
+        height={12}
+        fill="#2563eb"
+        stroke="white"
+        strokeWidth={2}
+        cornerRadius={3}
+        name={`resize-handle-${handle.key}`}
+        draggable
+        dragOnTop={false}
+        onMouseEnter={(e) => {
+          const container = e.target.getStage()?.container();
+          if (container) container.style.cursor = handle.cursor;
+        }}
+        onMouseLeave={(e) => {
+          const container = e.target.getStage()?.container();
+          if (container) container.style.cursor = 'default';
+        }}
+        onDragStart={() => {
+          setSelectedIds([el.id]);
+          setIsResizing(true);
+        }}
+        onDragMove={(e) => resizeElement(el.id, handle.key, e.target.x() - (handle.x - 6), e.target.y() - (handle.y - 6))}
+        onDragEnd={(e) => {
+          setIsResizing(false);
+          e.target.position({ x: handle.x - 6, y: handle.y - 6 });
+        }}
+      />
+    ));
+  };
+
   return (
     <div className="flex h-full gap-0">
       {/* Sol: Canvas - Full Height */}
       <div 
-        className="flex-1 bg-gray-200 rounded-lg overflow-hidden shadow-inner border border-gray-300 relative"
+        className="flex-1 bg-gray-200 rounded-lg overflow-auto shadow-inner border border-gray-300 relative"
         onClick={(e) => {
-          if (e.target === e.currentTarget) setSelectedId(null);
+          if (e.target === e.currentTarget) setSelectedIds([]);
         }}
       >
         {/* 🔍 Zoom Kontrolleri */}
@@ -668,51 +957,77 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
           Zoom: {Math.round(stageScale * 100)}% | Alt+Sürükle veya tekerlek ile gezin
         </div>
 
-        <Stage
-          width={1000}
-          height={800}
-          scaleX={stageScale}
-          scaleY={stageScale}
-          x={stagePos.x}
-          y={stagePos.y}
-          onWheel={handleWheel}
-          onMouseDown={handleStageMouseDown}
-          onMouseMove={handleStageMouseMove}
-          onMouseUp={handleStageMouseUp}
-          style={{ cursor: isPanning ? 'grabbing' : 'default' }}
-        >
-          <Layer>
-            {bgImageObj && (
-              <KonvaImage image={bgImageObj} x={0} y={0} width={1000} height={800} opacity={0.5} name="bgImage" />
-            )}
+        <div className="min-w-max min-h-max p-4">
+          <Stage
+            width={CANVAS_WIDTH}
+            height={CANVAS_HEIGHT}
+            scaleX={stageScale}
+            scaleY={stageScale}
+            x={stagePos.x}
+            y={stagePos.y}
+            onWheel={handleWheel}
+            onMouseDown={handleStageMouseDown}
+            onMouseMove={handleStageMouseMove}
+            onMouseUp={handleStageMouseUp}
+            style={{ cursor: isPanning ? 'grabbing' : 'default' }}
+          >
+            <Layer>
+              {bgImageObj && (
+                <KonvaImage image={bgImageObj} x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} opacity={0.5} name="bgImage" />
+              )}
 
-            {elements.map(el => {
-              const isSelected = el.id === selectedId;
-              return (
-                <Group
-                  key={el.id}
-                  x={el.x}
-                  y={el.y}
-                  rotation={el.rotation || 0}
-                  draggable={!isPanning}
-                  onDragStart={() => setSelectedId(el.id)}
-                  onDragEnd={(e) => handleDragEnd(e, el.id)}
-                  onClick={() => { if (!isPanning) setSelectedId(el.id); }}
-                  onTap={() => setSelectedId(el.id)}
-                >
-                  {el.type === 'round_table' && renderRoundTable(el, isSelected)}
-                  {el.type === 'rect_table' && renderRectTable(el, isSelected)}
-                  {el.type === 'stage' && renderStage(el, isSelected)}
-                  {el.type === 'bistro' && renderBistro(el, isSelected)}
-                  {el.type === 'dance_floor' && renderDanceFloor(el, isSelected)}
-                  {el.type === 'emergency_exit' && renderEmergencyExit(el, isSelected)}
-                  {el.type === 'entrance' && renderEntrance(el, isSelected)}
-                  {el.type === 'chair' && renderChair(el, isSelected)}
-                </Group>
-              );
-            })}
-          </Layer>
-        </Stage>
+              {elements.map(el => {
+                const isSelected = selectedIds.includes(el.id);
+                return (
+                  <Group
+                    key={el.id}
+                    x={el.x}
+                    y={el.y}
+                    rotation={el.rotation || 0}
+                    draggable={!isPanning && !isResizing}
+                    onDragStart={() => handleDragStart(el.id)}
+                    onDragMove={(e) => handleDragMove(e, el.id)}
+                    onDragEnd={() => handleDragEnd(el.id)}
+                    onMouseEnter={() => setHoveredId(el.id)}
+                    onMouseLeave={() => setHoveredId((current) => (current === el.id ? null : current))}
+                    onClick={(e) => {
+                      if (isPanning || isResizing) return;
+                      if (e.evt.shiftKey || e.evt.ctrlKey) {
+                        setSelectedIds(prev => prev.includes(el.id) ? prev.filter(id => id !== el.id) : [...prev, el.id]);
+                      } else {
+                        setSelectedIds([el.id]);
+                      }
+                    }}
+                    onTap={() => setSelectedIds([el.id])}
+                  >
+                    {el.type === 'round_table' && renderRoundTable(el, isSelected)}
+                    {el.type === 'rect_table' && renderRectTable(el, isSelected)}
+                    {el.type === 'stage' && renderStage(el, isSelected)}
+                    {el.type === 'bistro' && renderBistro(el, isSelected)}
+                    {el.type === 'dance_floor' && renderDanceFloor(el, isSelected)}
+                    {el.type === 'emergency_exit' && renderEmergencyExit(el, isSelected)}
+                    {el.type === 'entrance' && renderEntrance(el, isSelected)}
+                    {el.type === 'chair' && renderChair(el, isSelected)}
+                    {renderResizeHandles(el)}
+                  </Group>
+                );
+              })}
+              {selectionBox.visible && (
+                <Rect
+                  x={Math.min(selectionBox.x1, selectionBox.x2)}
+                  y={Math.min(selectionBox.y1, selectionBox.y2)}
+                  width={Math.abs(selectionBox.x2 - selectionBox.x1)}
+                  height={Math.abs(selectionBox.y2 - selectionBox.y1)}
+                  fill="rgba(59, 130, 246, 0.15)"
+                  stroke="#3b82f6"
+                  strokeWidth={1}
+                  dash={[6, 4]}
+                  listening={false}
+                />
+              )}
+            </Layer>
+          </Stage>
+        </div>
       </div>
 
       {/* Sağ: Kontrol Paneli - Collapsible */}
@@ -772,6 +1087,19 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
           </div>
 
           {/* İstatistikler */}
+          <div>
+            <p className="text-xs font-bold text-gray-700 mb-2">Hizalama</p>
+            <div className="grid grid-cols-3 gap-1">
+              <button onClick={() => alignSelected('left')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Sol</button>
+              <button onClick={() => alignSelected('center')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Orta X</button>
+              <button onClick={() => alignSelected('right')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Sağ</button>
+              <button onClick={() => alignSelected('top')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Üst</button>
+              <button onClick={() => alignSelected('middle')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Orta Y</button>
+              <button onClick={() => alignSelected('bottom')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Alt</button>
+            </div>
+            <p className="mt-2 text-[11px] text-gray-500">Çoklu seçim sonrası elemanları birlikte taşıyabilir ve hizalayabilirsiniz.</p>
+          </div>
+
           {(() => {
             const stats = getStatistics();
             return (
@@ -795,9 +1123,9 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
           {selectedElement && (
             <div className="bg-blue-50 p-3 rounded border border-blue-100 space-y-2">
               <p className="text-xs font-bold text-blue-900">🔹 Seçili Öğe: {selectedElement.label}</p>
-              <input type="text" value={selectedElement.label} onChange={(e) => updateSelected('label', e.target.value)} className="w-full p-1.5 border border-blue-200 rounded text-xs" placeholder="Label" />
-              {selectedElement.type !== 'stage' && (
-                <input type="number" min="1" value={selectedElement.seatCount || 1} onChange={(e) => updateSelected('seatCount', parseInt(e.target.value))} className="w-full p-1.5 border border-blue-200 rounded text-xs" placeholder="Kapasite" />
+              <input type="text" value={selectedElement!.label} onChange={(e) => updateSelected('label', e.target.value)} className="w-full p-1.5 border border-blue-200 rounded text-xs" placeholder="Label" />
+              {selectedElement!.type !== 'stage' && (
+                <input type="number" min="1" value={selectedElement!.seatCount || 1} onChange={(e) => updateSelected('seatCount', parseInt(e.target.value))} className="w-full p-1.5 border border-blue-200 rounded text-xs" placeholder="Kapasite" />
               )}
               <div className="flex gap-1">
                 <button onClick={duplicateSelected} className="flex-1 text-xs bg-blue-600 text-white hover:bg-blue-700 p-1 rounded font-medium">📋 Çoğalt</button>
