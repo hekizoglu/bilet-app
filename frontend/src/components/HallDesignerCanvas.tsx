@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
-import { Stage, Layer, Rect, Text, Group, Circle, Image as KonvaImage, Line } from 'react-konva';
+import { Stage, Layer, Rect, Text, Group, Circle, Image as KonvaImage } from 'react-konva';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Trash2, Save, Plus, Settings, Copy, MousePointer2, Image as ImageIcon } from 'lucide-react';
 
@@ -53,11 +53,6 @@ interface HallDesignerCanvasHandle {
   autoGenerateLayout: (config: AutoGenerateConfig) => void;
 }
 
-type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
-
-const MIN_ELEMENT_SIZE = 30;
-const MIN_RADIUS = 20;
-
 // Inner component - sarılmış function
 const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesignerCanvasProps>(function HallDesignerCanvas({ onAutoGenerate }, ref) {
   const searchParams = useSearchParams();
@@ -81,9 +76,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   const [stageScale, setStageScale] = useState(1);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
   const lastPointerPos = useRef<{ x: number; y: number } | null>(null);
-  const dragSelectionOriginRef = useRef<Record<string, { x: number; y: number }>>({});
 
   const SNAP_GRID = 10;
 
@@ -151,48 +144,11 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     return null;
   };
 
-  const handleDragStart = (id: string) => {
-    const targetIds = selectedIds.includes(id) ? selectedIds : [id];
-    dragSelectionOriginRef.current = Object.fromEntries(
-      elements
-        .filter((el) => targetIds.includes(el.id))
-        .map((el) => [el.id, { x: el.x, y: el.y }])
-    );
-    if (!selectedIds.includes(id)) {
-      setSelectedIds([id]);
-    }
-  };
-
-  const handleDragMove = (e: { target: { x: () => number; y: () => number } }, id: string) => {
-    const targetIds = selectedIds.includes(id) ? selectedIds : [id];
-    const origin = dragSelectionOriginRef.current[id];
-    if (!origin) return;
-    const deltaX = e.target.x() - origin.x;
-    const deltaY = e.target.y() - origin.y;
-
-    setElements((prev) =>
-      prev.map((el) => {
-        if (!targetIds.includes(el.id)) return el;
-        const base = dragSelectionOriginRef.current[el.id];
-        if (!base) return el;
-        return { ...el, x: base.x + deltaX, y: base.y + deltaY };
-      })
-    );
-  };
-
-  const handleDragEnd = (id: string) => {
-    const targetIds = selectedIds.includes(id) ? selectedIds : [id];
-    setElements((prev) =>
-      prev.map((el) => {
-        if (!targetIds.includes(el.id)) return el;
-        return {
-          ...el,
-          x: Math.round(el.x / SNAP_GRID) * SNAP_GRID,
-          y: Math.round(el.y / SNAP_GRID) * SNAP_GRID,
-        };
-      })
-    );
-    dragSelectionOriginRef.current = {};
+  const handleDragEnd = (e: { target: { x: () => number; y: () => number; position: (p: { x: number; y: number }) => void } }, id: string) => {
+    const newX = Math.round(e.target.x() / SNAP_GRID) * SNAP_GRID;
+    const newY = Math.round(e.target.y() / SNAP_GRID) * SNAP_GRID;
+    e.target.position({ x: newX, y: newY });
+    setElements(elements.map(el => el.id === id ? { ...el, x: newX, y: newY } : el));
   };
 
   const addElement = (type: ElementType) => {
@@ -286,107 +242,6 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     }, 0);
   };
 
-  const getElementBounds = (el: DesignerElement) => {
-    const radius = el.radius || 0;
-    const width = el.width ?? radius * 2;
-    const height = el.height ?? radius * 2;
-    return { x: el.x, y: el.y, width, height };
-  };
-
-  const alignSelected = (mode: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom') => {
-    if (selectedIds.length < 2) return;
-
-    const selectedElements = elements.filter((el) => selectedIds.includes(el.id));
-    const bounds = selectedElements.map(getElementBounds);
-
-    const minX = Math.min(...bounds.map((b) => b.x));
-    const maxX = Math.max(...bounds.map((b) => b.x + b.width));
-    const minY = Math.min(...bounds.map((b) => b.y));
-    const maxY = Math.max(...bounds.map((b) => b.y + b.height));
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-
-    setElements((prev) =>
-      prev.map((el) => {
-        if (!selectedIds.includes(el.id)) return el;
-        const box = getElementBounds(el);
-        const next = { ...el };
-
-        if (mode === 'left') next.x = minX;
-        if (mode === 'right') next.x = maxX - box.width;
-        if (mode === 'center') next.x = centerX - box.width / 2;
-        if (mode === 'top') next.y = minY;
-        if (mode === 'bottom') next.y = maxY - box.height;
-        if (mode === 'middle') next.y = centerY - box.height / 2;
-
-        next.x = Math.round(next.x / SNAP_GRID) * SNAP_GRID;
-        next.y = Math.round(next.y / SNAP_GRID) * SNAP_GRID;
-        return next;
-      })
-    );
-  };
-
-  const resizeElement = (id: string, handle: ResizeHandle, deltaX: number, deltaY: number) => {
-    setElements((prev) =>
-      prev.map((el) => {
-        if (el.id !== id) return el;
-
-        if (el.radius) {
-          const radiusDelta = Math.max(deltaX, deltaY) / 2;
-          const nextRadius = Math.max(MIN_RADIUS, Math.round((el.radius + radiusDelta) / 5) * 5);
-          return { ...el, radius: nextRadius };
-        }
-
-        const width = el.width || MIN_ELEMENT_SIZE;
-        const height = el.height || MIN_ELEMENT_SIZE;
-        let nextX = el.x;
-        let nextY = el.y;
-        let nextWidth = width;
-        let nextHeight = height;
-
-        if (handle === 'top-left') {
-          nextX += deltaX;
-          nextY += deltaY;
-          nextWidth -= deltaX;
-          nextHeight -= deltaY;
-        } else if (handle === 'top-right') {
-          nextY += deltaY;
-          nextWidth += deltaX;
-          nextHeight -= deltaY;
-        } else if (handle === 'bottom-left') {
-          nextX += deltaX;
-          nextWidth -= deltaX;
-          nextHeight += deltaY;
-        } else {
-          nextWidth += deltaX;
-          nextHeight += deltaY;
-        }
-
-        if (nextWidth < MIN_ELEMENT_SIZE) {
-          if (handle === 'top-left' || handle === 'bottom-left') {
-            nextX -= MIN_ELEMENT_SIZE - nextWidth;
-          }
-          nextWidth = MIN_ELEMENT_SIZE;
-        }
-
-        if (nextHeight < MIN_ELEMENT_SIZE) {
-          if (handle === 'top-left' || handle === 'top-right') {
-            nextY -= MIN_ELEMENT_SIZE - nextHeight;
-          }
-          nextHeight = MIN_ELEMENT_SIZE;
-        }
-
-        return {
-          ...el,
-          x: Math.round(nextX / SNAP_GRID) * SNAP_GRID,
-          y: Math.round(nextY / SNAP_GRID) * SNAP_GRID,
-          width: Math.round(nextWidth / SNAP_GRID) * SNAP_GRID,
-          height: Math.round(nextHeight / SNAP_GRID) * SNAP_GRID,
-        };
-      })
-    );
-  };
-
   // 🗺️ Wheel zoom handler
   const handleWheel = (e: { evt: WheelEvent }) => {
     e.evt.preventDefault();
@@ -404,8 +259,6 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
       const stage = e.target.getStage();
       lastPointerPos.current = stage.getPointerPosition();
     } else {
-      const isResizeHandle = typeof e.target.name === 'function' && String(e.target.name()).startsWith('resize-handle');
-      if (isResizeHandle) return;
       const isBg = e.target === e.target.getStage?.() || e.target.name?.() === 'bgImage' || e.target.name?.() === 'hallBoundsGroup' || e.target.name?.() === 'hallBoundsRect';
       if (isBg) {
         if (!e.evt.shiftKey && !e.evt.ctrlKey) setSelectedIds([]);
@@ -850,82 +703,6 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     );
   };
 
-  const renderResizeHandles = (el: DesignerElement) => {
-    if (!selectedIds.includes(el.id) || selectedIds.length !== 1) return null;
-
-    if (el.radius) {
-      const radius = el.radius;
-      return (
-        <Group>
-          <Line
-            points={[radius * 0.7, radius * 0.7, radius + 18, radius + 18]}
-            stroke="#2563eb"
-            strokeWidth={2}
-            dash={[4, 3]}
-            listening={false}
-          />
-          <Circle
-            x={radius + 18}
-            y={radius + 18}
-            radius={8}
-            fill="#2563eb"
-            stroke="white"
-            strokeWidth={2}
-            name="resize-handle-bottom-right"
-            draggable
-            dragOnTop={false}
-            onDragStart={() => setIsResizing(true)}
-            onDragMove={(e) => resizeElement(el.id, 'bottom-right', e.target.x() - (radius + 18), e.target.y() - (radius + 18))}
-            onDragEnd={(e) => {
-              setIsResizing(false);
-              e.target.position({ x: radius + 18, y: radius + 18 });
-            }}
-          />
-        </Group>
-      );
-    }
-
-    const width = el.width || MIN_ELEMENT_SIZE;
-    const height = el.height || MIN_ELEMENT_SIZE;
-    const handles: Array<{ key: ResizeHandle; x: number; y: number; cursor: string }> = [
-      { key: 'top-left', x: 0, y: 0, cursor: 'nwse-resize' },
-      { key: 'top-right', x: width, y: 0, cursor: 'nesw-resize' },
-      { key: 'bottom-left', x: 0, y: height, cursor: 'nesw-resize' },
-      { key: 'bottom-right', x: width, y: height, cursor: 'nwse-resize' },
-    ];
-
-    return handles.map((handle) => (
-      <Rect
-        key={handle.key}
-        x={handle.x - 6}
-        y={handle.y - 6}
-        width={12}
-        height={12}
-        fill="#2563eb"
-        stroke="white"
-        strokeWidth={2}
-        cornerRadius={3}
-        name={`resize-handle-${handle.key}`}
-        draggable
-        dragOnTop={false}
-        onMouseEnter={(e) => {
-          const container = e.target.getStage()?.container();
-          if (container) container.style.cursor = handle.cursor;
-        }}
-        onMouseLeave={(e) => {
-          const container = e.target.getStage()?.container();
-          if (container) container.style.cursor = 'default';
-        }}
-        onDragStart={() => setIsResizing(true)}
-        onDragMove={(e) => resizeElement(el.id, handle.key, e.target.x() - (handle.x - 6), e.target.y() - (handle.y - 6))}
-        onDragEnd={(e) => {
-          setIsResizing(false);
-          e.target.position({ x: handle.x - 6, y: handle.y - 6 });
-        }}
-      />
-    ));
-  };
-
   return (
     <div className="flex h-full gap-0">
       {/* Sol: Canvas - Full Height */}
@@ -971,12 +748,11 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
                   x={el.x}
                   y={el.y}
                   rotation={el.rotation || 0}
-                  draggable={!isPanning && !isResizing}
-                  onDragStart={() => handleDragStart(el.id)}
-                  onDragMove={(e) => handleDragMove(e, el.id)}
-                  onDragEnd={() => handleDragEnd(el.id)}
+                  draggable={!isPanning}
+                  onDragStart={() => setSelectedIds([el.id])}
+                  onDragEnd={(e) => handleDragEnd(e, el.id)}
                   onClick={(e) => {
-                    if (isPanning || isResizing) return;
+                    if (isPanning) return;
                     if (e.evt.shiftKey || e.evt.ctrlKey) {
                       setSelectedIds(prev => prev.includes(el.id) ? prev.filter(id => id !== el.id) : [...prev, el.id]);
                     } else {
@@ -993,7 +769,6 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
                   {el.type === 'emergency_exit' && renderEmergencyExit(el, isSelected)}
                   {el.type === 'entrance' && renderEntrance(el, isSelected)}
                   {el.type === 'chair' && renderChair(el, isSelected)}
-                  {renderResizeHandles(el)}
                 </Group>
               );
             })}
@@ -1071,19 +846,6 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
           </div>
 
           {/* İstatistikler */}
-          <div>
-            <p className="text-xs font-bold text-gray-700 mb-2">Hizalama</p>
-            <div className="grid grid-cols-3 gap-1">
-              <button onClick={() => alignSelected('left')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Sol</button>
-              <button onClick={() => alignSelected('center')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Orta X</button>
-              <button onClick={() => alignSelected('right')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Sağ</button>
-              <button onClick={() => alignSelected('top')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Üst</button>
-              <button onClick={() => alignSelected('middle')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Orta Y</button>
-              <button onClick={() => alignSelected('bottom')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Alt</button>
-            </div>
-            <p className="mt-2 text-[11px] text-gray-500">Çoklu seçim sonrası elemanları birlikte taşıyabilir ve hizalayabilirsiniz.</p>
-          </div>
-
           {(() => {
             const stats = getStatistics();
             return (
