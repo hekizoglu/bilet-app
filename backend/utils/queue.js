@@ -1,11 +1,14 @@
 /**
- * Lightweight in-memory async job queue.
- *
- * Keeps external notifications outside the request lifecycle.
+ * 🚀 Hafif Asenkron İş Kuyruğu (In-Memory Queue)
+ * 
+ * E-posta ve Telegram bildirimleri gibi dış API çağrılarını
+ * HTTP request/response döngüsünün dışına çıkarır (Non-blocking).
+ * Müşterinin bekleme süresini <100ms'ye indirir.
+ * 
+ * İleride Redis + BullMQ sistemine geçilmek istendiğinde 
+ * sadece bu dosya değiştirilerek sistem BullMQ'ya bağlanabilir.
  */
 const EventEmitter = require('events');
-const logger = require('./logger');
-
 class JobQueue extends EventEmitter {
   constructor() {
     super();
@@ -13,10 +16,16 @@ class JobQueue extends EventEmitter {
     this.isProcessing = false;
   }
 
+  /**
+   * Yeni bir işi kuyruğa ekler
+   * @param {string} type İşin tipi (örn: 'sendEmail', 'sendTelegram')
+   * @param {Function} task Yürütülecek asenkron fonksiyon
+   */
   addJob(type, task) {
     this.queue.push({ type, task, id: Date.now() + Math.random() });
-    logger.info(`[Queue] Yeni is eklendi: ${type} (Kuyruk uzunlugu: ${this.queue.length})`);
-
+    console.log(`[Queue] Yeni iş eklendi: ${type} (Kuyruk uzunluğu: ${this.queue.length})`);
+    
+    // Eğer işleyici çalışmıyorsa başlat
     if (!this.isProcessing) {
       this.processQueue();
     }
@@ -32,17 +41,23 @@ class JobQueue extends EventEmitter {
     const job = this.queue.shift();
 
     try {
-      logger.info(`[Queue] Isleniyor: ${job.type} (ID: ${job.id})`);
+      console.log(`[Queue] İşleniyor: ${job.type} (ID: ${job.id})`);
       await job.task();
-      logger.info(`[Queue] Basarili: ${job.type} (ID: ${job.id})`);
+      console.log(`[Queue] Başarılı: ${job.type} (ID: ${job.id})`);
     } catch (error) {
-      logger.error(`[Queue] Basarisiz: ${job.type} (ID: ${job.id}) - Hata: ${error.message}`);
+      console.error(`[Queue] Başarısız: ${job.type} (ID: ${job.id}) - Hata:`, error.message);
+      // Not: CircuitBreaker/Retry zaten 'task' içinde uygulanıyor. 
+      // O yüzden burada ekstra retry yapmaya gerek yok.
     }
 
+    // Bir sonraki işe geçmeden önce ufak bir nefes payı (Event loop blocklanmasın)
     setTimeout(() => {
       this.processQueue();
     }, 100);
   }
 }
 
-module.exports = new JobQueue();
+// Global Singleton Instance
+const taskQueue = new JobQueue();
+
+module.exports = taskQueue;

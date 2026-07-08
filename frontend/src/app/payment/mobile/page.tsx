@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import { QrCode, Copy, CheckCircle, Smartphone, CreditCard, ArrowLeft, Share2, Wallet, Loader2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import Image from "next/image";
 
 // Phase 13.8 — Mobil Ödeme Ekranı (Dynamic Refactoring)
 // Özellikler: API Entegrasyonu, QR ile IBAN gösterimi, One-Tap kopyalama, Mobil-first tasarım
@@ -385,16 +384,15 @@ function MobilePaymentContent() {
           </div>
         )}
 
+        {/* QR Kod Ekranı */}
         {paymentMethod === "qr" && !isCreditCardType && (
           <div className="space-y-4">
             <div className="bg-white rounded-3xl p-6 flex flex-col items-center gap-4">
-              <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center p-3 relative">
-                <Image 
+              <div className="w-48 h-48 bg-white rounded-2xl flex items-center justify-center p-3">
+                <img 
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=iban:${ibanNumber.replace(/\s/g, "")}?amount=${amount.split(',')[0]}`} 
                   alt="QR Code" 
-                  fill
-                  style={{ objectFit: 'contain' }}
-                  className="rounded"
+                  className="w-full h-full rounded"
                 />
               </div>
               <div className="text-center text-slate-900">

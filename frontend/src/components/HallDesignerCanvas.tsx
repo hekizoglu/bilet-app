@@ -66,8 +66,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   const [backgroundImage, setBackgroundImage] = useState('');
   
   const [elements, setElements] = useState<DesignerElement[]>([]);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [selectionBox, setSelectionBox] = useState<{ visible: boolean, x1: number, y1: number, x2: number, y2: number }>({ visible: false, x1: 0, y1: 0, x2: 0, y2: 0 });
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   
   // Arka plan görseli
   const [bgImageObj, setBgImageObj] = useState<HTMLImageElement | null>(null);
@@ -202,36 +201,30 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     }
 
     setElements([...elements, baseElement]);
-    setSelectedIds([id]);
+    setSelectedId(id);
   };
 
   const deleteSelected = () => {
-    if (selectedIds.length > 0) {
-      setElements(elements.filter(e => !selectedIds.includes(e.id)));
-      setSelectedIds([]);
+    if (selectedId) {
+      setElements(elements.filter(e => e.id !== selectedId));
+      setSelectedId(null);
     }
   };
 
   const duplicateSelected = () => {
-    if (selectedIds.length > 0) {
-      const newElements: DesignerElement[] = [];
-      const newIds: string[] = [];
-      selectedIds.forEach(id => {
-        const target = elements.find(e => e.id === id);
-        if (target) {
-          const newEl: DesignerElement = { ...target, id: `${target.type}-${Date.now()}-${Math.floor(Math.random() * 1000)}`, x: target.x + 20, y: target.y + 20 };
-          newElements.push(newEl);
-          newIds.push(newEl.id);
-        }
-      });
-      setElements([...elements, ...newElements]);
-      setSelectedIds(newIds);
+    if (selectedId) {
+      const target = elements.find(e => e.id === selectedId);
+      if (target) {
+        const newEl = { ...target, id: `${target.type}-${Date.now()}`, x: target.x + 20, y: target.y + 20 };
+        setElements([...elements, newEl]);
+        setSelectedId(newEl.id);
+      }
     }
   };
 
   const updateSelected = (key: keyof DesignerElement, value: DesignerElement[keyof DesignerElement]) => {
-    if (selectedIds.length > 0) {
-      setElements(elements.map(e => selectedIds.includes(e.id) ? { ...e, [key]: value } : e));
+    if (selectedId) {
+      setElements(elements.map(e => e.id === selectedId ? { ...e, [key]: value } : e));
     }
   };
 
@@ -252,74 +245,30 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     setStageScale(clampedScale);
   };
 
-  const handleStageMouseDown = (e: any) => {
+  const handleStageMouseDown = (e: { target: { getStage: () => { getPointerPosition: () => { x: number; y: number } | null } }; evt: MouseEvent }) => {
     // Middle mouse or space+left for pan
     if (e.evt.button === 1 || (e.evt.button === 0 && e.evt.altKey)) {
       setIsPanning(true);
       const stage = e.target.getStage();
       lastPointerPos.current = stage.getPointerPosition();
     } else {
-      const isBg = e.target === e.target.getStage?.() || e.target.name?.() === 'bgImage' || e.target.name?.() === 'hallBoundsGroup' || e.target.name?.() === 'hallBoundsRect';
-      if (isBg) {
-        if (!e.evt.shiftKey && !e.evt.ctrlKey) setSelectedIds([]);
-        const stage = e.target.getStage();
-        const pos = stage.getPointerPosition();
-        if (pos) {
-          const scale = stage.scaleX();
-          const stagePos = stage.position();
-          const logicalX = (pos.x - stagePos.x) / scale;
-          const logicalY = (pos.y - stagePos.y) / scale;
-          setSelectionBox({ visible: true, x1: logicalX, y1: logicalY, x2: logicalX, y2: logicalY });
-        }
-      }
+      if (e.target === e.target.getStage?.() || (e.target as unknown as { name?: () => string }).name?.() === 'bgImage') setSelectedId(null);
     }
   };
 
-  const handleStageMouseMove = (e: any) => {
+  const handleStageMouseMove = (e: { target: { getStage: () => { getPointerPosition: () => { x: number; y: number } | null } } }) => {
+    if (!isPanning || !lastPointerPos.current) return;
     const stage = e.target.getStage();
     const pos = stage.getPointerPosition();
-    
-    if (isPanning && lastPointerPos.current) {
-      if (!pos) return;
-      setStagePos(prev => ({
-        x: prev.x + (pos.x - lastPointerPos.current!.x),
-        y: prev.y + (pos.y - lastPointerPos.current!.y),
-      }));
-      lastPointerPos.current = pos;
-    } else if (selectionBox.visible) {
-      if (!pos) return;
-      const scale = stage.scaleX();
-      const stagePos = stage.position();
-      const logicalX = (pos.x - stagePos.x) / scale;
-      const logicalY = (pos.y - stagePos.y) / scale;
-      setSelectionBox(prev => ({ ...prev, x2: logicalX, y2: logicalY }));
-    }
+    if (!pos) return;
+    setStagePos(prev => ({
+      x: prev.x + (pos.x - lastPointerPos.current!.x),
+      y: prev.y + (pos.y - lastPointerPos.current!.y),
+    }));
+    lastPointerPos.current = pos;
   };
 
-  const handleStageMouseUp = (e: any) => {
-    setIsPanning(false);
-    if (selectionBox.visible) {
-      setSelectionBox(prev => ({ ...prev, visible: false }));
-      
-      const xMin = Math.min(selectionBox.x1, selectionBox.x2);
-      const xMax = Math.max(selectionBox.x1, selectionBox.x2);
-      const yMin = Math.min(selectionBox.y1, selectionBox.y2);
-      const yMax = Math.max(selectionBox.y1, selectionBox.y2);
-
-      const newlySelected = elements.filter(el => {
-        const radius = el.radius || 25;
-        const w = el.width || radius * 2;
-        const h = el.height || radius * 2;
-        return (el.x + w >= xMin && el.x <= xMax && el.y + h >= yMin && el.y <= yMax);
-      }).map(el => el.id);
-
-      if (e.evt.shiftKey || e.evt.ctrlKey) {
-        setSelectedIds(prev => Array.from(new Set([...prev, ...newlySelected])));
-      } else {
-        setSelectedIds(newlySelected);
-      }
-    }
-  };
+  const handleStageMouseUp = () => setIsPanning(false);
 
   // 🎭 Otomatik Sahne Oluştur - Sihirbazdan gelen tam config
   const autoGenerateLayout = useCallback((config: AutoGenerateConfig) => {
@@ -471,7 +420,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     }
 
     setElements(newElements);
-    setSelectedIds([]);
+    setSelectedId(null);
     // Canvas'ı sığacak şekilde zoom reset
     setStageScale(Math.min(900 / CANVAS_WIDTH, 750 / CANVAS_HEIGHT, 1));
     setStagePos({ x: 20, y: 20 });
@@ -557,10 +506,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     saveLayout,
   }), [autoGenerateLayout, saveLayout]);
 
-  const selectedElement = selectedIds.length > 0
-    ? elements.find(e => e.id === selectedIds[0]) ?? null
-    : null;
-  const hasSelection = selectedIds.length > 0;
+  const selectedElement = elements.find(e => e.id === selectedId);
 
   // --- Çizim Yardımcı Fonksiyonları ---
   const renderRoundTable = (el: DesignerElement, isSelected: boolean) => {
@@ -709,7 +655,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
       <div 
         className="flex-1 bg-gray-200 rounded-lg overflow-hidden shadow-inner border border-gray-300 relative"
         onClick={(e) => {
-          if (e.target === e.currentTarget) setSelectedIds([]);
+          if (e.target === e.currentTarget) setSelectedId(null);
         }}
       >
         {/* 🔍 Zoom Kontrolleri */}
@@ -741,7 +687,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
             )}
 
             {elements.map(el => {
-              const isSelected = selectedIds.includes(el.id);
+              const isSelected = el.id === selectedId;
               return (
                 <Group
                   key={el.id}
@@ -749,17 +695,10 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
                   y={el.y}
                   rotation={el.rotation || 0}
                   draggable={!isPanning}
-                  onDragStart={() => setSelectedIds([el.id])}
+                  onDragStart={() => setSelectedId(el.id)}
                   onDragEnd={(e) => handleDragEnd(e, el.id)}
-                  onClick={(e) => {
-                    if (isPanning) return;
-                    if (e.evt.shiftKey || e.evt.ctrlKey) {
-                      setSelectedIds(prev => prev.includes(el.id) ? prev.filter(id => id !== el.id) : [...prev, el.id]);
-                    } else {
-                      setSelectedIds([el.id]);
-                    }
-                  }}
-                  onTap={() => setSelectedIds([el.id])}
+                  onClick={() => { if (!isPanning) setSelectedId(el.id); }}
+                  onTap={() => setSelectedId(el.id)}
                 >
                   {el.type === 'round_table' && renderRoundTable(el, isSelected)}
                   {el.type === 'rect_table' && renderRectTable(el, isSelected)}
@@ -772,19 +711,6 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
                 </Group>
               );
             })}
-            {selectionBox.visible && (
-              <Rect
-                x={Math.min(selectionBox.x1, selectionBox.x2)}
-                y={Math.min(selectionBox.y1, selectionBox.y2)}
-                width={Math.abs(selectionBox.x2 - selectionBox.x1)}
-                height={Math.abs(selectionBox.y2 - selectionBox.y1)}
-                fill="rgba(59, 130, 246, 0.15)"
-                stroke="#3b82f6"
-                strokeWidth={1}
-                dash={[6, 4]}
-                listening={false}
-              />
-            )}
           </Layer>
         </Stage>
       </div>
@@ -869,9 +795,9 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
           {selectedElement && (
             <div className="bg-blue-50 p-3 rounded border border-blue-100 space-y-2">
               <p className="text-xs font-bold text-blue-900">🔹 Seçili Öğe: {selectedElement.label}</p>
-              <input type="text" value={selectedElement!.label} onChange={(e) => updateSelected('label', e.target.value)} className="w-full p-1.5 border border-blue-200 rounded text-xs" placeholder="Label" />
-              {selectedElement!.type !== 'stage' && (
-                <input type="number" min="1" value={selectedElement!.seatCount || 1} onChange={(e) => updateSelected('seatCount', parseInt(e.target.value))} className="w-full p-1.5 border border-blue-200 rounded text-xs" placeholder="Kapasite" />
+              <input type="text" value={selectedElement.label} onChange={(e) => updateSelected('label', e.target.value)} className="w-full p-1.5 border border-blue-200 rounded text-xs" placeholder="Label" />
+              {selectedElement.type !== 'stage' && (
+                <input type="number" min="1" value={selectedElement.seatCount || 1} onChange={(e) => updateSelected('seatCount', parseInt(e.target.value))} className="w-full p-1.5 border border-blue-200 rounded text-xs" placeholder="Kapasite" />
               )}
               <div className="flex gap-1">
                 <button onClick={duplicateSelected} className="flex-1 text-xs bg-blue-600 text-white hover:bg-blue-700 p-1 rounded font-medium">📋 Çoğalt</button>

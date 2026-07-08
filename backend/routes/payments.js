@@ -10,7 +10,6 @@ const { validate } = require('../middlewares/validate');
 const { CircuitBreaker, retryWithBackoff } = require('../utils/circuitBreaker');
 const taskQueue = require('../utils/queue');
 const Sentry = require('@sentry/node');
-const logger = require('../utils/logger');
 
 // Dış SMTP servisi için Circuit Breaker tanımı (Hata eşiği: 3, soğuma süresi: 20 saniye)
 const emailCircuit = new CircuitBreaker(
@@ -163,7 +162,7 @@ router.post('/:reservationId/manual-verify', paymentVerifyLimiter, requireAuth, 
         reservation: updated
       });
     } catch (mailErr) {
-      logger.error(`Mail gönderme hatası (Circuit Breaker/Retry): ${mailErr.message}`);
+      console.error("Mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
       res.json({
         success: true,
         message: "Ödeme onaylandı ancak bilet e-postası gönderilemedi.",
@@ -189,7 +188,7 @@ router.post('/bank-webhook', validate(webhookSchema), async (req, res) => {
         }
       });
       if (existing) {
-        logger.warn(`FRAUD DETECTION: transactionId ${transactionId} daha once islendi. Rezervasyon: ${existing.id}`);
+        console.warn(`⚠️ FRAUD DETECTION: transactionId ${transactionId} daha önce işlendi. Rezervasyon: ${existing.id}`);
         return res.status(409).json({ error: 'Bu işlem kimliği daha önce kullanılmıştır. Duplicate webhook engellendi.' });
       }
     }
@@ -287,7 +286,7 @@ router.post('/bank-webhook', validate(webhookSchema), async (req, res) => {
         reservation: updated
       });
     } catch (mailErr) {
-      logger.error(`Mail gönderme hatası (Circuit Breaker/Retry): ${mailErr.message}`);
+      console.error("Mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
       res.json({
         success: true,
         message: "Ödeme otomatik onaylandı ancak bilet e-postası gönderilemedi.",
@@ -369,9 +368,9 @@ router.post('/:reservationId/pay-creditcard', validate(creditCardSchema), async 
             `
           });
         }, 3, 1000);
-        logger.info(`[Payment] Kredi karti odeme onay maili gonderildi: ${nodemailer.getTestMessageUrl(mailInfo)}`);
+        console.log("[Payment] Kredi kartı ödeme onay maili gönderildi:", nodemailer.getTestMessageUrl(mailInfo));
       } catch (mailErr) {
-        logger.error(`[Payment] Mail gönderme hatası (Circuit Breaker/Retry): ${mailErr.message}`);
+        console.error("[Payment] Mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
         Sentry.captureException(mailErr);
       }
     });

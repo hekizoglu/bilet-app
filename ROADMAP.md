@@ -1,6 +1,6 @@
 # Strategic Roadmap (ROADMAP.md) — AKTİF GÖREVLER
 
-**Durum:** FAZ 19-26 (Production Readiness & Go-Live) 🔄 Devam Ediyor  
+**Durum:** FAZ 19-26 (Production Readiness & Go-Live) ⏳ Başlanmadı  
 **Tamamlananlar:** Lütfen [ARCHIVE_ROADMAP.md](ARCHIVE_ROADMAP.md) dosyasına bakınız (FAZ 1-18)  
 **Hata Kaydı:** [ERRORS.md](ERRORS.md) — her hata buraya loglanır, süreç durmaz  
 **Son Güncelleme:** 2026-07-07
@@ -14,13 +14,13 @@
 | Faz | Başlık | Durum | İlerleme |
 |-----|--------|-------|----------|
 | 1-18 | Tamamlandı / Arşivlendi | ✅ Bitmiş | 100% |
-| **19** | **Temel Altyapı & Veritabanı Geçişi** | 🔄 Devam Ediyor | 60% |
-| **20** | **Backend Performansı & PM2** | 🔄 Devam Ediyor | 17% |
-| **21** | **Nginx Ters Proxy & SSL** | 🔄 Devam Ediyor | 56% |
-| **22** | **Next.js Frontend Prod Build** | 🔄 Devam Ediyor | 86% |
-| **23** | **Güvenlik Sıkılaştırma** | 🔄 Devam Ediyor | 56% |
-| **24** | **İzlenebilirlik & Sağlık Kontrolleri** | 🔄 Devam Ediyor | 75% |
-| **25** | **CI/CD Pipeline Tamamlama** | 🔄 Devam Ediyor | 43% |
+| **19** | **Temel Altyapı & Veritabanı Geçişi** | ⏳ Başlanmadı | 0% |
+| **20** | **Backend Performansı & PM2** | ⏳ Başlanmadı | 0% |
+| **21** | **Nginx Ters Proxy & SSL** | ⏳ Başlanmadı | 0% |
+| **22** | **Next.js Frontend Prod Build** | ⏳ Başlanmadı | 0% |
+| **23** | **Güvenlik Sıkılaştırma** | ⏳ Başlanmadı | 0% |
+| **24** | **İzlenebilirlik & Sağlık Kontrolleri** | ⏳ Başlanmadı | 0% |
+| **25** | **CI/CD Pipeline Tamamlama** | ⏳ Başlanmadı | 0% |
 | **26** | **Son Doğrulama & Yayın (Launch)** | ⏳ Başlanmadı | 0% |
 
 ---
@@ -39,13 +39,13 @@ CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ
 ## ═══ FAZ 19: Temel Altyapı & Veritabanı Geçişi ═══
 **Sıra:** 1 | **Önkoşul:** Yok | **Tahmini Süre:** 2-3 saat
 
-- [x] `.env.production.example` dosyasını gerçek değerlerle doldurulmuş `.env.production` olarak sunucuya kopyala
-- [x] `NODE_ENV=production` tüm backend ve frontend başlangıç komutlarında zorunlu olarak ayarla
-- [x] `JWT_SECRET` için `openssl rand -base64 64` ile 64+ karakterlik güçlü secret üret
-- [x] `ALLOWED_ORIGINS` değişkenini gerçek production domain'iyle güncelle
-- [x] Frontend `.env.production` dosyasında `NEXT_PUBLIC_API_URL` ve `NEXT_PUBLIC_SOCKET_URL` değerlerini üretim URL'leriyle ayarla
+- [ ] `.env.production.example` dosyasını gerçek değerlerle doldurulmuş `.env.production` olarak sunucuya kopyala
+- [ ] `NODE_ENV=production` tüm backend ve frontend başlangıç komutlarında zorunlu olarak ayarla
+- [ ] `JWT_SECRET` için `openssl rand -base64 64` ile 64+ karakterlik güçlü secret üret
+- [ ] `ALLOWED_ORIGINS` değişkenini gerçek production domain'iyle güncelle
+- [ ] Frontend `.env.production` dosyasında `NEXT_PUBLIC_API_URL` ve `NEXT_PUBLIC_SOCKET_URL` değerlerini üretim URL'leriyle ayarla
 - [ ] Sunucuda PostgreSQL 16 container'ı `docker compose --profile production up db -d` ile başlat
-- [x] `schema.prisma` içinde `provider = "sqlite"` → `provider = env("DB_PROVIDER")` olarak değiştir
+- [ ] `schema.prisma` içinde `provider = "sqlite"` → `provider = "postgresql"` olarak değiştir
 - [ ] `DATABASE_URL` ortam değişkenini PostgreSQL bağlantı string'i olarak ayarla
 - [ ] `npx prisma migrate deploy` ile şemayı üretim veritabanına uygula
 - [ ] Mevcut SQLite verilerini PostgreSQL'e taşı (prisma db seed veya manuel SQL)
@@ -58,7 +58,7 @@ CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ
 **Sıra:** 2 | **Önkoşul:** FAZ 19 ✅
 
 - [ ] `npm install -g pm2` ile PM2'yi sunucuya kur
-- [x] Proje kökünde `ecosystem.config.js` dosyası oluştur (cluster mode, max instances)
+- [ ] Proje kökünde `ecosystem.config.js` dosyası oluştur (cluster mode, max instances)
 - [ ] `pm2 start ecosystem.config.js --env production` ile başlat
 - [ ] `pm2 startup` ile sunucu yeniden başlatılmasında otomatik başlatmayı etkinleştir
 - [ ] `pm2 save` ile proses listesini kaydet
@@ -72,14 +72,14 @@ CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ
 **Sıra:** 3 | **Önkoşul:** FAZ 20 ✅
 
 - [ ] Sunucuya Nginx kur
-- [x] Backend (`:5000`) için `/api/` ve `/socket.io/` proxy'i yapılandır (nginx.conf dosyası hazırlandı)
-- [x] Frontend (`:3000`) için root proxy'i yapılandır
-- [x] WebSocket upgrade (socket.io) desteğini etkinleştir
+- [ ] Backend (`:5000`) için `/api/` ve `/socket.io/` proxy'i yapılandır
+- [ ] Frontend (`:3000`) için root proxy'i yapılandır
+- [ ] WebSocket upgrade (socket.io) desteğini etkinleştir
 - [ ] `nginx -t` ile konfigürasyonu doğrula
 - [ ] Let's Encrypt ile SSL sertifikası edin: `certbot --nginx -d biletapp.com`
 - [ ] Otomatik sertifika yenileme `certbot renew --dry-run` testini geç
-- [x] HTTP → HTTPS yönlendirmesini etkinleştir (301 redirect)
-- [x] Gzip/Brotli sıkıştırmasını Nginx seviyesinde etkinleştir
+- [ ] HTTP → HTTPS yönlendirmesini etkinleştir (301 redirect)
+- [ ] Gzip/Brotli sıkıştırmasını Nginx seviyesinde etkinleştir
 
 **✅ Tamamlanma Kriteri:** `https://biletapp.com` üzerinden güvenli erişim sağlanıyor.
 
@@ -88,14 +88,14 @@ CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ
 ## ═══ FAZ 22: Next.js Frontend Production Build ═══
 **Sıra:** 4 | **Önkoşul:** FAZ 21 ✅
 
-- [x] `npm --prefix frontend run build` komutunu prod env ile çalıştır
-- [x] Build çıktısında TypeScript hataları ve ESLint uyarıları 0 olduğunu doğrula
-- [x] `npm --prefix frontend run start` ile production modu test et
-- [x] Tüm `<img>` tag'lerinin `next/image` ile değiştirildiğini kontrol et
-- [x] Google Fonts kullanımını `next/font` ile self-hosted hale getir
+- [ ] `npm --prefix frontend run build` komutunu prod env ile çalıştır
+- [ ] Build çıktısında TypeScript hataları ve ESLint uyarıları 0 olduğunu doğrula
+- [ ] `npm --prefix frontend run start` ile production modu test et
+- [ ] Tüm `<img>` tag'lerinin `next/image` ile değiştirildiğini kontrol et
+- [ ] Google Fonts kullanımını `next/font` ile self-hosted hale getir
 - [ ] Lighthouse ile Core Web Vitals ölç (LCP < 2.5s hedefle)
-- [x] Her route segment klasörüne `error.tsx` bileşeni ekle
-- [x] Proje kökünde `global-error.tsx` oluştur
+- [ ] Her route segment klasörüne `error.tsx` bileşeni ekle
+- [ ] Proje kökünde `global-error.tsx` oluştur
 
 **✅ Tamamlanma Kriteri:** `next build` hatasız, Lighthouse skoru > 80.
 
@@ -104,15 +104,15 @@ CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ
 ## ═══ FAZ 23: Güvenlik Sıkılaştırma ═══
 **Sıra:** 5 | **Önkoşul:** FAZ 22 ✅
 
-- [x] `helmet()` middleware'inin `backend/index.js`'de aktif olduğunu doğrula
-- [x] `Content-Security-Policy` başlığını yapılandır
+- [ ] `helmet()` middleware'inin `backend/index.js`'de aktif olduğunu doğrula
+- [ ] `Content-Security-Policy` başlığını yapılandır
 - [ ] [securityheaders.com](https://securityheaders.com) üzerinden test et, A+ rating hedefle
 - [ ] `ALLOWED_ORIGINS`'in yalnızca production domain'lerini içerdiğini doğrula
-- [x] Wildcard (`*`) CORS yapılandırması olmadığını test et
+- [ ] Wildcard (`*`) CORS yapılandırması olmadığını test et
 - [ ] Rate limit değerlerini production trafiğine göre ayarla (100 req/15min genel, 5 req/min checkout)
-- [x] `/api/auth/login` endpoint'ine özel sıkı rate limit ekle
+- [ ] `/api/auth/login` endpoint'ine özel sıkı rate limit ekle
 - [ ] `trufflehog` veya `git-secrets` ile repo taraması yap
-- [x] `.gitignore`'da `.env*` dosyalarının görmezden gelindiğini doğrula
+- [ ] `.gitignore`'da `.env*` dosyalarının görmezden gelindiğini doğrula
 
 **✅ Tamamlanma Kriteri:** A+ güvenlik rating, `trufflehog` clean, rate limit testleri geçiyor.
 
@@ -121,13 +121,13 @@ CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ
 ## ═══ FAZ 24: İzlenebilirlik & Sağlık Kontrolleri ═══
 **Sıra:** 6 | **Önkoşul:** FAZ 23 ✅
 
-- [x] `backend/index.js`'e `/api/health` endpoint'i ekle (DB bağlantısı + uptime kontrolü)
-- [x] Nginx/Docker health check'e bu endpoint'i ekle
-- [x] `npm install winston winston-daily-rotate-file` backend'e ekle
-- [x] `backend/logger.js` modülü oluştur (JSON format, level: prod=warn, dev=debug)
-- [x] Tüm `console.log`, `console.error` çağrılarını `logger.info`, `logger.error` ile değiştir
+- [ ] `backend/index.js`'e `/api/health` endpoint'i ekle (DB bağlantısı + uptime kontrolü)
+- [ ] Nginx/Docker health check'e bu endpoint'i ekle
+- [ ] `npm install winston winston-daily-rotate-file` backend'e ekle
+- [ ] `backend/logger.js` modülü oluştur (JSON format, level: prod=warn, dev=debug)
+- [ ] Tüm `console.log`, `console.error` çağrılarını `logger.info`, `logger.error` ile değiştir
 - [ ] [sentry.io](https://sentry.io) üzerinde proje oluştur, DSN anahtarını al
-- [x] `@sentry/node` backend'e, `@sentry/nextjs` frontend'e ekle
+- [ ] `@sentry/node` backend'e, `@sentry/nextjs` frontend'e ekle
 - [ ] Test hatası fırlatarak Sentry dashboard'unda göründüğünü doğrula
 
 **✅ Tamamlanma Kriteri:** `/api/health` 200 dönüyor, Winston logları akıyor, Sentry test hatası yakalandı.
@@ -137,11 +137,11 @@ CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ
 ## ═══ FAZ 25: CI/CD Pipeline Tamamlama ═══
 **Sıra:** 7 | **Önkoşul:** FAZ 24 ✅
 
-- [x] `.github/workflows/deploy.yml` dosyasını gerçek adımlarla tamamla
+- [ ] `.github/workflows/deploy.yml` dosyasını gerçek adımlarla tamamla
   - SSH → sunucu → `git pull` → `npm ci` → `pm2 reload` → `nginx reload`
-- [x] GitHub Secrets'a sunucu IP, SSH key, `.env.production` değerlerini ekle
+- [ ] GitHub Secrets'a sunucu IP, SSH key, `.env.production` değerlerini ekle
 - [ ] Test PR'ı ile CI/CD pipeline'ı çalıştır ve başarıyla tamamlandığını doğrula
-- [x] Sunucuda `backup.sh` betiği oluştur (pg_dump, 30 gün saklama)
+- [ ] Sunucuda `backup.sh` betiği oluştur (pg_dump, 30 gün saklama)
 - [ ] `crontab -e` ile günlük gece 02:00'de otomatik yedekleme kur: `0 2 * * * /scripts/backup.sh`
 - [ ] Yedeği manuel geri yükleyerek veri bütünlüğünü doğrula
 - [ ] PM2 `reload` komutunun mevcut bağlantıları kesmeden çalıştığını doğrula

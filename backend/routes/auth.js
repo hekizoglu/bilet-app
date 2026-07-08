@@ -3,8 +3,6 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const { PrismaClient } = require('@prisma/client');
-const rateLimit = require('express-rate-limit');
-const logger = require('../utils/logger');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com"; 
@@ -12,15 +10,8 @@ const prisma = new PrismaClient();
 
 // Short-term cache for verified Google tokens (15 min TTL) to avoid redundant HTTP requests
 const tokenCache = new Map();
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { error: 'Cok fazla giris denemesi. Lutfen daha sonra tekrar deneyin.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
-router.post('/google', authLimiter, async (req, res) => {
+router.post('/google', async (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(400).json({ error: 'Token eksik' });
 
@@ -52,7 +43,7 @@ router.post('/google', authLimiter, async (req, res) => {
           // Auto cleanup from cache after 15 minutes
           setTimeout(() => tokenCache.delete(token), 15 * 60 * 1000);
         } catch (verifyErr) {
-          logger.error(`Google Token Verification Error: ${verifyErr.message}`);
+          console.error("Google Token Verification Error:", verifyErr.message);
           return res.status(401).json({ error: 'Geçersiz veya süresi dolmuş Google Token' });
         }
       }
@@ -96,11 +87,11 @@ router.post('/google', authLimiter, async (req, res) => {
 
       res.json({ success: true, token: jwtToken, user: { email: payload.email, name: payload.name, role: role } });
     } catch (dbErr) {
-      logger.error(`Auth Database Error: ${dbErr.message}`);
+      console.error("Auth Database Error:", dbErr.message);
       res.status(500).json({ error: 'Veritabanı işlemi gerçekleştirilemedi.' });
     }
   } catch (err) {
-    logger.error(`Auth Unexpected Error: ${err.message}`);
+    console.error("Auth Unexpected Error:", err.message);
     res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
