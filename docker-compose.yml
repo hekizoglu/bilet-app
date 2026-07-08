@@ -10,6 +10,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-bilet_db}
       POSTGRES_USER: ${POSTGRES_USER:-bilet_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -49,7 +51,7 @@ services:
       - PORT=${PORT:-5000}
       - JWT_SECRET=${JWT_SECRET}
       - DATABASE_URL=${DATABASE_URL}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3005}
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_USER=${SMTP_USER}
@@ -76,7 +78,7 @@ services:
     restart: unless-stopped
     profiles: ["production", "staging"]
     ports:
-      - "3000:3000"
+      - "3005:3005"
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:5000/api}

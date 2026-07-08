@@ -5,6 +5,14 @@ const prisma = new PrismaClient();
 const { z } = require('zod');
 const { validate } = require('../middlewares/validate');
 const { requireAuth } = require('../middlewares/auth');
+const rateLimit = require('express-rate-limit');
+
+const checkoutLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 dakika
+  max: 5, // 1 dakikada en fazla 5 bilet alma denemesi
+  message: { error: "Çok fazla bilet alma denemesi yaptınız, lütfen biraz bekleyin." }
+});
+
 const cache = require('../utils/cache');
 const { CircuitBreaker, retryWithBackoff } = require('../utils/circuitBreaker');
 const taskQueue = require('../utils/queue');
@@ -231,7 +239,7 @@ const resSchema = z.object({
   couponCode: z.string().optional()
 });
 
-router.post('/', validate(resSchema), async (req, res) => {
+router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
   const release = await reservationMutex.acquire();
   try {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.body.eventIdOrSlug);
@@ -627,7 +635,7 @@ router.post('/:id/cancel', requireAuth, async (req, res) => {
               <p>Bekleme listesinde olduğunuz <b>${eventData.name}</b> etkinliği için bir bilet şu anda boşa çıktı!</p>
               <p>Bu bilet <b>ilk gelen alır</b> prensibiyle satıştadır. Hemen aşağıdaki butona tıklayarak satın alabilirsiniz:</p>
               <div style="text-align: center; margin-top: 30px;">
-                <a href="http://localhost:3000/event/${eventData.id}" style="display:inline-block; padding:12px 24px; background-color:#2563eb; color:white; text-decoration:none; font-weight:bold; border-radius:8px;">Etkinliğe Git ve Bilet Al</a>
+                <a href="http://localhost:3005/event/${eventData.id}" style="display:inline-block; padding:12px 24px; background-color:#2563eb; color:white; text-decoration:none; font-weight:bold; border-radius:8px;">Etkinliğe Git ve Bilet Al</a>
               </div>
             </div>
           `

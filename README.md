@@ -89,7 +89,7 @@ node index.js
 ```bash
 cd frontend
 npm run dev
-# → http://localhost:3000 adresinde çalışır
+# → http://localhost:3005 adresinde çalışır
 ```
 
 ---

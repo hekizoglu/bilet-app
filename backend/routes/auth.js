@@ -3,15 +3,23 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const { PrismaClient } = require('@prisma/client');
+const rateLimit = require('express-rate-limit');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com"; 
 const prisma = new PrismaClient();
 
+// Sıkı Rate Limit (Auth için)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 dakika
+  max: 5, // Her IP için en fazla 5 deneme
+  message: { error: "Çok fazla giriş denemesi, lütfen 15 dakika sonra tekrar deneyin." }
+});
+
 // Short-term cache for verified Google tokens (15 min TTL) to avoid redundant HTTP requests
 const tokenCache = new Map();
 
-router.post('/google', async (req, res) => {
+router.post('/google', authLimiter, async (req, res) => {
   const { token } = req.body;
   if (!token) return res.status(400).json({ error: 'Token eksik' });
 

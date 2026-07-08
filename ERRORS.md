@@ -120,3 +120,43 @@ Konva `<Stage>` bileşenine `scaleX/Y`, `x/y`, `onWheel`, `onMouseMove` event'le
 - `handleWheel` (tekerlek zoom), `handleStageMouseDown/Move/Up` (Alt+sürükle pan) fonksiyonları eklendi.
 - Sağ üst köşeye +/⊙/− zoom butonları, sol alt köşeye zoom yüzdesi göstergesi eklendi.
 
+---
+
+### ERR-005: Local environment lacks Docker for PostgreSQL 16
+
+* **Environment:** Local Dev
+* **Status:** Resolved
+* **Related Files:** [docker-compose.yml](file:///C:/Users/huseyinekizoglu/Documents/Bilet-app-new/bilet-app/docker-compose.yml), [.env](file:///C:/Users/huseyinekizoglu/Documents/Bilet-app-new/bilet-app/.env)
+
+#### Symptoms
+`docker compose --profile production up db -d` fails because Docker Desktop is not running.
+
+#### Root Cause
+Docker engine is not accessible locally. The roadmap requires PostgreSQL for production.
+
+#### Fix & Resolution
+Reverted `.env` back to SQLite to continue local testing of production pipeline (PM2, Nginx, Next.js build). Marked FAZ 19 PostgreSQL steps as skipped locally.
+
+#### Prevention
+Ensure Docker is running before executing production-like container deployments locally.
+
+---
+
+### ERR-006: Cannot find name 'toast' during Next.js build
+
+* **Environment:** Local Dev (Production Build)
+* **Status:** Resolved
+* **Related Files:** [page.tsx](file:///C:/Users/huseyinekizoglu/Documents/Bilet-app-new/bilet-app/frontend/src/app/event/[id]/page.tsx)
+
+#### Symptoms
+`npm --prefix frontend run build` fails with `Type error: Cannot find name 'toast'.`
+
+#### Root Cause
+`toast.success` was used in `CustomerEventPage` without importing `toast` from the notification library (`sonner`).
+
+#### Fix & Resolution
+Added `import { toast } from 'sonner';` at the top of the file.
+
+#### Prevention
+Run `npm run lint` or check TypeScript compiler errors before building for production.
+

@@ -6,14 +6,13 @@ on:
       environment:
         description: 'Deployment target'
         required: true
-        default: 'staging'
+        default: 'production'
         type: choice
         options:
           - staging
           - production
 
 jobs:
-  # CI testlerinin geçtiğini doğrula
   verify-ci:
     name: Verify CI Passed
     runs-on: ubuntu-latest
@@ -21,87 +20,47 @@ jobs:
       - name: Check CI Status
         run: echo "CI verification step - ensure tests pass before deployment"
 
-  deploy-backend:
-    name: Deploy Backend
+  deploy:
+    name: Deploy to Server via SSH
     needs: verify-ci
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Execute Deployment Script on Server
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          node-version: '20'
-
-      - name: Install Dependencies
-        working-directory: backend
-        run: npm ci --production
-
-      - name: Build Docker Image
-        working-directory: backend
-        run: |
-          docker build -t bilet-app-backend:${{ github.sha }} .
-          echo "Docker image built: bilet-app-backend:${{ github.sha }}"
-
-      # Staging deploy
-      - name: Deploy to Staging
-        if: inputs.environment == 'staging'
-        run: |
-          echo "🚀 Deploying to STAGING environment..."
-          echo "Image: bilet-app-backend:${{ github.sha }}"
-          # Cloud Run / Railway deploy komutu buraya eklenecek
-          # gcloud run deploy bilet-backend-staging --image=... --region=europe-west1
-
-      # Production deploy (ayrı approval gate ile)
-      - name: Deploy to Production
-        if: inputs.environment == 'production'
-        run: |
-          echo "🚀 Deploying to PRODUCTION environment..."
-          echo "Image: bilet-app-backend:${{ github.sha }}"
-          # Cloud Run / Railway production deploy komutu buraya eklenecek
-
-  deploy-frontend:
-    name: Deploy Frontend
-    needs: verify-ci
-    runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Dependencies
-        working-directory: frontend
-        run: npm ci
-
-      - name: Build Frontend
-        working-directory: frontend
-        run: npm run build
-        env:
-          NEXT_PUBLIC_API_URL: ${{ vars.API_URL }}
-          NEXT_PUBLIC_SOCKET_URL: ${{ vars.SOCKET_URL }}
-
-      - name: Deploy Frontend
-        run: |
-          echo "🚀 Deploying frontend to ${{ inputs.environment }}..."
-          # Vercel / Cloud Run deploy komutu buraya eklenecek
-
-  smoke-test:
-    name: Smoke Test
-    needs: [deploy-backend, deploy-frontend]
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Health Check
-        run: |
-          echo "🏥 Running smoke tests on ${{ inputs.environment }}..."
-          # curl -f https://<staging-url>/health || exit 1
-          echo "✅ Smoke test passed!"
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || '22' }}
+          script: |
+            echo "🚀 Deploying to ${{ inputs.environment }} environment..."
+            
+            # 1. Proje dizinine git
+            cd /var/www/biletapp || exit 1
+            
+            # 2. Kodları çek
+            git pull origin main
+            
+            # 3. Backend bağımlılıkları ve build
+            echo "📦 Installing backend dependencies..."
+            cd backend
+            npm ci --production
+            
+            # 4. Veritabanı migrate (Eğer prisma varsa)
+            # npx prisma migrate deploy
+            
+            # 5. Frontend bağımlılıkları ve build
+            echo "📦 Installing frontend dependencies..."
+            cd ../frontend
+            npm ci
+            echo "🏗️ Building frontend..."
+            npm run build
+            cd ..
+            
+            # 6. PM2 yeniden başlatma (Downtime'ı en aza indirmek için reload)
+            echo "🔄 Reloading PM2 ecosystem..."
+            pm2 reload ecosystem.config.js --env production --update-env
+            
+            echo "✅ Deployment completed successfully!"

@@ -176,7 +176,7 @@ export default function Home() {
                 transition={{ duration: 0.3, delay: index * 0.1 }}
               >
                 <Link 
-                  href={`/events/${event.id}`} 
+                  href={`/event/${event.id}`} 
                   className="group bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(37,99,235,0.1)] transition-all duration-300 flex flex-col h-full transform hover:-translate-y-1"
                 >
                   <div className="h-48 bg-gradient-to-r from-blue-100 to-indigo-100 flex items-center justify-center relative">

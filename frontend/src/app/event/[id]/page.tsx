@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import io from 'socket.io-client';
 import dynamic from 'next/dynamic';
+import { toast } from 'sonner';
 
 // Konva hydration hatalarını önlemek için client-side import yapıyoruz
 const DynamicSeatMapViewer = dynamic(() => import('@/components/SeatMapViewer'), { ssr: false });
