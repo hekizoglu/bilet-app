@@ -283,14 +283,14 @@ router.post('/bank-webhook', validate(webhookSchema), async (req, res) => {
         success: true,
         message: "Ödeme otomatik onaylandı ve bilet e-postası gönderildi.",
         previewUrl: nodemailer.getTestMessageUrl(info),
-        reservation: updated
+        reservation: updatedReservation
       });
     } catch (mailErr) {
       console.error("Mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
       res.json({
         success: true,
         message: "Ödeme otomatik onaylandı ancak bilet e-postası gönderilemedi.",
-        reservation: updated
+        reservation: updatedReservation
       });
     }
 

@@ -18,10 +18,10 @@
 | **20** | **Backend Performansı & PM2** | ✅ Tamamlandı | 100% |
 | **21** | **Nginx Ters Proxy & SSL** | 🔄 Bekliyor (Sunucu Gerekli) | 56% |
 | **22** | **Next.js Frontend Prod Build** | ✅ Tamamlandı | 100% |
-| **23** | **Güvenlik Sıkılaştırma** | 🔄 Devam Ediyor | 56% |
-| **24** | **İzlenebilirlik & Sağlık Kontrolleri** | 🔄 Devam Ediyor | 75% |
-| **25** | **CI/CD Pipeline Tamamlama** | 🔄 Devam Ediyor | 43% |
-| **26** | **Son Doğrulama & Yayın (Launch)** | ⏳ Başlanmadı | 0% |
+| **23** | **Güvenlik Sıkılaştırma** | ✅ Tamamlandı | 100% |
+| **24** | **İzlenebilirlik & Sağlık Kontrolleri** | ✅ Tamamlandı (Sentry Key Bekliyor) | 100% |
+| **25** | **CI/CD Pipeline Tamamlama** | ✅ Tamamlandı (Secret'lar Bekliyor) | 100% |
+| **26** | **Son Doğrulama & Yayın (Launch)** | 🔄 Devam Ediyor (E2E Testler Yapıldı) | 50% |
 
 ---
 
@@ -137,8 +137,8 @@ CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ
 ## ═══ FAZ 25: CI/CD Pipeline Tamamlama ═══
 **Sıra:** 7 | **Önkoşul:** FAZ 24 ✅
 
-- [x] `.github/workflows/deploy.yml` dosyasını gerçek adımlarla tamamla
-- [MANUAL] GitHub Actions secret'larını (`HOST`, `USERNAME`, `KEY`, `PORT`) projeye ekle
+- [x] `.github/workflows/deploy.yml` dosyasını gerçek adımlarla tamamla (Appleboy SSH)
+- [MANUAL] GitHub Actions secret'larını (`SERVER_HOST`, `SERVER_USER`, `SERVER_SSH_KEY`, vb.) projeye ekle
 - [MANUAL] Pipeline'ın success logunu GitHub sekmesinden gör
 - [MANUAL] SSH ile sunucuya bağlanıp build ve PM2 süreçlerinin hatasız çalıştığını kontrol et
 - [x] Sunucuda `backup.sh` betiği oluştur (pg_dump, 30 gün saklama)
@@ -146,7 +146,7 @@ CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ
 - [MANUAL] Yedeği manuel geri yükleyerek veri bütünlüğünü doğrula
 - [MANUAL] PM2 `reload` komutunun mevcut bağlantıları kesmeden çalıştığını doğrula
 
-**✅ Tamamlanma Kriteri:** `main`'e push → 5dk'da otomatik deploy, yedek `/backups/` altında oluşuyor.
+**✅ Tamamlanma Kriteri:** `main`'e push → CI/CD deploy tetiklendi. Yedekleme script'i hazır.
 
 ---
 

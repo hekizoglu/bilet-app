@@ -26,6 +26,18 @@ const http = require('http');
 const { Server } = require('socket.io');
 const xss = require('xss-clean');
 
+// Redis and Adapters
+const Redis = require('ioredis');
+const { createAdapter } = require('@socket.io/redis-adapter');
+
+const redisUrl = process.env.REDIS_URL;
+let pubClient, subClient, redisClient;
+if (redisUrl) {
+  pubClient = new Redis(redisUrl);
+  subClient = pubClient.duplicate();
+  redisClient = new Redis(redisUrl);
+}
+
 // Winston Logger was here
 
 const app = express();
@@ -52,6 +64,11 @@ const io = new Server(server, {
   }
 });
 
+if (redisUrl && pubClient && subClient) {
+  io.adapter(createAdapter(pubClient, subClient));
+  console.log("Socket.io Redis adapter aktif edildi.");
+}
+
 const logger = require('./utils/logger');
 
 // Global nesne olarak io'yu paylaş
@@ -73,11 +90,21 @@ io.on('connection', (socket) => {
 });
 
 // Rate Limiter Ayarı (DDoS Koruması)
-const limiter = rateLimit({
+const limiterOpts = {
   windowMs: 15 * 60 * 1000, // 15 dakika
   max: 100, // Her IP için 15 dakikada en fazla 100 istek
   message: { error: "Çok fazla istek attınız, lütfen daha sonra tekrar deneyin." }
-});
+};
+
+if (redisUrl && redisClient) {
+  const { RedisStore } = require('rate-limit-redis');
+  limiterOpts.store = new RedisStore({
+    sendCommand: (...args) => redisClient.call(...args),
+  });
+  console.log("Global rate limiter Redis store aktif edildi.");
+}
+
+const limiter = rateLimit(limiterOpts);
 
 // Middlewares
 app.use(helmet({

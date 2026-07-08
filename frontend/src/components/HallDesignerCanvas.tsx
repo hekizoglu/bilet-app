@@ -57,8 +57,6 @@ type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
 const MIN_ELEMENT_SIZE = 30;
 const MIN_RADIUS = 20;
-const CANVAS_WIDTH = 1000;
-const CANVAS_HEIGHT = 800;
 
 // Inner component - sarılmış function
 const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesignerCanvasProps>(function HallDesignerCanvas({ onAutoGenerate }, ref) {
@@ -76,6 +74,9 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectionBox, setSelectionBox] = useState<{ visible: boolean, x1: number, y1: number, x2: number, y2: number }>({ visible: false, x1: 0, y1: 0, x2: 0, y2: 0 });
   
+  const [canvasWidth, setCanvasWidth] = useState(1000);
+  const [canvasHeight, setCanvasHeight] = useState(800);
+
   // Arka plan görseli
   const [bgImageObj, setBgImageObj] = useState<HTMLImageElement | null>(null);
 
@@ -122,6 +123,10 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
         if (data.layoutJson) {
           try {
             const layout = JSON.parse(data.layoutJson) as HallLayout;
+            if (layout.canvas) {
+              setCanvasWidth(layout.canvas.width || 1000);
+              setCanvasHeight(layout.canvas.height || 800);
+            }
             if (layout.elements) {
               setElements(layout.elements);
             } else {
@@ -329,6 +334,35 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     );
   };
 
+  const distributeSelected = () => {
+    if (selectedIds.length < 2) return;
+    const selectedElements = elements.filter(el => selectedIds.includes(el.id));
+    const sorted = [...selectedElements].sort((a, b) => (a.y - b.y) || (a.x - b.x));
+    const startX = sorted[0].x;
+    const startY = sorted[0].y;
+    
+    const cols = Math.ceil(Math.sqrt(sorted.length));
+    const padding = 20;
+    
+    // Find max width and height for uniform grid
+    const maxWidth = Math.max(...sorted.map(el => getElementBounds(el).width));
+    const maxHeight = Math.max(...sorted.map(el => getElementBounds(el).height));
+    
+    setElements(prev => prev.map(el => {
+      if (!selectedIds.includes(el.id)) return el;
+      
+      const index = sorted.findIndex(s => s.id === el.id);
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      
+      const next = { ...el };
+      next.x = Math.round((startX + col * (maxWidth + padding)) / SNAP_GRID) * SNAP_GRID;
+      next.y = Math.round((startY + row * (maxHeight + padding)) / SNAP_GRID) * SNAP_GRID;
+      
+      return next;
+    }));
+  };
+
   const resizeElement = (id: string, handle: ResizeHandle, deltaX: number, deltaY: number) => {
     setElements((prev) =>
       prev.map((el) => {
@@ -474,8 +508,10 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   // 🎭 Otomatik Sahne Oluştur - Sihirbazdan gelen tam config
   const autoGenerateLayout = useCallback((config: AutoGenerateConfig) => {
     const PIXEL_PER_METER = 80;
-    const CANVAS_WIDTH = config.hallLengthM * PIXEL_PER_METER;
-    const CANVAS_HEIGHT = config.hallWidthM * PIXEL_PER_METER;
+    const newCanvasWidth = config.hallLengthM * PIXEL_PER_METER;
+    const newCanvasHeight = config.hallWidthM * PIXEL_PER_METER;
+    setCanvasWidth(newCanvasWidth);
+    setCanvasHeight(newCanvasHeight);
 
     const TABLE_RADIUS = Math.max(20, (config.tableRadiusCm / 100) * PIXEL_PER_METER / 2);
     const TABLE_SEATS = config.chairsPerTable;
@@ -493,28 +529,28 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
 
     // ─── 1. SAHNE ────────────────────────────────────────────────────────
     let stageTopBoundary = 0;    // sahne alanının alt sınırı (masalar buradan başlar)
-    let stageBotBoundary = CANVAS_HEIGHT; // alt sahne için üst sınır
+    let stageBotBoundary = newCanvasHeight; // alt sahne için üst sınır
     let stageLeftBound  = 0;
-    let stageRightBound = CANVAS_WIDTH;
+    let stageRightBound = newCanvasWidth;
 
     if (stageCount > 0) {
       let sx = 0, sy = 0;
       if (stagePosition === 'front' || stagePosition === 'back') {
-        sx = (CANVAS_WIDTH - STAGE_W) / 2;
-        sy = stagePosition === 'front' ? 20 : CANVAS_HEIGHT - STAGE_H - 20;
+        sx = (newCanvasWidth - STAGE_W) / 2;
+        sy = stagePosition === 'front' ? 20 : newCanvasHeight - STAGE_H - 20;
         if (stagePosition === 'front') stageTopBoundary = STAGE_H + 50;
-        else stageBotBoundary = CANVAS_HEIGHT - STAGE_H - 50;
+        else stageBotBoundary = newCanvasHeight - STAGE_H - 50;
       } else if (stagePosition === 'side_left') {
         sx = 20;
-        sy = (CANVAS_HEIGHT - STAGE_H) / 2;
+        sy = (newCanvasHeight - STAGE_H) / 2;
         stageLeftBound = STAGE_W + 50;
       } else if (stagePosition === 'side_right') {
-        sx = CANVAS_WIDTH - STAGE_W - 20;
-        sy = (CANVAS_HEIGHT - STAGE_H) / 2;
-        stageRightBound = CANVAS_WIDTH - STAGE_W - 50;
+        sx = newCanvasWidth - STAGE_W - 20;
+        sy = (newCanvasHeight - STAGE_H) / 2;
+        stageRightBound = newCanvasWidth - STAGE_W - 50;
       } else if (stagePosition === 'center') {
-        sx = (CANVAS_WIDTH - STAGE_W) / 2;
-        sy = (CANVAS_HEIGHT - STAGE_H) / 2;
+        sx = (newCanvasWidth - STAGE_W) / 2;
+        sy = (newCanvasHeight - STAGE_H) / 2;
         // Merkez sahne: masalar etrafa yerleştirilir — alt+üst boşluk azalt
         stageTopBoundary = sy - TABLE_RADIUS * 2 - MIN_SPACING;
       }
@@ -533,7 +569,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     if (config.hasDanceFloor && danceFloorM && danceFloorM > 0) {
       const DW = danceFloorM * PIXEL_PER_METER;
       const DH = danceFloorM * PIXEL_PER_METER;
-      const dx = (CANVAS_WIDTH - DW) / 2;
+      const dx = (newCanvasWidth - DW) / 2;
       const dy = stageTopBoundary + 20;
       newElements.push({
         id: `dance_floor-${nextId++}`,
@@ -586,7 +622,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     const bistroCount = config.bistroCount ?? 0;
     for (let i = 0; i < bistroCount; i++) {
       const bx = 30 + i * 70;
-      const by = CANVAS_HEIGHT - 60;
+      const by = newCanvasHeight - 60;
       newElements.push({
         id: `bistro-${nextId++}`,
         type: 'bistro',
@@ -600,12 +636,12 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     const exitCount = (config.emergencyExitCount as number | undefined) ?? 0;
     const exits = exitCount + ((config.mainEntranceCount as number | undefined) ?? 0);
     const allExitPositions = [
-      { x: 0,             y: CANVAS_HEIGHT / 2 - 20 },
-      { x: CANVAS_WIDTH - 50, y: CANVAS_HEIGHT / 2 - 20 },
-      { x: CANVAS_WIDTH / 2 - 25, y: 0 },
-      { x: CANVAS_WIDTH / 2 - 25, y: CANVAS_HEIGHT - 30 },
+      { x: 0,             y: newCanvasHeight / 2 - 20 },
+      { x: newCanvasWidth - 50, y: newCanvasHeight / 2 - 20 },
+      { x: newCanvasWidth / 2 - 25, y: 0 },
+      { x: newCanvasWidth / 2 - 25, y: newCanvasHeight - 30 },
       { x: 0,             y: 40 },
-      { x: CANVAS_WIDTH - 50, y: CANVAS_HEIGHT - 60 },
+      { x: newCanvasWidth - 50, y: newCanvasHeight - 60 },
     ];
     for (let i = 0; i < Math.min(exits, allExitPositions.length); i++) {
       const pos = allExitPositions[i];
@@ -623,7 +659,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     setElements(newElements);
     setSelectedIds([]);
     // Canvas'ı sığacak şekilde zoom reset
-    setStageScale(Math.min(900 / CANVAS_WIDTH, 750 / CANVAS_HEIGHT, 1));
+    setStageScale(Math.min(900 / newCanvasWidth, 750 / newCanvasHeight, 1));
     setStagePos({ x: 20, y: 20 });
 
     const summary = [
@@ -667,7 +703,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
       description,
       address,
       seatCount: elements.reduce((acc, el) => acc + (el.seatCount || 1), 0),
-      layoutJson: JSON.stringify({ canvas: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT }, elements }),
+      layoutJson: JSON.stringify({ canvas: { width: canvasWidth, height: canvasHeight }, elements }),
       backgroundImage,
       isGlobal
     };
@@ -959,8 +995,8 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
 
         <div className="min-w-max min-h-max p-4">
           <Stage
-            width={CANVAS_WIDTH}
-            height={CANVAS_HEIGHT}
+            width={canvasWidth}
+            height={canvasHeight}
             scaleX={stageScale}
             scaleY={stageScale}
             x={stagePos.x}
@@ -973,7 +1009,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
           >
             <Layer>
               {bgImageObj && (
-                <KonvaImage image={bgImageObj} x={0} y={0} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} opacity={0.5} name="bgImage" />
+                <KonvaImage image={bgImageObj} x={0} y={0} width={canvasWidth} height={canvasHeight} opacity={0.5} name="bgImage" />
               )}
 
               {elements.map(el => {
@@ -1047,6 +1083,10 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
               onChange={e => setAddress(e.target.value)}
               className="w-full p-2 border border-gray-300 rounded text-xs h-12 resize-none"
             />
+            <div className="flex gap-2">
+              <input type="number" placeholder="Genişlik (px)" value={canvasWidth} onChange={e => setCanvasWidth(Number(e.target.value))} className="w-1/2 p-2 border border-gray-300 rounded text-xs" />
+              <input type="number" placeholder="Yükseklik (px)" value={canvasHeight} onChange={e => setCanvasHeight(Number(e.target.value))} className="w-1/2 p-2 border border-gray-300 rounded text-xs" />
+            </div>
             <input type="text" placeholder="Arkaplan Resmi URL" value={backgroundImage} onChange={(e) => setBackgroundImage(e.target.value)} className="w-full p-2 border border-gray-300 rounded text-sm" />
           </div>
 
@@ -1096,6 +1136,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
               <button onClick={() => alignSelected('top')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Üst</button>
               <button onClick={() => alignSelected('middle')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Orta Y</button>
               <button onClick={() => alignSelected('bottom')} disabled={selectedIds.length < 2} className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-40 p-1.5 rounded border border-slate-200 font-medium text-slate-700">Alt</button>
+              <button onClick={distributeSelected} disabled={selectedIds.length < 2} className="text-xs bg-indigo-100 hover:bg-indigo-200 disabled:opacity-40 p-1.5 rounded border border-indigo-200 font-medium text-indigo-700 col-span-3">Izgara Dağıt (Grid)</button>
             </div>
             <p className="mt-2 text-[11px] text-gray-500">Çoklu seçim sonrası elemanları birlikte taşıyabilir ve hizalayabilirsiniz.</p>
           </div>
