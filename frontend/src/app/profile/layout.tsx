@@ -3,7 +3,7 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { Ticket, Settings, LogOut, User, Building } from 'lucide-react';
+import { Ticket, Settings, LogOut, User, Building, Home } from 'lucide-react';
 
 export default function ProfileLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -44,6 +44,7 @@ export default function ProfileLayout({ children }: { children: ReactNode }) {
   };
 
   const navItems = [
+    { name: 'Ana Sayfa', href: '/', icon: Home },
     { name: 'Biletlerim', href: '/profile', icon: Ticket },
     { name: 'Ödeme & Profil', href: '/profile/settings', icon: Settings },
   ];

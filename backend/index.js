@@ -21,7 +21,7 @@ const eventRoutes = require('./routes/events');
 const hallRoutes = require('./routes/halls');
 const reservationRoutes = require('./routes/reservations');
 const { requireAuth } = require('./middlewares/auth');
-const rateLimit = require('express-rate-limit');
+const { createRateLimiter } = require('./utils/rateLimiter');
 const http = require('http');
 const { Server } = require('socket.io');
 const xss = require('xss-clean');
@@ -87,24 +87,46 @@ io.on('connection', (socket) => {
     socket.join('admin_room');
     logger.info(`Socket ${socket.id} joined admin_room`);
   });
+
+  socket.on('lock_seat', async ({ eventId, seatId }) => {
+    if (!redisClient) return;
+    const lockKey = `seat_lock:${eventId}:${seatId}`;
+    try {
+      // SETNX with 300 seconds TTL
+      const acquired = await redisClient.set(lockKey, socket.id, 'EX', 300, 'NX');
+      if (acquired) {
+        socket.emit('lock_success', { seatId });
+        socket.to(eventId).emit('seat_locked', { seatId });
+      } else {
+        socket.emit('lock_failed', { seatId, reason: 'Already locked' });
+      }
+    } catch (err) {
+      logger.error('Redis seat lock error:', err);
+    }
+  });
+
+  socket.on('unlock_seat', async ({ eventId, seatId }) => {
+    if (!redisClient) return;
+    const lockKey = `seat_lock:${eventId}:${seatId}`;
+    try {
+      // Only the socket who acquired the lock can release it
+      const currentHolder = await redisClient.get(lockKey);
+      if (currentHolder === socket.id) {
+        await redisClient.del(lockKey);
+        io.to(eventId).emit('seat_freed', { seatId });
+      }
+    } catch (err) {
+      logger.error('Redis seat unlock error:', err);
+    }
+  });
 });
 
 // Rate Limiter Ayarı (DDoS Koruması)
-const limiterOpts = {
+const limiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 dakika
   max: 100, // Her IP için 15 dakikada en fazla 100 istek
   message: { error: "Çok fazla istek attınız, lütfen daha sonra tekrar deneyin." }
-};
-
-if (redisUrl && redisClient) {
-  const { RedisStore } = require('rate-limit-redis');
-  limiterOpts.store = new RedisStore({
-    sendCommand: (...args) => redisClient.call(...args),
-  });
-  console.log("Global rate limiter Redis store aktif edildi.");
-}
-
-const limiter = rateLimit(limiterOpts);
+});
 
 // Middlewares
 app.use(helmet({
@@ -297,6 +319,41 @@ Sentry.setupExpressErrorHandler(app);
 
 if (process.env.NODE_ENV !== 'test') {
   const PORT = process.env.PORT || 5000;
+  
+  // Arka planda 5 dakikayı geçen "Beklemede" rezervasyonları temizle
+  setInterval(async () => {
+    try {
+      const { PrismaClient } = require('@prisma/client');
+      const prismaInstance = new PrismaClient();
+      const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+      
+      const expiredReservations = await prismaInstance.reservation.findMany({
+        where: {
+          status: 'Beklemede',
+          createdAt: { lt: fiveMinsAgo }
+        }
+      });
+      
+      if (expiredReservations.length > 0) {
+        const ids = expiredReservations.map(r => r.id);
+        await prismaInstance.reservation.updateMany({
+          where: { id: { in: ids } },
+          data: { status: 'İptal', paymentStatus: 'failed' }
+        });
+        
+        expiredReservations.forEach(r => {
+          if (r.seatId) {
+            io.to(r.eventId).emit('seat_freed', { seatId: r.seatId });
+          }
+        });
+        logger.info(`Zaman aşımına uğrayan ${ids.length} rezervasyon iptal edildi.`);
+      }
+      await prismaInstance.$disconnect();
+    } catch (e) {
+      console.error("Zaman aşımı temizliği hatası:", e);
+    }
+  }, 60 * 1000); // Her 1 dakikada bir çalıştır
+
   server.listen(PORT, () => {
     logger.info(`Backend servisi ${PORT} portunda çalışıyor.`);
   });

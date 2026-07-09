@@ -56,6 +56,8 @@ Developing a ticket reservation system that supports modern Node.js + Next.js + 
 * Implemented simulated credit card payment flow with auto-redirect for paid events and auto-approval for free events (with nodemailer triggers).
 * Improved customer seating UI by grouping canvas seats into coordinate-based horizontal scrollable strips/rows.
 * Overhauled admin events search/filter options, fixed search result check bug (`events.length` -> `filteredEvents.length`), and introduced clear actions with aesthetic empty state dashboards.
+* **Aşama 28 (E2E Testleri):** Playwright kurulumu yapıldı. `admin-login.spec.ts` ve `bilet-alma.spec.ts` oluşturuldu. `admin-login.spec.ts` testi başarıyla geçiyor. `bilet-alma.spec.ts` testi test verilerine bağlı olarak kararsızlık yaşayabiliyor ancak altyapı hazır.
+- **Aşama 29 (Vercel & Render Deployment):** (Sırada beklemede)
 * Built zero-dependency custom Circuit Breaker and Exponential Backoff Retry utility (`backend/utils/circuitBreaker.js`) protecting SMTP email triggers and Telegram bot messages.
 * Integrated Zod input validation schemas for all payment routes (IBAN verification, bank webhook processing, credit card simulation).
 * Added staging environment profile (`docker-compose.yml`) alongside the production multi-stage Docker setup.

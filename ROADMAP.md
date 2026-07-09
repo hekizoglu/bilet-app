@@ -170,6 +170,28 @@ CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ
 
 ---
 
+## ═══ FAZ 27: React Konva Performans Optimizasyonu ═══
+**Sıra:** 9 | **Önkoşul:** Yok | **Tahmini Süre:** 2-3 saat
+
+- [x] Çok koltuklu (1000+) salonlarda Stage ve Layer render performansını artır.
+- [x] Gereksiz render'ları önlemek için React.memo veya useMemo kullanımlarını Konva bileşenlerine uygula.
+- [x] Mümkün olan yerlerde Shape Caching (cache() metodu) kullanarak çizim yükünü hafiflet.
+
+**✅ Tamamlanma Kriteri:** Büyük bir salon tasarımında (örneğin 2000 koltuklu) UI'ın donmadan çalışması ve seçimin akıcı (60fps) olması.
+
+---
+
+## ═══ FAZ 28: Kritik Akışlar İçin E2E Testler ═══
+**Sıra:** 10 | **Önkoşul:** Yok 
+- [x] **Aşama 28: End-to-End (E2E) Testleri (Playwright)**  
+  - [x] Playwright kurulumu ve konfigürasyonu.  
+  - [x] Temel akışlar için E2E test senaryolarının yazılması (Bilet alma, Admin login).  
+  - [x] CI/CD pipeline'ında çalışacak şekilde test script'lerinin ayarlanması.
+
+**✅ Tamamlanma Kriteri:** E2E test suite'inin `npx playwright test` ile başarıyla tamamlanması.
+
+---
+
 ## 🗓️ Cron Görevi Takvimi
 
 | Sıra | Faz | Tahmini Süre | Tetikleyici |

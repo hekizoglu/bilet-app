@@ -10,6 +10,10 @@ import { useSearchParams } from "next/navigation";
 function MobilePaymentContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const tParam = searchParams.get("t");
+  
+  const [timeLeft, setTimeLeft] = useState<number | null>(tParam ? parseInt(tParam) : null);
+  const [isTimeUp, setIsTimeUp] = useState(false);
 
   const [copied, setCopied] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"iban" | "qr" | "creditcard">("iban");
@@ -28,6 +32,28 @@ function MobilePaymentContent() {
   const [cvv, setCvv] = useState("");
   const [holderName, setHolderName] = useState("");
   const [isSubmittingPay, setIsSubmittingPay] = useState(false);
+
+  // Timer Effect
+  useEffect(() => {
+    if (paySuccess || reservation?.paymentStatus === 'paid') return; // Stop timer if paid
+    
+    let timer: any;
+    if (timeLeft !== null && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => prev! - 1);
+      }, 1000);
+    } else if (timeLeft === 0) {
+      setIsTimeUp(true);
+      setTimeLeft(null);
+    }
+    return () => clearInterval(timer);
+  }, [timeLeft, paySuccess, reservation]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   // PWA: Ana ekrana ekle butonu için install prompt yönetimi
   useEffect(() => {
@@ -180,6 +206,21 @@ function MobilePaymentContent() {
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400">
         <Loader2 className="animate-spin text-blue-500 mb-3" size={32} />
         <p>Bilet ödeme detayları yükleniyor...</p>
+      </div>
+    );
+  }
+
+  if (isTimeUp) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-red-400 p-6 text-center">
+        <p className="text-2xl font-bold mb-2">Süreniz Doldu</p>
+        <p className="text-sm text-slate-500 mb-6">Ödeme işlemi için ayrılan 5 dakikalık süre dolduğu için biletiniz iptal edildi.</p>
+        <button 
+          onClick={() => window.location.href = '/'}
+          className="px-6 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition"
+        >
+          Ana Sayfaya Dön
+        </button>
       </div>
     );
   }

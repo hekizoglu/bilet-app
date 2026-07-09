@@ -4,7 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const ibantools = require('ibantools');
 const { requireAuth } = require('../middlewares/auth');
-const rateLimit = require('express-rate-limit');
+const { createRateLimiter } = require('../utils/rateLimiter');
 const { z } = require('zod');
 const { validate } = require('../middlewares/validate');
 const { CircuitBreaker, retryWithBackoff } = require('../utils/circuitBreaker');
@@ -44,12 +44,10 @@ const creditCardSchema = z.object({
 // -------------------------------------------------------
 // 13.7 Güvenlik: Rate Limiting - Ödeme doğrulamada max 5 deneme
 // -------------------------------------------------------
-const paymentVerifyLimiter = rateLimit({
+const paymentVerifyLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 dakika
   max: 5,
-  message: { error: 'Çok fazla doğrulama denemesi. Lütfen 15 dakika sonra tekrar deneyin.' },
-  standardHeaders: true,
-  legacyHeaders: false,
+  message: { error: 'Çok fazla doğrulama denemesi. Lütfen 15 dakika sonra tekrar deneyin.' }
 });
 
 // -------------------------------------------------------

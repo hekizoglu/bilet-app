@@ -72,6 +72,10 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   
   const [elements, setElements] = useState<DesignerElement[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [elementModalOpen, setElementModalOpen] = useState(false);
+  const [pendingElementType, setPendingElementType] = useState<ElementType | null>(null);
+  const [elementProps, setElementProps] = useState({ label: '', size: 40, height: 40, seatCount: 8 });
+  const [chairCounter, setChairCounter] = useState(1);
   const [selectionBox, setSelectionBox] = useState<{ visible: boolean, x1: number, y1: number, x2: number, y2: number }>({ visible: false, x1: 0, y1: 0, x2: 0, y2: 0 });
   
   const [canvasWidth, setCanvasWidth] = useState(1000);
@@ -204,57 +208,49 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   };
 
   const addElement = (type: ElementType) => {
-    const id = `${type}-${Date.now()}`;
-    const baseElement: DesignerElement = {
-      id,
-      type,
-      label: type === 'round_table' ? 'Masa' : type === 'stage' ? 'Sahne' : type === 'bistro' ? 'Bistro' : 'Obje',
-      x: 100,
-      y: 100,
-      rotation: 0
-    };
+    setPendingElementType(type);
+    if (type === 'round_table') {
+      setElementProps({ label: 'A01', size: 40, height: 40, seatCount: 8 });
+    } else if (type === 'rect_table') {
+      setElementProps({ label: 'B01', size: 120, height: 60, seatCount: 6 });
+    } else if (type === 'bistro') {
+      setElementProps({ label: 'C01', size: 25, height: 25, seatCount: 4 });
+    } else if (type === 'chair') {
+      setElementProps({ label: 'Sandalye ' + chairCounter.toString().padStart(2, '0'), size: 30, height: 30, seatCount: 0 });
+    } else if (type === 'stage') {
+      setElementProps({ label: 'Sahne', size: 200, height: 80, seatCount: 0 });
+    } else if (type === 'dance_floor') {
+      setElementProps({ label: '💃 Dans Pisti', size: 160, height: 160, seatCount: 0 });
+    } else if (type === 'emergency_exit') {
+      setElementProps({ label: '🆘 Acil Çıkış', size: 50, height: 30, seatCount: 0 });
+    } else if (type === 'entrance') {
+      setElementProps({ label: '🚪 Ana Giriş', size: 60, height: 30, seatCount: 0 });
+    }
+    setElementModalOpen(true);
+  };
+
+  const confirmAddElement = () => {
+    if (!pendingElementType) return;
+    const type = pendingElementType;
+    const id = type + '-' + Date.now();
+    const baseElement = { id, type, label: elementProps.label, x: 100, y: 100, rotation: 0, numberingType: 'none' as const };
 
     if (type === 'round_table') {
-      baseElement.radius = 40;
-      baseElement.seatCount = 8;
-      baseElement.numberingType = 'table_and_seats';
+      Object.assign(baseElement, { radius: elementProps.size, seatCount: elementProps.seatCount, numberingType: 'table_and_seats' });
     } else if (type === 'rect_table') {
-      baseElement.width = 120;
-      baseElement.height = 60;
-      baseElement.seatCount = 6;
-      baseElement.numberingType = 'table_and_seats';
+      Object.assign(baseElement, { width: elementProps.size, height: elementProps.height, seatCount: elementProps.seatCount, numberingType: 'table_and_seats' });
     } else if (type === 'chair') {
-      baseElement.width = 30;
-      baseElement.height = 30;
-      baseElement.numberingType = 'seats_only';
-      baseElement.label = 'Koltuk';
+      Object.assign(baseElement, { width: elementProps.size, height: elementProps.height, numberingType: 'seats_only' });
+      setChairCounter(prev => prev + 1);
     } else if (type === 'bistro') {
-      baseElement.radius = 25;
-      baseElement.seatCount = 4;
-      baseElement.numberingType = 'table_only';
-    } else if (type === 'stage') {
-      baseElement.width = 200;
-      baseElement.height = 80;
-      baseElement.numberingType = 'none';
-    } else if (type === 'dance_floor') {
-      baseElement.width = 160;
-      baseElement.height = 160;
-      baseElement.label = '💃 Dans Pisti';
-      baseElement.numberingType = 'none';
-    } else if (type === 'emergency_exit') {
-      baseElement.width = 50;
-      baseElement.height = 30;
-      baseElement.label = '🆘 Acil Çıkış';
-      baseElement.numberingType = 'none';
-    } else if (type === 'entrance') {
-      baseElement.width = 60;
-      baseElement.height = 30;
-      baseElement.label = '🚪 Ana Giriş';
-      baseElement.numberingType = 'none';
+      Object.assign(baseElement, { radius: elementProps.size, seatCount: elementProps.seatCount, numberingType: 'table_only' });
+    } else {
+      Object.assign(baseElement, { width: elementProps.size, height: elementProps.height });
     }
-
-    setElements([...elements, baseElement]);
+    setElements([...elements, baseElement as any]);
     setSelectedIds([id]);
+    setElementModalOpen(false);
+    setPendingElementType(null);
   };
 
   const deleteSelected = () => {
@@ -764,9 +760,9 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
         : String(i + 1);                    // 1, 2, 3...
       seats.push(
         <React.Fragment key={`seat-${i}`}>
-          <Circle x={sx} y={sy} radius={10} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={1} />
+          <Circle x={sx} y={sy} radius={10} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={1} perfectDrawEnabled={false} />
           {showSeatNums && (
-            <Text x={sx - 8} y={sy - 5} width={16} text={seatLabel} fontSize={7} fill="#374151" align="center" />
+            <Text x={sx - 8} y={sy - 5} width={16} text={seatLabel} fontSize={7} fill="#374151" align="center" perfectDrawEnabled={false} />
           )}
         </React.Fragment>
       );
@@ -775,8 +771,8 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     return (
       <Group>
         {seats}
-        <Circle radius={r} fill="white" stroke={isSelected ? "#4f46e5" : "#cbd5e1"} strokeWidth={isSelected ? 3 : 2} />
-        <Text text={el.label} offsetX={r} offsetY={6} width={r*2} align="center" fontSize={14} fill="#1e293b" fontStyle="bold" />
+        <Circle radius={r} fill="white" stroke={isSelected ? "#4f46e5" : "#cbd5e1"} strokeWidth={isSelected ? 3 : 2} perfectDrawEnabled={false} />
+        <Text text={el.label} offsetX={r} offsetY={6} width={r*2} align="center" fontSize={14} fill="#1e293b" fontStyle="bold" perfectDrawEnabled={false} />
       </Group>
     );
   };
@@ -793,25 +789,25 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     const showSeatNums = el.numberingType === 'table_and_seats' || el.numberingType === 'seats_only';
     
     for(let i=0; i<topBottomCount; i++) {
-      const topLabel = el.numberingType === 'table_and_seats' ? String.fromCharCode(65 + i) : String(i + 1);
+      const topLabel = String(i + 1);
       const topX = spacing * (i+1) - 10;
       seats.push(
         <React.Fragment key={`t-${i}`}>
-          <Rect x={topX} y={-25} width={20} height={20} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={1} cornerRadius={4} />
+          <Rect x={topX} y={-25} width={20} height={20} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={1} cornerRadius={4} perfectDrawEnabled={false} />
           {showSeatNums && (
-            <Text x={topX} y={-19} width={20} text={topLabel} fontSize={8} fill="#374151" align="center" />
+            <Text x={topX} y={-19} width={20} text={topLabel} fontSize={8} fill="#374151" align="center" perfectDrawEnabled={false} />
           )}
         </React.Fragment>
       );
       
       const bottomIdx = i + topBottomCount;
-      const bottomLabel = el.numberingType === 'table_and_seats' ? String.fromCharCode(65 + bottomIdx) : String(bottomIdx + 1);
+      const bottomLabel = String(bottomIdx + 1);
       const bottomX = spacing * (i+1) - 10;
       seats.push(
         <React.Fragment key={`b-${i}`}>
-          <Rect x={bottomX} y={h + 5} width={20} height={20} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={1} cornerRadius={4} />
+          <Rect x={bottomX} y={h + 5} width={20} height={20} fill="#e5e7eb" stroke="#9ca3af" strokeWidth={1} cornerRadius={4} perfectDrawEnabled={false} />
           {showSeatNums && (
-            <Text x={bottomX} y={h + 11} width={20} text={bottomLabel} fontSize={8} fill="#374151" align="center" />
+            <Text x={bottomX} y={h + 11} width={20} text={bottomLabel} fontSize={8} fill="#374151" align="center" perfectDrawEnabled={false} />
           )}
         </React.Fragment>
       );
@@ -820,8 +816,8 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     return (
       <Group>
         {seats}
-        <Rect width={w} height={h} fill="white" stroke={isSelected ? "#4f46e5" : "#cbd5e1"} strokeWidth={isSelected ? 3 : 2} cornerRadius={4} />
-        <Text text={el.label} width={w} y={h/2 - 7} align="center" fontSize={14} fill="#1e293b" fontStyle="bold" />
+        <Rect width={w} height={h} fill="white" stroke={isSelected ? "#4f46e5" : "#cbd5e1"} strokeWidth={isSelected ? 3 : 2} cornerRadius={4} perfectDrawEnabled={false} />
+        <Text text={el.label} width={w} y={h/2 - 7} align="center" fontSize={14} fill="#1e293b" fontStyle="bold" perfectDrawEnabled={false} />
       </Group>
     );
   };
@@ -831,8 +827,8 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     const h = el.height || 80;
     return (
       <Group>
-        <Rect width={w} height={h} fill="#1e293b" stroke={isSelected ? "#fbbf24" : "transparent"} strokeWidth={3} cornerRadius={8} />
-        <Text text={el.label} width={w} y={h/2 - 10} align="center" fontSize={18} fill="white" fontStyle="bold" />
+        <Rect width={w} height={h} fill="#1e293b" stroke={isSelected ? "#fbbf24" : "transparent"} strokeWidth={3} cornerRadius={8} perfectDrawEnabled={false} />
+        <Text text={el.label} width={w} y={h/2 - 10} align="center" fontSize={18} fill="white" fontStyle="bold" perfectDrawEnabled={false} />
       </Group>
     );
   };
@@ -841,8 +837,8 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     const r = el.radius || 25;
     return (
       <Group>
-        <Circle radius={r} fill="#fef3c7" stroke={isSelected ? "#d97706" : "#fcd34d"} strokeWidth={isSelected ? 3 : 2} />
-        <Text text={el.label} offsetX={r} offsetY={6} width={r*2} align="center" fontSize={12} fill="#92400e" fontStyle="bold" />
+        <Circle radius={r} fill="#fef3c7" stroke={isSelected ? "#d97706" : "#fcd34d"} strokeWidth={isSelected ? 3 : 2} perfectDrawEnabled={false} />
+        <Text text={el.label} offsetX={r} offsetY={6} width={r*2} align="center" fontSize={12} fill="#92400e" fontStyle="bold" perfectDrawEnabled={false} />
       </Group>
     );
   };
@@ -852,8 +848,8 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     const h = el.height || 160;
     return (
       <Group>
-        <Rect width={w} height={h} fill="#f0abfc" stroke={isSelected ? "#a21caf" : "#d946ef"} strokeWidth={isSelected ? 3 : 2} cornerRadius={12} opacity={0.7} />
-        <Text text={el.label} width={w} y={h / 2 - 8} align="center" fontSize={15} fill="#581c87" fontStyle="bold" />
+        <Rect width={w} height={h} fill="#f0abfc" stroke={isSelected ? "#a21caf" : "#d946ef"} strokeWidth={isSelected ? 3 : 2} cornerRadius={12} opacity={0.7} perfectDrawEnabled={false} />
+        <Text text={el.label} width={w} y={h / 2 - 8} align="center" fontSize={15} fill="#581c87" fontStyle="bold" perfectDrawEnabled={false} />
       </Group>
     );
   };
@@ -863,8 +859,8 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     const h = el.height || 30;
     return (
       <Group>
-        <Rect width={w} height={h} fill="#fef2f2" stroke={isSelected ? "#dc2626" : "#ef4444"} strokeWidth={isSelected ? 3 : 2} cornerRadius={4} />
-        <Text text={el.label} width={w} y={h / 2 - 7} align="center" fontSize={11} fill="#991b1b" fontStyle="bold" />
+        <Rect width={w} height={h} fill="#fef2f2" stroke={isSelected ? "#dc2626" : "#ef4444"} strokeWidth={isSelected ? 3 : 2} cornerRadius={4} perfectDrawEnabled={false} />
+        <Text text={el.label} width={w} y={h / 2 - 7} align="center" fontSize={11} fill="#991b1b" fontStyle="bold" perfectDrawEnabled={false} />
       </Group>
     );
   };
@@ -874,8 +870,8 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     const h = el.height || 30;
     return (
       <Group>
-        <Rect width={w} height={h} fill="#f0fdf4" stroke={isSelected ? "#16a34a" : "#22c55e"} strokeWidth={isSelected ? 3 : 2} cornerRadius={4} />
-        <Text text={el.label} width={w} y={h / 2 - 7} align="center" fontSize={11} fill="#14532d" fontStyle="bold" />
+        <Rect width={w} height={h} fill="#f0fdf4" stroke={isSelected ? "#16a34a" : "#22c55e"} strokeWidth={isSelected ? 3 : 2} cornerRadius={4} perfectDrawEnabled={false} />
+        <Text text={el.label} width={w} y={h / 2 - 7} align="center" fontSize={11} fill="#14532d" fontStyle="bold" perfectDrawEnabled={false} />
       </Group>
     );
   };
@@ -883,8 +879,8 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   const renderChair = (el: DesignerElement, isSelected: boolean) => {
     return (
       <Group>
-        <Rect width={30} height={30} fill={isSelected ? "#4f46e5" : "#cbd5e1"} cornerRadius={4} shadowColor="rgba(0,0,0,0.2)" shadowBlur={2} shadowOffsetY={2} />
-        <Text text={el.label} width={30} y={10} align="center" fontSize={10} fill={isSelected ? "white" : "#1e293b"} />
+        <Rect width={30} height={30} fill={isSelected ? "#4f46e5" : "#cbd5e1"} cornerRadius={4} shadowColor="rgba(0,0,0,0.2)" shadowBlur={2} shadowOffsetY={2} perfectDrawEnabled={false} />
+        <Text text={el.label} width={30} y={10} align="center" fontSize={10} fill={isSelected ? "white" : "#1e293b"} perfectDrawEnabled={false} />
       </Group>
     );
   };

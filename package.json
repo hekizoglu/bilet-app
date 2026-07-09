@@ -1,0 +1,26 @@
+{
+  "name": "bilet-app",
+  "version": "1.0.0",
+  "description": "> **Bu belge, sistemi hiç bilmeyen birinin okuyarak uygulamanın uzmanı olmasını sağlamak amacıyla hazırlanmıştır.** > Her dosya, her akış, her mantık hatası ve çözümü detaylı olarak açıklanmıştır.",
+  "main": "ecosystem.config.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hekizoglu/bilet-app.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/hekizoglu/bilet-app/issues"
+  },
+  "homepage": "https://github.com/hekizoglu/bilet-app#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^26.1.1"
+  }
+}

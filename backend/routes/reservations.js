@@ -5,9 +5,9 @@ const prisma = new PrismaClient();
 const { z } = require('zod');
 const { validate } = require('../middlewares/validate');
 const { requireAuth } = require('../middlewares/auth');
-const rateLimit = require('express-rate-limit');
+const { createRateLimiter } = require('../utils/rateLimiter');
 
-const checkoutLimiter = rateLimit({
+const checkoutLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 dakika
   max: 5, // 1 dakikada en fazla 5 bilet alma denemesi
   message: { error: "Çok fazla bilet alma denemesi yaptınız, lütfen biraz bekleyin." }
@@ -22,11 +22,12 @@ const { calculateFinalPrice } = require('../services/pricingService');
 
 const reservationMutex = new Mutex();
 let redlock = null;
+let redisClient = null;
 const redisUrl = process.env.REDIS_URL;
 if (redisUrl) {
   const Redis = require('ioredis');
   const Redlock = require('redlock');
-  const redisClient = new Redis(redisUrl);
+  redisClient = new Redis(redisUrl);
   // Support both ES module default exports and CommonJS
   const RedlockClass = Redlock.default || Redlock;
   redlock = new RedlockClass([redisClient], {
@@ -183,12 +184,7 @@ router.get('/availability/:eventId', async (req, res) => {
 
     // Koltuksuz (Ayakta) Etkinlik
     if (!event.isSeated) {
-      const sold = await prisma.reservation.count({
-        where: {
-          eventId: event.id,
-          status: { in: ['Onaylı', 'Beklemede'] }
-        }
-      });
+      const sold = reservations.length;
       
       finalDynamicPrice = calculateDynamicPrice(event.price, event.maxPrice, event.dynamicPricingThreshold, sold, event.capacity);
 
@@ -208,6 +204,16 @@ router.get('/availability/:eventId', async (req, res) => {
       
       const allSeats = extractSeatsFromLayout(event.hall.layoutJson);
       const takenSeatIds = new Set(reservations.map(r => r.seatId));
+      
+      // Geçici Redis kilitlerini de dolu koltuklar arasına ekle
+      if (redisClient) {
+        try {
+          const keys = await redisClient.keys(`seat_lock:${event.id}:*`);
+          keys.forEach(k => takenSeatIds.add(k.split(':').pop()));
+        } catch(err) {
+          console.error("Redis seat lock check error", err);
+        }
+      }
       
       // Boş koltukları bul
       const availableSeats = allSeats
@@ -788,7 +794,17 @@ router.get('/', requireAuth, async (req, res) => {
 
     const [reservations, total] = await prisma.$transaction([
       prisma.reservation.findMany({
-        include: { event: true },
+        include: { 
+          event: {
+            select: {
+              id: true,
+              name: true,
+              date: true,
+              status: true,
+              isSeated: true
+            }
+          } 
+        },
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit
@@ -820,7 +836,11 @@ router.get('/my', requireAuth, async (req, res) => {
       where: { email: req.user.email },
       include: {
         event: { 
-          include: { 
+          select: { 
+            id: true,
+            name: true,
+            date: true,
+            isSeated: true,
             hall: { select: { id: true, name: true, address: true } } 
           } 
         }

@@ -34,7 +34,7 @@ export default function LoginPage() {
         if (data.user?.role === 'ADMIN' || data.user?.role === 'ORGANIZER') {
           router.push('/admin');
         } else {
-          router.push('/profile');
+          router.push('/');
         }
       } else {
         setError(`Backend Hatası: ${data.error || JSON.stringify(data)}`);
