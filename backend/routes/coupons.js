@@ -19,7 +19,10 @@ const couponSchema = z.object({
   discountValue: z.number().positive(),
   maxUses: z.number().int().positive().nullable().optional(),
   validUntil: z.string().nullable().optional(),
-});
+}).refine(data => {
+  if (data.discountType === 'PERCENTAGE' && data.discountValue > 100) return false;
+  return true;
+}, { message: "Yüzdelik indirim 100'den büyük olamaz." });
 
 // GET /api/coupons (List for Admin)
 router.get('/', requireAuth, requireAdmin, async (req, res) => {

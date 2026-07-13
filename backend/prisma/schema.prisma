@@ -3,7 +3,7 @@
 }
 
 datasource db {
-  provider = env("DB_PROVIDER")
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -100,6 +100,7 @@ model Reservation {
   earnedPoints    Float     @default(0) // Bu rezervasyondan kazanılan puan
   isUsed          Boolean   @default(false) // Bilet kapıda okutuldu mu? (Check-in)
   usedAt          DateTime? // Bilet ne zaman okutuldu?
+  expiresAt       DateTime? // Waitlist soft-hold timeout süresi
   createdAt       DateTime  @default(now())
 
   @@index([eventId])

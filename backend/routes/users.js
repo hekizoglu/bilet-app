@@ -20,7 +20,10 @@ const profileSchema = z.object({
 router.get('/admin-payment-info', async (req, res) => {
   try {
     const admin = await prisma.user.findFirst({
-      where: { role: 'ADMIN' }
+      where: { 
+        role: 'ADMIN',
+        iban: { not: null }
+      }
     });
 
     if (!admin) {
@@ -130,7 +133,9 @@ router.post('/switch-role', requireAuth, async (req, res) => {
     if (currentRole === 'ADMIN') {
       return res.status(400).json({ error: 'Admin rolü değiştirilemez.' });
     }
-
+    
+    return res.status(403).json({ error: 'Güvenlik nedeniyle otomatik rol geçişi geçici olarak devre dışı bırakılmıştır. Lütfen yönetici ile iletişime geçin.' });
+    
     const newRole = (currentRole === 'CUSTOMER') ? 'ORGANIZER' : 'CUSTOMER';
 
     // Update user in DB

@@ -47,9 +47,11 @@ router.post('/google', authLimiter, async (req, res) => {
             audience: process.env.GOOGLE_CLIENT_ID,
           });
           payload = ticket.getPayload();
-          tokenCache.set(token, payload);
-          // Auto cleanup from cache after 15 minutes
-          setTimeout(() => tokenCache.delete(token), 15 * 60 * 1000);
+          if (tokenCache.size < 1000) {
+            tokenCache.set(token, payload);
+            // Auto cleanup from cache after 15 minutes
+            setTimeout(() => tokenCache.delete(token), 15 * 60 * 1000);
+          }
         } catch (verifyErr) {
           console.error("Google Token Verification Error:", verifyErr.message);
           return res.status(401).json({ error: 'Geçersiz veya süresi dolmuş Google Token' });
@@ -58,7 +60,7 @@ router.post('/google', authLimiter, async (req, res) => {
     }
     
     // GMAIL Kısıtlaması (Sadece @gmail.com adresleri kayıt olabilir)
-    if (!payload.email.endsWith('@gmail.com') && !token.startsWith('LOCAL_') && payload.email !== ADMIN_EMAIL) {
+    if (!payload.email.toLowerCase().endsWith('@gmail.com') && !token.startsWith('LOCAL_') && payload.email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
       return res.status(403).json({ error: 'Sadece @gmail.com uzantılı e-posta adresleri ile giriş yapılabilir.' });
     }
 

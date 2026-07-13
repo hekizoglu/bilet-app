@@ -325,12 +325,16 @@ if (process.env.NODE_ENV !== 'test') {
     try {
       const { PrismaClient } = require('@prisma/client');
       const prismaInstance = new PrismaClient();
-      const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const now = new Date();
       
+      // Standart beklemede temizliği ve Waitlist expiresAt (soft hold) temizliği
       const expiredReservations = await prismaInstance.reservation.findMany({
         where: {
-          status: 'Beklemede',
-          createdAt: { lt: fiveMinsAgo }
+          status: { in: ['Beklemede', 'Ödeme Bekleniyor'] },
+          OR: [
+            { createdAt: { lt: new Date(now.getTime() - 5 * 60 * 1000) }, expiresAt: null },
+            { expiresAt: { lt: now } }
+          ]
         }
       });
       
@@ -344,6 +348,7 @@ if (process.env.NODE_ENV !== 'test') {
         expiredReservations.forEach(r => {
           if (r.seatId) {
             io.to(r.eventId).emit('seat_freed', { seatId: r.seatId });
+            io.to(r.eventId).emit('seat_released', { seatId: r.seatId });
           }
         });
         logger.info(`Zaman aşımına uğrayan ${ids.length} rezervasyon iptal edildi.`);

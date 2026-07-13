@@ -762,6 +762,14 @@ router.post('/:id/cancel', requireAuth, async (req, res) => {
       data: { status: 'İptal', paymentStatus: 'failed' }
     });
 
+    // Sadakat Puanı İptali
+    if (reservation.earnedPoints > 0) {
+      await prisma.user.updateMany({
+        where: { email: reservation.email },
+        data: { points: { decrement: reservation.earnedPoints } }
+      });
+    }
+
     // Evict caches
     cache.clearEventCache(reservation.eventId);
     cache.clearAdminReservationsCache();
@@ -791,9 +799,9 @@ router.post('/:id/cancel', requireAuth, async (req, res) => {
              email: waitlistEntry.email,
              phone: waitlistEntry.phone,
              ticketCode: require('crypto').randomUUID(),
-             status: 'Ödeme Bekleniyor', // Özel bir statü (soft hold)
              paymentStatus: 'pending',
-             paymentReference: `WAITLIST-${Date.now()}`
+             paymentReference: `WAITLIST-${Date.now()}`,
+             expiresAt: new Date(Date.now() + 15 * 60 * 1000)
           }
         });
 
@@ -803,27 +811,7 @@ router.post('/:id/cancel', requireAuth, async (req, res) => {
         });
 
         // 15 dakika içinde ödenmezse iptal edecek zamanlayıcı (setTimeout ile arka planda)
-        setTimeout(async () => {
-          try {
-            const { PrismaClient } = require('@prisma/client');
-            const prismaLocal = new PrismaClient();
-            const resCheck = await prismaLocal.reservation.findUnique({ where: { id: newReservation.id } });
-            if (resCheck && resCheck.paymentStatus === 'pending') {
-              await prismaLocal.reservation.update({
-                where: { id: newReservation.id },
-                data: { status: 'İptal', paymentStatus: 'failed' }
-              });
-              // Socket yayını
-              const io = req.app.get('io');
-              if (io) {
-                io.to(resCheck.eventId).emit('seat_released', { seatId: resCheck.seatId });
-              }
-            }
-            await prismaLocal.$disconnect();
-          } catch(e) {
-            console.error("Gecikmeli waitlist iptal hatası:", e);
-          }
-        }, 15 * 60 * 1000);
+        // Kaldırıldı: setTimeout yerine global interval (index.js) expiresAt kontrolü yapacak.
 
         const eventData = await prisma.event.findUnique({ where: { id: reservation.eventId } });
         const nodemailer = require('nodemailer');
@@ -1092,6 +1080,14 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
         })
       }
     });
+
+    // Sadakat Puanı İptali (İade durumunda da puan geri alınır)
+    if (reservation.earnedPoints > 0) {
+      await prisma.user.updateMany({
+        where: { email: reservation.email },
+        data: { points: { decrement: reservation.earnedPoints } }
+      });
+    }
 
     // Evict availability and reservation list caches
     cache.clearEventCache(reservation.eventId);

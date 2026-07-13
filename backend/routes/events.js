@@ -51,8 +51,8 @@ router.post('/', requireAuth, validate(eventSchema), async (req, res) => {
 // Regenerate Private Slug
 router.post('/:id/regenerate-slug', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: "Sadece yöneticiler özel etkinlik slug'ını yenileyebilir." });
     }
     const event = await prisma.event.findUnique({ where: { id: req.params.id } });
     if (!event) return res.status(404).json({ error: "Etkinlik bulunamadı" });
@@ -166,13 +166,30 @@ router.post('/:id/waitlist', async (req, res) => {
       return res.status(400).json({ error: "Bu etkinlik için bekleme listesine katılamazsınız." });
     }
 
-    // Check if user is already on the waitlist
+    // 1. Check if user is already on the waitlist
     const existing = await prisma.waitlist.findFirst({
       where: { eventId, email, status: 'PENDING' }
     });
 
     if (existing) {
       return res.status(400).json({ error: "Bu e-posta adresi ile zaten bekleme listesindesiniz." });
+    }
+
+    // 2. Ticket Hoarding: Check if they already have an approved ticket
+    const hasTicket = await prisma.reservation.findFirst({
+      where: { eventId, email, status: 'Onaylı' }
+    });
+    if (hasTicket) {
+      return res.status(400).json({ error: "Zaten bu etkinlik için onaylı bir biletiniz bulunuyor." });
+    }
+
+    // 3. Waitlist DoS limit (max 500 or 50% capacity)
+    const limit = event.capacity ? Math.max(100, event.capacity * 0.5) : 500;
+    const waitlistCount = await prisma.waitlist.count({
+      where: { eventId, status: 'PENDING' }
+    });
+    if (waitlistCount >= limit) {
+      return res.status(400).json({ error: "Bekleme listesi kapasitesi tamamen dolmuştur." });
     }
 
     const entry = await prisma.waitlist.create({
@@ -185,6 +202,25 @@ router.post('/:id/waitlist', async (req, res) => {
     });
 
     res.json({ success: true, message: "Bekleme listesine başarıyla eklendiniz." });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
+// Update Event (PUT)
+router.put('/:id', requireAuth, validate(eventSchema), async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    }
+    const data = { ...req.body, date: new Date(req.body.date) };
+    const event = await prisma.event.update({
+      where: { id: req.params.id },
+      data
+    });
+    cache.del('events');
+    cache.del('public_events');
+    res.json(event);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
   }

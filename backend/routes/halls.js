@@ -24,6 +24,9 @@ router.post('/', requireAuth, validate(hallSchema), async (req, res) => {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
       return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
     }
+    if (req.body.isGlobal && req.user.role !== 'ADMIN') {
+      req.body.isGlobal = false;
+    }
     const hall = await prisma.hall.create({ data: req.body });
     cache.del('halls');
     res.status(201).json(hall);
@@ -118,6 +121,21 @@ router.put('/:id', requireAuth, validate(hallSchema), async (req, res) => {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
       return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
     }
+    if (req.body.isGlobal !== undefined && req.user.role !== 'ADMIN') {
+      delete req.body.isGlobal;
+    }
+
+    const activeEvents = await prisma.event.count({
+      where: { hallId: req.params.id, date: { gte: new Date() } }
+    });
+
+    if (activeEvents > 0) {
+      const existingHall = await prisma.hall.findUnique({ where: { id: req.params.id } });
+      if (req.body.seatCount !== existingHall.seatCount || req.body.layoutJson !== existingHall.layoutJson) {
+         return res.status(400).json({ error: "Aktif etkinliği olan bir salonun koltuk sayısı veya krokisi değiştirilemez." });
+      }
+    }
+
     const hall = await prisma.hall.update({
       where: { id: req.params.id },
       data: req.body
