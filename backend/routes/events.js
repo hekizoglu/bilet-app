@@ -122,6 +122,33 @@ router.get('/public', async (req, res) => {
   }
 });
 
+// Get Aggregator Events (Merkezi Keşif Portalı)
+router.get('/aggregator', async (req, res) => {
+  try {
+    const cached = cache.get('aggregator_events');
+    if (cached) return res.json(cached);
+
+    const events = await prisma.event.findMany({
+      where: { 
+        visibility: 'PUBLIC', 
+        status: 'Aktif',
+        isPubliclyListed: true,
+        date: { gte: new Date() }
+      },
+      include: { 
+        hall: {
+          select: { id: true, name: true, address: true }
+        }
+      },
+      orderBy: { date: 'asc' }
+    });
+    cache.set('aggregator_events', events, 5 * 60 * 1000);
+    res.json(events);
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası" });
+  }
+});
+
 // POST /api/events/:id/waitlist
 router.post('/:id/waitlist', async (req, res) => {
   try {

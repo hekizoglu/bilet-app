@@ -22,6 +22,9 @@
 | **24** | **İzlenebilirlik & Sağlık Kontrolleri** | ✅ Tamamlandı (Sentry Key Bekliyor) | 100% |
 | **25** | **CI/CD Pipeline Tamamlama** | ✅ Tamamlandı (Secret'lar Bekliyor) | 100% |
 | **26** | **Son Doğrulama & Yayın (Launch)** | 🔄 Devam Ediyor (E2E Testler Yapıldı) | 50% |
+| **29** | **Veritabanı Sorgu Optimizasyonu** | ✅ Tamamlandı | 100% |
+| **30** | **Redis Entegrasyonu (Geçici Koltuk Kilitleri)** | ✅ Tamamlandı | 100% |
+| **31** | **Backlog Senkronizasyonu** | ✅ Tamamlandı | 100% |
 
 ---
 
@@ -192,6 +195,41 @@ CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ
 
 ---
 
+## ═══ FAZ 29: Veritabanı Sorgu Optimizasyonu (IDEA-MR8ZZB2N-XROQ) ═══
+**Sıra:** 11 | **Önkoşul:** Yok | **Tahmini Süre:** 1-2 saat
+
+- [x] `schema.prisma` dosyasındaki tablolar için sık sorgulanan kolonlara (ör. email, eventId) index ekle
+- [x] Backend endpoint'lerindeki N+1 sorgu problemlerini `include` kullanarak çöz
+- [x] Prisma performans optimizasyonlarını test et
+
+**✅ Tamamlanma Kriteri:** Veritabanı sorgularının hızlanması ve N+1 problemlerinin ortadan kalkması.
+
+---
+
+## ═══ FAZ 30: Redis Entegrasyonu (Geçici Koltuk Kilitleri) (IDEA-REDIS-LOCKS) ═══
+**Sıra:** 12 | **Önkoşul:** FAZ 29 ✅ | **Tahmini Süre:** 1 saat
+
+- [x] Backend `reservations.js` içine `POST /lock-seat` endpoint'i ekle
+- [x] Redis ile `NX` (Not Exists) kuralıyla 5 dakikalık PX kilidi at
+- [x] Rezervasyon tamamlanınca geçici kilidi Redis'ten sil
+- [x] Soket aracılığıyla kilitlenen koltuğu diğer kullanıcılara anlık bildir (`seat_locked`, `seat_unlocked`)
+
+**✅ Tamamlanma Kriteri:** Aynı koltuğu iki kişinin aynı anda seçmesinin Redis lock ile %100 engellenmesi.
+
+---
+
+## ═══ FAZ 31: Backlog Senkronizasyonu (Tüm Kalan Fikirler) ═══
+**Sıra:** 13 | **Önkoşul:** Yok | **Tahmini Süre:** 15 dk
+
+- [x] `IDEA-RATE-LIMIT` görevi kontrol edildi (FAZ 23'te global, auth ve checkout limiter olarak uygulanmış).
+- [x] `IDEA-KONVA-OPT` görevi kontrol edildi (FAZ 27'de uygulanmış).
+- [x] `IDEA-E2E-TESTS` görevi kontrol edildi (FAZ 28'de Playwright ile uygulanmış).
+- [x] İlgili tüm maddeler `backlog.md` dosyasında tamamlandı (`[x]`) olarak işaretlendi.
+
+**✅ Tamamlanma Kriteri:** `backlog.md` içindeki tüm açık görevlerin mevcut sisteme yansıması ve işaretlenmesi.
+
+---
+
 ## 🗓️ Cron Görevi Takvimi
 
 | Sıra | Faz | Tahmini Süre | Tetikleyici |
@@ -206,6 +244,18 @@ CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ
 | 8 | FAZ 26 – Launch | 2-4s | FAZ 25 ✅ ise oto |
 
 **Toplam Tahmini Süre:** 13-22 saat
+
+
+
+## 🔄 Döngü Tarafından Otomatik Eklenen İşler
+
+### Döngü #1 - Zaman Damgası: 2026-07-13T12:35:17.225Z
+
+#### 1. 📱 Mobil responsive kontrolü
+- **ID:** IDEA-MRJ7GHNO-M3YK
+- **Puan:** 49/40
+- **Zorluk:** easy
+- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
 
 ---
 

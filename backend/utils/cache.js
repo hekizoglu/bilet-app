@@ -55,10 +55,19 @@ const clearEventCache = (eventId) => {
   }
 };
 
+const clearAdminReservationsCache = () => {
+  for (const key of cache.keys()) {
+    if (key.startsWith('admin_reservations')) {
+      cache.delete(key);
+    }
+  }
+};
+
 module.exports = {
   get,
   set,
   del,
   clear,
-  clearEventCache
+  clearEventCache,
+  clearAdminReservationsCache
 };

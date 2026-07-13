@@ -30,6 +30,7 @@ model User {
   createdAt             DateTime  @default(now())
 
   @@index([role])
+  @@index([createdAt])
 }
 
 model Hall {
@@ -43,6 +44,8 @@ model Hall {
   isGlobal        Boolean  @default(false)
   events          Event[]
   createdAt       DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model Event {
@@ -59,6 +62,9 @@ model Event {
   hall         Hall?         @relation(fields: [hallId], references: [id])
   paymentType  String        @default("free") // "free", "creditcard", "cardless"
   
+  isPubliclyListed Boolean   @default(false) // Bilet-App Aggregator portalında sergilensin mi?
+  doorSalesEndTime DateTime? // Etkinlik başladıktan sonra kapı satışının biteceği saat (opsiyonel)
+  
   // Dynamic Pricing
   dynamicPricingThreshold Int? // Yüzde kaç doluluğa ulaşınca fiyat artacak? (örn: 70)
   maxPrice     Float?        // Fiyat maksimum ne kadar olabilir?
@@ -71,6 +77,8 @@ model Event {
   @@index([status])
   @@index([date])
   @@index([privateSlug])
+  @@index([visibility])
+  @@index([createdAt])
 }
 
 model Reservation {
@@ -100,6 +108,7 @@ model Reservation {
   @@index([status])
   @@index([eventId, status])
   @@index([eventId, seatId, status])
+  @@index([createdAt])
 }
 
 model Waitlist {
