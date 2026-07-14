@@ -172,6 +172,13 @@ app.use('/api/payments', require('./routes/payments'));
 app.use('/api/coupons', require('./routes/coupons'));
 app.use('/api/telegram', require('./routes/telegram'));
 
+const feedbackLimiter = createRateLimiter({
+  windowMs: 60 * 60 * 1000, // 1 saat
+  max: 5, // 1 saatte max 5 mesaj
+  message: { error: "Çok fazla bildirim gönderdiniz, lütfen daha sonra tekrar deneyin." }
+});
+app.use('/api/feedback', feedbackLimiter, require('./routes/feedback'));
+
 // GET /api/admin/stats
 // Dynamic aggregate dashboard statistics for admin
 app.get('/api/admin/stats', requireAuth, async (req, res) => {

@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from 'sonner';
 import CookieConsent from '@/components/CookieConsent';
 import PublicNavbar from '@/components/PublicNavbar';
+import FeedbackWidget from '@/components/FeedbackWidget';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -61,6 +62,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <PublicNavbar />
         {children}
+        <FeedbackWidget />
         <Toaster position="top-center" richColors />
         <CookieConsent />
         {/* Phase 13.8: PWA Service Worker kayıt scripti */}

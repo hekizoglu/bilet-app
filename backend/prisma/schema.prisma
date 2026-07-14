@@ -152,3 +152,17 @@ model Coupon {
   @@index([code])
   @@index([organizerId])
 }
+
+model Feedback {
+  id        String   @id @default(uuid())
+  name      String
+  email     String
+  type      String   @default("FEEDBACK") // COMPLAINT, SUGGESTION, FEEDBACK
+  message   String
+  ipAddress String?
+  status    String   @default("UNREAD") // UNREAD, READ, RESOLVED
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([status])
+}
