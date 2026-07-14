@@ -10,7 +10,7 @@ export default function HallsPage() {
   const fetchHalls = async () => {
     const token = getCookie('token');
     try {
-      const res = await fetch('http://localhost:5000/api/halls', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/halls`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -36,7 +36,7 @@ export default function HallsPage() {
   const handleClone = async (id: string) => {
     const token = getCookie('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/halls/${id}/clone`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/halls/${id}/clone`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

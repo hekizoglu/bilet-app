@@ -22,23 +22,26 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     phone: '',
     seatId: '',
     seatName: '',
-    couponCode: ''
+    couponCode: '',
+    usePoints: false
   });
+  const [userPoints, setUserPoints] = useState<number>(0);
   const [discount, setDiscount] = useState<{type: string, value: number} | null>(null);
   const [selectionMode, setSelectionMode] = useState<'list' | 'map'>('list');
+  const [socketInstance, setSocketInstance] = useState<any>(null);
 
   const [reservationSuccess, setReservationSuccess] = useState<any>(null);
   const [adminPaymentInfo, setAdminPaymentInfo] = useState<any>(null);
 
   useEffect(() => {
     // 1. Veriyi Getir
-    fetch(`http://localhost:5000/api/reservations/availability/${id}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/availability/${id}`)
       .then(r => r.json())
       .then(d => {
         setData(d);
         setLoading(false);
         if (d.paymentType === 'cardless') {
-          fetch('http://localhost:5000/api/users/admin-payment-info')
+          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/users/admin-payment-info`)
             .then(r => r.json())
             .then(p => setAdminPaymentInfo(p))
             .catch(console.error);
@@ -46,11 +49,24 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
       })
       .catch(console.error);
 
+    // Get user points if logged in
+    const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+    if (token) {
+      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/users/me`, { headers: { 'Authorization': `Bearer ${token}` }})
+        .then(r => r.json())
+        .then(u => {
+           if (u.points) setUserPoints(u.points);
+           if (u.email) setForm(prev => ({...prev, email: u.email}));
+           if (u.name) setForm(prev => ({...prev, name: u.name}));
+        })
+        .catch(console.error);
+    }
+
     let socket: any;
 
     if (data?.eventId) {
       // 2. Gerçek Zamanlı Socket Bağlantısı
-      socket = io('http://localhost:5000');
+      socket = io(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/localhost:5000'}`}/');
       socket.emit('join_event', data.eventId);
 
       socket.on('seat_booked', (payload: { seatId: string }) => {
@@ -63,6 +79,9 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
           };
         });
       });
+      
+      // Save socket instance to state for checkout
+      setSocketInstance(socket);
     }
 
     return () => {
@@ -85,12 +104,14 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
         customer: form.name,
         email: form.email,
         phone: form.phone,
-        couponCode: form.couponCode || undefined
+        couponCode: form.couponCode || undefined,
+        usePoints: form.usePoints,
+        socketId: socketInstance ? socketInstance.id : undefined
       };
       if (data.isSeated) {
         payload.seatId = form.seatId;
       }
-      const res = await fetch('http://localhost:5000/api/reservations', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -119,7 +140,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/events/${id}/waitlist`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/events/${id}/waitlist`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -403,7 +424,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                     <button type="button" 
                             onClick={async () => {
                               if (!form.couponCode) return;
-                              const res = await fetch('http://localhost:5000/api/coupons/validate', {
+                              const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/coupons/validate`, {
                                 method: 'POST',
                                 headers: {'Content-Type': 'application/json'},
                                 body: JSON.stringify({ code: form.couponCode })
@@ -470,18 +491,101 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Ad Soyad</label>
               <input required type="text" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm" 
+                     value={form.name}
                      onChange={e => setForm({...form, name: e.target.value})} />
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">E-Posta</label>
               <input required type="email" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                     value={form.email}
                      onChange={e => setForm({...form, email: e.target.value})} />
             </div>
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Telefon</label>
               <input type="tel" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                      placeholder="05xxxxxxxxx (İsteğe bağlı)"
+                     value={form.phone}
                      onChange={e => setForm({...form, phone: e.target.value})} />
+            </div>
+
+            {/* Fiyat Özeti ve İndirimler */}
+            <div className="border-t border-gray-100 pt-4 mt-4">
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">İndirim Kuponu</label>
+              <div className="flex gap-2 mb-3">
+                <input type="text" className="flex-1 border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm uppercase"
+                       placeholder="KOD"
+                       value={form.couponCode}
+                       onChange={e => setForm({...form, couponCode: e.target.value.toUpperCase()})} />
+                <button type="button" 
+                        onClick={async () => {
+                          if (!form.couponCode) return;
+                          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/coupons/validate`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ code: form.couponCode })
+                          });
+                          const result = await res.json();
+                          if (res.ok) {
+                            setDiscount({ type: result.discountType, value: result.discountValue });
+                            toast.success("Kupon başarıyla uygulandı!");
+                          } else {
+                            toast.error(result.error);
+                            setDiscount(null);
+                            setForm({...form, couponCode: ''});
+                          }
+                        }}
+                        className="bg-gray-100 px-4 rounded-xl font-bold hover:bg-gray-200 transition text-sm">Uygula</button>
+              </div>
+
+              {userPoints > 0 && data.price > 0 && (
+                <div className="flex items-center gap-2 mb-4 p-3 bg-yellow-50 border border-yellow-100 rounded-xl">
+                  <input 
+                    type="checkbox" 
+                    id="usePoints" 
+                    checked={form.usePoints}
+                    onChange={(e) => setForm({...form, usePoints: e.target.checked})}
+                    className="w-4 h-4 text-yellow-600 rounded focus:ring-yellow-500"
+                  />
+                  <label htmlFor="usePoints" className="text-sm font-semibold text-yellow-800 cursor-pointer">
+                    Sadakat Puanlarımı Kullan ({userPoints.toFixed(2)} ₺ indirim)
+                  </label>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center text-sm mb-1 text-gray-600">
+                <span>Bilet Fiyatı:</span>
+                <span className="font-semibold">{data.price} ₺</span>
+              </div>
+              
+              {discount && (
+                <div className="flex justify-between items-center text-sm text-green-600 mb-1">
+                  <span>Kupon İndirimi:</span>
+                  <span>-{discount.type === 'PERCENTAGE' ? (data.price * discount.value / 100).toFixed(2) : discount.value.toFixed(2)} ₺</span>
+                </div>
+              )}
+
+              {form.usePoints && (
+                <div className="flex justify-between items-center text-sm text-yellow-600 mb-1">
+                  <span>Kullanılan Puan:</span>
+                  <span>-{Math.min(userPoints, Math.max(0, data.price - (discount ? (discount.type === 'PERCENTAGE' ? (data.price * discount.value / 100) : discount.value) : 0))).toFixed(2)} ₺</span>
+                </div>
+              )}
+
+              <div className="flex justify-between items-center text-lg font-bold text-gray-900 mt-3 pt-3 border-t border-gray-100">
+                <span>Toplam Ödenecek:</span>
+                <span className="text-blue-700">
+                  {(() => {
+                    let price = data.price;
+                    if (discount) {
+                      price -= discount.type === 'PERCENTAGE' ? (data.price * discount.value / 100) : discount.value;
+                    }
+                    if (form.usePoints) {
+                      price -= Math.min(userPoints, Math.max(0, price));
+                    }
+                    return Math.max(0, price).toFixed(2);
+                  })()} ₺
+                </span>
+              </div>
             </div>
             <button 
               type="submit" 

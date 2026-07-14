@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   // Yalnızca /admin ile başlayan rotaları koru
   if (request.nextUrl.pathname.startsWith('/admin')) {
     // Çerezlerden veya Header'dan token kontrolü

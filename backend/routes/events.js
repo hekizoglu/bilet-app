@@ -1,12 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../prisma');
 const { z } = require('zod');
 const { validate } = require('../middlewares/validate');
 const { requireAuth } = require('../middlewares/auth');
 const cache = require('../utils/cache');
 const crypto = require('crypto');
+const { createRateLimiter } = require('../utils/rateLimiter');
+
+const waitlistLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 dakika
+  max: 3, // Bir IP'den 15 dakikada en fazla 3 bekleme listesi kaydı
+  message: { error: "Çok fazla bekleme listesi talebi gönderdiniz, lütfen 15 dakika sonra tekrar deneyin." }
+});
 
 const eventSchema = z.object({
   name: z.string().min(3),
@@ -17,7 +23,8 @@ const eventSchema = z.object({
   capacity: z.number().int().positive({ message: "Kapasite 0'dan büyük olmalıdır" }).optional(),
   hallId: z.string().uuid().optional(),
   paymentType: z.enum(["free", "creditcard", "cardless"]).default("free"),
-  visibility: z.enum(["PUBLIC", "PRIVATE"]).default("PUBLIC")
+  visibility: z.enum(["PUBLIC", "PRIVATE"]).default("PUBLIC"),
+  isPubliclyListed: z.boolean().default(false)
 }).refine(data => {
   if (data.isSeated && !data.hallId) return false;
   if (!data.isSeated && !data.capacity) return false;
@@ -39,9 +46,13 @@ router.post('/', requireAuth, validate(eventSchema), async (req, res) => {
     if (data.visibility === 'PRIVATE') {
       data.privateSlug = generateSlug();
     }
+    if (req.user.role === 'ORGANIZER') {
+      data.organizerId = req.user.id;
+    }
     const event = await prisma.event.create({ data });
     cache.del('events');
     cache.del('public_events');
+    cache.del('aggregator_events');
     res.status(201).json(event);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });
@@ -78,18 +89,23 @@ router.get('/', requireAuth, async (req, res) => {
       return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
     }
 
-    const cached = cache.get('events');
+    const isOrganizer = req.user.role === 'ORGANIZER';
+    const cacheKey = isOrganizer ? `events_org_${req.user.id}` : 'events';
+    const cached = cache.get(cacheKey);
     if (cached) return res.json(cached);
 
-        const events = await prisma.event.findMany({ 
-          include: { 
-            hall: {
-              select: { id: true, name: true, seatCount: true, address: true, isGlobal: true }
-            }
-          }, 
-          orderBy: { createdAt: 'desc' } 
-        });
-    cache.set('events', events, 5 * 60 * 1000); // 5 min cache
+    const whereClause = isOrganizer ? { organizerId: req.user.id } : {};
+
+    const events = await prisma.event.findMany({ 
+      where: whereClause,
+      include: { 
+        hall: {
+          select: { id: true, name: true, seatCount: true, address: true, isGlobal: true }
+        }
+      }, 
+      orderBy: { createdAt: 'desc' } 
+    });
+    cache.set(cacheKey, events, 5 * 60 * 1000); // 5 min cache
     res.json(events);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -150,7 +166,7 @@ router.get('/aggregator', async (req, res) => {
 });
 
 // POST /api/events/:id/waitlist
-router.post('/:id/waitlist', async (req, res) => {
+router.post('/:id/waitlist', waitlistLimiter, async (req, res) => {
   try {
     const { customerName, email, phone } = req.body;
     const eventId = req.params.id;
@@ -213,13 +229,28 @@ router.put('/:id', requireAuth, validate(eventSchema), async (req, res) => {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
       return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
     }
+    
+    // Yetki Kontrolü: Organizatör sadece kendi etkinliğini güncelleyebilir
+    if (req.user.role === 'ORGANIZER') {
+      const existingEvent = await prisma.event.findUnique({ where: { id: req.params.id } });
+      if (!existingEvent || existingEvent.organizerId !== req.user.id) {
+        return res.status(403).json({ error: "Sadece size ait etkinlikleri düzenleyebilirsiniz." });
+      }
+    }
+
     const data = { ...req.body, date: new Date(req.body.date) };
     const event = await prisma.event.update({
       where: { id: req.params.id },
       data
     });
-    cache.del('events');
+    
+    if (req.user.role === 'ORGANIZER') {
+      cache.del(`events_org_${req.user.id}`);
+    } else {
+      cache.del('events');
+    }
     cache.del('public_events');
+    cache.del('aggregator_events'); // FIND-006 fix from iteration 3
     res.json(event);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası", details: error.message });

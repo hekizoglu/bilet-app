@@ -28,7 +28,7 @@ export default function ProfilePage() {
       const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
       if (!token) return;
 
-      const userRes = await fetch('http://localhost:5000/api/users/me', {
+      const userRes = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/users/me`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (userRes.ok) {
@@ -36,7 +36,7 @@ export default function ProfilePage() {
         setUserDetails(data);
       }
 
-      const res = await fetch('http://localhost:5000/api/reservations/my', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/my`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -54,7 +54,7 @@ export default function ProfilePage() {
 
   const handlePaymentNotification = async (resId: string) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/reservations/${resId}/request-payment`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/${resId}/request-payment`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${getCookie('token')}`
@@ -66,6 +66,55 @@ export default function ProfilePage() {
       } else {
         const err = await res.json();
         alert(err.error || "Bildirim başarısız.");
+      }
+    } catch (error) {
+      alert("Sunucuya bağlanılamadı.");
+    }
+  };
+
+  const handleRefund = async (resId: string) => {
+    if (!confirm("Biletinizi iptal edip iade talebi oluşturmak istediğinize emin misiniz?")) return;
+    
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/${resId}/self-refund`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getCookie('token')}`
+        }
+      });
+      if (res.ok) {
+        alert("Biletiniz iptal edildi ve iade süreci başlatıldı.");
+        fetchReservations();
+      } else {
+        const err = await res.json();
+        alert(err.error || "İade işlemi başarısız.");
+      }
+    } catch (error) {
+      alert("Sunucuya bağlanılamadı.");
+    }
+  };
+
+  const handleTransfer = async (resId: string) => {
+    const newCustomer = prompt("Bileti devredeceğiniz kişinin Adı ve Soyadı:");
+    if (!newCustomer) return;
+    const newEmail = prompt("Bileti devredeceğiniz kişinin E-posta adresi:");
+    if (!newEmail) return;
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/${resId}/transfer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getCookie('token')}`
+        },
+        body: JSON.stringify({ newCustomer, newEmail })
+      });
+      if (res.ok) {
+        alert("Biletiniz başarıyla devredildi.");
+        fetchReservations();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Devir işlemi başarısız.");
       }
     } catch (error) {
       alert("Sunucuya bağlanılamadı.");
@@ -127,7 +176,7 @@ export default function ProfilePage() {
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">{res.event?.name}</h3>
                 <div className="flex flex-col gap-1 text-sm text-gray-600">
-                  <span className="flex items-center gap-1.5"><Calendar size={16} /> {new Date(res.event?.date).toLocaleString('tr-TR')}</span>
+                  <span className="flex items-center gap-1.5"><Calendar size={16} /> {new Date(res.event?.date).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}</span>
                   {res.event?.isSeated ? (
                     <span className="flex items-center gap-1.5"><MapPin size={16} /> Koltuk: {res.seatName || res.seatId}</span>
                   ) : (
@@ -174,12 +223,26 @@ export default function ProfilePage() {
                 )}
 
                 {res.status === 'Onaylı' && (
-                  <button
-                    onClick={() => setSelectedTicket(res)}
-                    className="mt-2 text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 transition"
-                  >
-                    Bileti Göster
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setSelectedTicket(res)}
+                      className="mt-2 text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 transition w-full"
+                    >
+                      Bileti Göster
+                    </button>
+                    <button
+                      onClick={() => handleRefund(res.id)}
+                      className="mt-1 text-xs bg-red-100 text-red-600 px-3 py-1.5 rounded hover:bg-red-200 transition w-full font-medium"
+                    >
+                      İade Et
+                    </button>
+                    <button
+                      onClick={() => handleTransfer(res.id)}
+                      className="mt-1 text-xs bg-purple-100 text-purple-600 px-3 py-1.5 rounded hover:bg-purple-200 transition w-full font-medium"
+                    >
+                      Bileti Devret
+                    </button>
+                  </>
                 )}
                 
                 {res.paymentStatus === 'pending' && res.status === 'Beklemede' && (
@@ -212,7 +275,7 @@ export default function ProfilePage() {
                 />
               </div>
               <p className="text-center font-bold text-lg text-blue-900">{selectedTicket.event?.name}</p>
-              <p className="text-center text-xs text-gray-500 mt-1">{new Date(selectedTicket.event?.date).toLocaleString('tr-TR')}</p>
+              <p className="text-center text-xs text-gray-500 mt-1">{new Date(selectedTicket.event?.date).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}</p>
               
               <div className="mt-4 text-center">
                 <span className="text-xs font-semibold text-gray-500">Müşteri</span>

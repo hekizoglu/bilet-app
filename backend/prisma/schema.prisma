@@ -29,6 +29,9 @@ model User {
   points                Float     @default(0)
   createdAt             DateTime  @default(now())
 
+  coupons               Coupon[]  @relation("OrganizerCoupons")
+  events                Event[]   @relation("OrganizerEvents")
+
   @@index([role])
   @@index([createdAt])
 }
@@ -69,11 +72,15 @@ model Event {
   dynamicPricingThreshold Int? // Yüzde kaç doluluğa ulaşınca fiyat artacak? (örn: 70)
   maxPrice     Float?        // Fiyat maksimum ne kadar olabilir?
   
+  organizerId  String?
+  organizer    User?         @relation("OrganizerEvents", fields: [organizerId], references: [id])
+  
   reservations Reservation[]
   waitlists    Waitlist[]
   createdAt    DateTime      @default(now())
 
   @@index([hallId])
+  @@index([organizerId])
   @@index([status])
   @@index([date])
   @@index([privateSlug])
@@ -138,6 +145,10 @@ model Coupon {
   validUntil    DateTime?
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
+  organizerId   String?  // If null, it's a global coupon created by Admin
+  
+  organizer     User?    @relation("OrganizerCoupons", fields: [organizerId], references: [id])
 
   @@index([code])
+  @@index([organizerId])
 }

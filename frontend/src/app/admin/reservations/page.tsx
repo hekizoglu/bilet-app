@@ -20,7 +20,7 @@ export default function ReservationsPage() {
       };
 
       const token = getCookie('token');
-      const res = await fetch(`http://localhost:5000/api/reservations?page=${page}&limit=20`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations?page=${page}&limit=20`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -47,7 +47,7 @@ export default function ReservationsPage() {
       };
       const token = getCookie('token');
 
-      const res = await fetch(`http://localhost:5000/api/reservations/${id}/approve`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/${id}/approve`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -75,7 +75,7 @@ export default function ReservationsPage() {
       };
       const token = getCookie('token');
 
-      const res = await fetch(`http://localhost:5000/api/reservations/${id}/cancel`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/${id}/cancel`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -102,7 +102,7 @@ export default function ReservationsPage() {
       };
       const token = getCookie('token');
 
-      const res = await fetch(`http://localhost:5000/api/payments/${id}/manual-verify`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/payments/${id}/manual-verify`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -130,7 +130,7 @@ export default function ReservationsPage() {
       };
       const token = getCookie('token');
 
-      const res = await fetch(`http://localhost:5000/api/reservations/${refundReservation.id}/refund`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/${refundReservation.id}/refund`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

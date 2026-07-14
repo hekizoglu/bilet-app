@@ -23,7 +23,7 @@ export default function ProfileLayout({ children }: { children: ReactNode }) {
         return null;
       };
 
-      const res = await fetch('http://localhost:5000/api/users/switch-role', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/users/switch-role`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${getCookie('token')}`

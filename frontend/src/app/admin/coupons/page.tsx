@@ -17,7 +17,7 @@ export default function AdminCouponsPage() {
   const fetchCoupons = async () => {
     try {
       const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
-      const res = await fetch('http://localhost:5000/api/coupons', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/coupons`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -47,7 +47,7 @@ export default function AdminCouponsPage() {
       if (form.maxUses) payload.maxUses = parseInt(form.maxUses);
       if (form.validUntil) payload.validUntil = form.validUntil;
 
-      const res = await fetch('http://localhost:5000/api/coupons', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/coupons`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -73,7 +73,7 @@ export default function AdminCouponsPage() {
     if (!confirm("Bu kuponu pasife almak istediğinize emin misiniz?")) return;
     try {
       const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
-      const res = await fetch(`http://localhost:5000/api/coupons/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/coupons/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });

@@ -83,9 +83,22 @@ io.on('connection', (socket) => {
     logger.info(`Socket ${socket.id} joined event ${eventId}`);
   });
 
-  socket.on('join_admin', () => {
-    socket.join('admin_room');
-    logger.info(`Socket ${socket.id} joined admin_room`);
+  socket.on('join_admin', (data) => {
+    // Basic auth check for admin room using token
+    if (!data || !data.token) {
+      logger.warn(`Unauthorized attempt to join admin_room from socket ${socket.id}`);
+      return;
+    }
+    try {
+      const jwt = require('jsonwebtoken');
+      const decoded = jwt.verify(data.token, process.env.JWT_SECRET || 'supersecret_bilet_key');
+      if (decoded.role === 'ADMIN' || decoded.role === 'ORGANIZER') {
+        socket.join('admin_room');
+        logger.info(`Socket ${socket.id} joined admin_room (User: ${decoded.email})`);
+      }
+    } catch (err) {
+      logger.error(`Invalid token for admin_room from socket ${socket.id}`);
+    }
   });
 
   socket.on('lock_seat', async ({ eventId, seatId }) => {
@@ -145,6 +158,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json({ limit: '10mb' }));
+// app.use(xss()); // Add XSS protection (Disabled due to req.query read-only error)
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use('/api', limiter); // Sadece API rotalarına uygula
 
@@ -166,8 +180,7 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
     }
 
-    const { PrismaClient } = require('@prisma/client');
-    const prismaInstance = new PrismaClient(); // local prisma reference
+    const prismaInstance = require('./prisma');
 
     const [eventsCount, hallsCount, pendingReservations, totalReservations] = await Promise.all([
       prismaInstance.event.count(),
@@ -323,8 +336,7 @@ if (process.env.NODE_ENV !== 'test') {
   // Arka planda 5 dakikayı geçen "Beklemede" rezervasyonları temizle
   setInterval(async () => {
     try {
-      const { PrismaClient } = require('@prisma/client');
-      const prismaInstance = new PrismaClient();
+      const prismaInstance = require('./prisma');
       const now = new Date();
       
       // Standart beklemede temizliği ve Waitlist expiresAt (soft hold) temizliği
@@ -353,7 +365,7 @@ if (process.env.NODE_ENV !== 'test') {
         });
         logger.info(`Zaman aşımına uğrayan ${ids.length} rezervasyon iptal edildi.`);
       }
-      await prismaInstance.$disconnect();
+      // Removed disconnect to keep singleton alive
     } catch (e) {
       console.error("Zaman aşımı temizliği hatası:", e);
     }

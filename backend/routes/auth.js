@@ -2,12 +2,12 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
-const { PrismaClient } = require('@prisma/client');
+const prisma = require('../prisma');
 const { createRateLimiter } = require('../utils/rateLimiter');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@example.com"; 
-const prisma = new PrismaClient();
+// const prisma = new PrismaClient();
 
 // Sıkı Rate Limit (Auth için)
 const authLimiter = createRateLimiter({
@@ -93,10 +93,16 @@ router.post('/google', authLimiter, async (req, res) => {
         });
       }
 
+      const secret = process.env.JWT_SECRET;
+      if (!secret && process.env.NODE_ENV === 'production') {
+        console.error("CRITICAL: JWT_SECRET ortam değişkeni ayarlanmamış!");
+        throw new Error('Sunucu yapılandırma hatası.');
+      }
+
       // Başarılıysa JWT üret
       const jwtToken = jwt.sign(
         { email: payload.email, role: role },
-        process.env.JWT_SECRET || 'super-secret-key',
+        secret || 'super-secret-key',
         { expiresIn: '12h' }
       );
 

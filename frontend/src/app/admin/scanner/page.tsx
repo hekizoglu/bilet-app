@@ -45,7 +45,7 @@ export default function OfflineScannerPage() {
 
   const fetchEvents = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/events', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/events`, {
         headers: { 'Authorization': `Bearer ${getCookie('token')}` }
       });
       if (res.ok) {
@@ -61,7 +61,7 @@ export default function OfflineScannerPage() {
     if (!selectedEventId) return alert("Lütfen bir etkinlik seçin");
     
     try {
-      const res = await fetch(`http://localhost:5000/api/reservations/scanner/${selectedEventId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/scanner/${selectedEventId}`, {
         headers: { 'Authorization': `Bearer ${getCookie('token')}` }
       });
       if (res.ok) {
@@ -82,7 +82,7 @@ export default function OfflineScannerPage() {
     if (pendingSync.length === 0) return alert("Senkronize edilecek yeni veri yok.");
 
     try {
-      const res = await fetch('http://localhost:5000/api/reservations/bulk-checkin', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/bulk-checkin`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

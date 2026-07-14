@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../prisma');
 
 // Bot token from env
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'DUMMY_TOKEN';
@@ -23,7 +22,16 @@ function validateTelegramWebAppData(telegramInitData) {
   const secret = crypto.createHmac('sha256', 'WebAppData').update(TELEGRAM_BOT_TOKEN).digest();
   const _hash = crypto.createHmac('sha256', secret).update(dataToCheck.join('\n')).digest('hex');
 
-  return hash === _hash;
+  if (hash !== _hash) return false;
+
+  const authDate = parseInt(initData.get('auth_date') || '0', 10);
+  const now = Math.floor(Date.now() / 1000);
+  // Replay attack prevention: auth_date should not be older than 1 hour (3600 seconds)
+  if (now - authDate > 3600) {
+    return false;
+  }
+
+  return true;
 }
 
 router.post('/auth', async (req, res) => {
@@ -31,29 +39,23 @@ router.post('/auth', async (req, res) => {
     const { initData, userParams } = req.body;
     if (!initData) return res.status(400).json({ error: "Eksik veri" });
 
-    let isValid = false;
-    if (process.env.NODE_ENV === 'development' && TELEGRAM_BOT_TOKEN === 'DUMMY_TOKEN') {
-      // Dev mode bypass
-      isValid = true;
-    } else {
-      isValid = validateTelegramWebAppData(initData);
-    }
+    let isValid = validateTelegramWebAppData(initData);
 
     if (!isValid) {
-      return res.status(401).json({ error: "Geçersiz Telegram verisi" });
+      return res.status(401).json({ error: "Geçersiz veya süresi dolmuş Telegram verisi" });
     }
 
-    // Extract user info
+    // Extract user info safely
     let tgUser;
     try {
       const urlParams = new URLSearchParams(initData);
       tgUser = JSON.parse(urlParams.get('user'));
     } catch (e) {
-      tgUser = userParams; // Fallback
+      return res.status(400).json({ error: "Kullanıcı bilgisi okunamadı" });
     }
 
     if (!tgUser || !tgUser.id) {
-      return res.status(400).json({ error: "Kullanıcı bilgisi okunamadı" });
+      return res.status(400).json({ error: "Kullanıcı ID'si okunamadı" });
     }
 
     const tgId = tgUser.id.toString();
@@ -68,7 +70,7 @@ router.post('/auth', async (req, res) => {
           email: `${tgId}@telegram.local`,
           password: crypto.randomUUID(), // fake password
           name: name,
-          role: 'USER'
+          role: 'CUSTOMER'
         }
       });
     }

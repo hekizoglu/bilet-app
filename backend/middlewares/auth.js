@@ -8,7 +8,12 @@ function requireAuth(req, res, next) {
 
   const token = authHeader.split(' ')[1];
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super-secret-key');
+    const secret = process.env.JWT_SECRET;
+    if (!secret && process.env.NODE_ENV === 'production') {
+      console.error("CRITICAL: JWT_SECRET ortam değişkeni ayarlanmamış!");
+      return res.status(500).json({ error: 'Sunucu yapılandırma hatası.' });
+    }
+    const decoded = jwt.verify(token, secret || 'super-secret-key');
     req.user = decoded; // { email, role vb. }
     next();
   } catch (err) {

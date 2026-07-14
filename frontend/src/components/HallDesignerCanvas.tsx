@@ -112,7 +112,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
 
   const fetchHall = async (id: string) => {
     const token = getCookie('token');
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     try {
       const res = await fetch(`${API_BASE}/api/halls/${id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -704,7 +704,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
       isGlobal
     };
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
     try {
       const url = hallId ? `${API_BASE}/api/halls/${hallId}` : `${API_BASE}/api/halls`;

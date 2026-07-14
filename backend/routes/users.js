@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../prisma');
 const { requireAuth } = require('../middlewares/auth');
 const { encrypt, decrypt } = require('../utils/encryption');
 const { z } = require('zod');
@@ -99,8 +98,7 @@ router.put('/profile', requireAuth, validate(profileSchema), async (req, res) =>
         telegramBotToken: encryptedBotToken,
         telegramChatId: encryptedChatId,
         paymentMethod: paymentMethod,
-        isPaymentInfoVerified: true, // Auto verify for now
-        paymentInfoVerifiedAt: new Date()
+        ...(iban && { isPaymentInfoVerified: false, paymentInfoVerifiedAt: null }) // Re-verify if IBAN changed
       },
       create: {
         email: userEmail,
@@ -134,8 +132,7 @@ router.post('/switch-role', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Admin rolü değiştirilemez.' });
     }
     
-    return res.status(403).json({ error: 'Güvenlik nedeniyle otomatik rol geçişi geçici olarak devre dışı bırakılmıştır. Lütfen yönetici ile iletişime geçin.' });
-    
+
     const newRole = (currentRole === 'CUSTOMER') ? 'ORGANIZER' : 'CUSTOMER';
 
     // Update user in DB

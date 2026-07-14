@@ -73,7 +73,7 @@ function MobilePaymentContent() {
       return;
     }
 
-    fetch(`http://localhost:5000/api/reservations/public/${id}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/public/${id}`)
       .then((r) => {
         if (!r.ok) throw new Error("Bilet detayları yüklenemedi.");
         return r.json();
@@ -144,7 +144,7 @@ function MobilePaymentContent() {
     e.preventDefault();
     setIsSubmittingPay(true);
     try {
-      const res = await fetch(`http://localhost:5000/api/payments/${id}/pay-creditcard`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/payments/${id}/pay-creditcard`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

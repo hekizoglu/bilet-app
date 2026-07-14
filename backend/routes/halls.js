@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../prisma');
 const { z } = require('zod');
 const { validate } = require('../middlewares/validate');
 const { requireAuth } = require('../middlewares/auth');
@@ -125,12 +124,20 @@ router.put('/:id', requireAuth, validate(hallSchema), async (req, res) => {
       delete req.body.isGlobal;
     }
 
+    const existingHall = await prisma.hall.findUnique({ where: { id: req.params.id } });
+    if (!existingHall) {
+      return res.status(404).json({ error: "Salon bulunamadı." });
+    }
+
+    if (existingHall.isGlobal && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: "Global salonları sadece yöneticiler (ADMIN) düzenleyebilir." });
+    }
+
     const activeEvents = await prisma.event.count({
       where: { hallId: req.params.id, date: { gte: new Date() } }
     });
 
     if (activeEvents > 0) {
-      const existingHall = await prisma.hall.findUnique({ where: { id: req.params.id } });
       if (req.body.seatCount !== existingHall.seatCount || req.body.layoutJson !== existingHall.layoutJson) {
          return res.status(400).json({ error: "Aktif etkinliği olan bir salonun koltuk sayısı veya krokisi değiştirilemez." });
       }

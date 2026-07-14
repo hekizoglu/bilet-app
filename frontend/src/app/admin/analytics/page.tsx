@@ -18,7 +18,7 @@ export default function AdminAnalyticsPage() {
     const fetchInitialStats = async () => {
       try {
         const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
         const res = await fetch(`${API_BASE}/api/admin/stats`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -34,13 +34,14 @@ export default function AdminAnalyticsPage() {
     };
     fetchInitialStats();
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     const socket = io(API_BASE, {
       withCredentials: true
     });
 
     socket.on('connect', () => {
-      socket.emit('join_admin'); // Admin room'a katıl
+      const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+      socket.emit('join_admin', { token }); // Admin room'a katıl
     });
 
     socket.on('new_sale', (data) => {

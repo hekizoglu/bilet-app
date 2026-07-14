@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../prisma');
 const ibantools = require('ibantools');
 const { requireAuth } = require('../middlewares/auth');
 const { createRateLimiter } = require('../utils/rateLimiter');
@@ -107,6 +106,10 @@ router.post('/:reservationId/manual-verify', paymentVerifyLimiter, requireAuth, 
 
     if (!reservation) return res.status(404).json({ error: "Rezervasyon bulunamadı." });
 
+    if (reservation.paymentStatus === 'paid' || reservation.status === 'Onaylı') {
+      return res.status(400).json({ error: "Bu rezervasyon zaten onaylanmış durumda." });
+    }
+
     // Rezervasyonu ödenmiş ve onaylı olarak güncelle
     const updated = await prisma.reservation.update({
       where: { id: reservation.id },
@@ -182,7 +185,7 @@ router.post('/bank-webhook', validate(webhookSchema), async (req, res) => {
     if (transactionId) {
       const existing = await prisma.reservation.findFirst({
         where: {
-          paymentDetails: { contains: transactionId }
+          paymentDetails: { contains: `"transactionId":"${transactionId}"` }
         }
       });
       if (existing) {
@@ -213,6 +216,13 @@ router.post('/bank-webhook', validate(webhookSchema), async (req, res) => {
 
     if (reservation.paymentStatus === 'paid') {
       return res.json({ success: true, message: "Ödeme zaten onaylanmış durumda." });
+    }
+
+    if (reservation.status === 'İptal' || reservation.paymentStatus === 'failed') {
+      // Gerçek bir sistemde bu durum admin paneline "İade Gerekenler" olarak düşmelidir.
+      console.warn(`⚠️ İPTAL EDİLMİŞ REZERVASYONA ÖDEME GELDİ! Rezervasyon: ${reservation.id}, Tutar: ${amount}`);
+      // Bankanın tekrar tekrar webhook göndermesini engellemek için 200 dönüyoruz ancak işlemi "İptal" olarak bırakıyoruz.
+      return res.json({ success: true, message: "Rezervasyon iptal edilmiş ancak ödeme alındı, manuel inceleme gerekiyor." });
     }
 
     // Rezervasyonu atomic olarak güncelle (sadece pending ise)
@@ -297,8 +307,14 @@ router.post('/bank-webhook', validate(webhookSchema), async (req, res) => {
   }
 });
 
+const creditCardLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 dakika
+  max: 5, // Bir IP'den 15 dakikada en fazla 5 kart denemesi
+  message: { error: 'Çok fazla ödeme denemesi. Lütfen 15 dakika sonra tekrar deneyin.' }
+});
+
 // 13.8: Credit Card payment simulation
-router.post('/:reservationId/pay-creditcard', validate(creditCardSchema), async (req, res) => {
+router.post('/:reservationId/pay-creditcard', creditCardLimiter, validate(creditCardSchema), async (req, res) => {
   try {
     const { cardNumber, expiry, cvv, holderName } = req.body;
     const cleanCard = cardNumber.replace(/\s+/g, '');
@@ -312,6 +328,10 @@ router.post('/:reservationId/pay-creditcard', validate(creditCardSchema), async 
 
     if (reservation.paymentStatus === 'paid') {
       return res.status(400).json({ error: "Bu rezervasyon zaten ödenmiş durumda." });
+    }
+
+    if (reservation.status === 'İptal' || reservation.paymentStatus === 'failed') {
+      return res.status(400).json({ error: "Bu rezervasyon iptal edilmiş. Lütfen yeni bir bilet alınız." });
     }
 
     // Rezervasyonu ödenmiş ve onaylı olarak güncelle

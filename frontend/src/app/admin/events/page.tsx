@@ -49,7 +49,7 @@ export default function EventsPage() {
   const fetchEvents = async () => {
     const token = getCookie('token');
     try {
-      const res = await fetch('http://localhost:5000/api/events', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/events`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -64,7 +64,7 @@ export default function EventsPage() {
   const fetchHalls = async () => {
     const token = getCookie('token');
     try {
-      const res = await fetch('http://localhost:5000/api/halls', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/halls`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -104,7 +104,7 @@ export default function EventsPage() {
     };
 
     try {
-      const res = await fetch('http://localhost:5000/api/events', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/events`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -137,7 +137,7 @@ export default function EventsPage() {
     
     const token = getCookie('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/events/${eventId}/regenerate-slug`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/events/${eventId}/regenerate-slug`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -287,7 +287,7 @@ export default function EventsPage() {
             {filteredEvents.map((event) => (
               <tr key={event.id} className="hover:bg-gray-50 transition">
                 <td className="p-4 font-medium text-gray-900">{event.name}</td>
-                <td className="p-4 text-gray-600">{new Date(event.date).toLocaleString('tr-TR')}</td>
+                <td className="p-4 text-gray-600">{new Date(event.date).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}</td>
                 <td className="p-4 text-gray-600">{event.price} ₺</td>
                 <td className="p-4 text-gray-600">
                   {event.paymentType === 'free' && 'Ücretsiz'}

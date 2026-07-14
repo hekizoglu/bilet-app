@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Calendar, MapPin, Users, ArrowRight, Filter, Zap, Tag, LogIn, User } from 'lucide-react';
+import { Calendar, MapPin, Users, ArrowRight, Filter, Zap, Tag, LogIn, User, Globe } from 'lucide-react';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import { motion } from 'framer-motion';
 
@@ -34,7 +34,7 @@ export default function Home() {
 
   async function fetchEvents() {
     try {
-      const res = await fetch('http://localhost:5000/api/events/public');
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/events/public`);
       if (res.ok) {
         const data = await res.json();
         setEvents(data);
@@ -116,7 +116,14 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
       {/* Header / Navbar */}
       <div className="absolute top-0 right-0 p-4 md:p-6 w-full flex justify-end z-10 pointer-events-none">
-        <div className="pointer-events-auto">
+        <div className="pointer-events-auto flex items-center gap-4">
+          <Link 
+            href="/aggregator"
+            className="flex items-center gap-2 bg-indigo-600/90 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-full transition font-bold shadow-lg backdrop-blur-md"
+          >
+            <Globe size={18} />
+            Keşif Portalı
+          </Link>
           {isLoggedIn ? (
             <Link 
               href="/profile"
@@ -192,7 +199,7 @@ export default function Home() {
                     <div className="space-y-2 mb-6">
                       <div className="flex items-center gap-2 text-gray-600 text-sm">
                         <Calendar size={16} className="text-blue-500" />
-                        <span>{new Date(event.date).toLocaleString('tr-TR', { dateStyle: 'long', timeStyle: 'short' })}</span>
+                        <span>{new Date(event.date).toLocaleString('tr-TR', { dateStyle: 'long', timeStyle: 'short', timeZone: 'Europe/Istanbul' })}</span>
                       </div>
                       {event.isSeated && event.hall ? (
                         <div className="flex items-center gap-2 text-gray-600 text-sm">

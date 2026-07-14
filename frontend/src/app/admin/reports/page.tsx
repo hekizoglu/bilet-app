@@ -17,7 +17,7 @@ export default function ReportsPage() {
       };
 
       const token = getCookie('token');
-      const res = await fetch('http://localhost:5000/api/admin/reports', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/reports`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
