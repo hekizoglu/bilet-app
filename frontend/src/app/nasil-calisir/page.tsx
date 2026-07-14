@@ -9,32 +9,32 @@ export default function HowItWorksPage() {
     {
       icon: <Globe className="text-blue-500 w-8 h-8" />,
       title: "1. Keşif Portalı ve Genel Etkinlikler",
-      description: "Admin panelinden etkinlik oluştururken 'Görünürlük' ayarını yapabilirsiniz. Etkinliği 'Genel' olarak ayarlarsanız ana sayfada görünür. 'Keşif Portalında Göster' butonunu işaretlerseniz ise tüm organizatörlerin etkinliklerinin listelendiği Global Keşif Portalı (Aggregator) vitrininde yerini alır ve çok daha geniş kitlelere ulaşır."
+      description: <>Admin panelinden etkinlik oluştururken 'Görünürlük' ayarını yapabilirsiniz. Etkinliği <strong>'Genel'</strong> olarak ayarlarsanız ana sayfada görünür. <span className="font-bold text-blue-600">'Keşif Portalında Göster'</span> butonunu işaretlerseniz ise tüm organizatörlerin etkinliklerinin listelendiği Global Keşif Portalı (Aggregator) vitrininde yerini alır ve <strong>çok daha geniş kitlelere</strong> ulaşır.</>
     },
     {
       icon: <Lock className="text-rose-500 w-8 h-8" />,
       title: "2. Özel (Gizli) Etkinlikler",
-      description: "Doğum günü partileri, özel davetler veya VIP toplantılar gibi sadece belirli bir kapalı gruba yönelik etkinlikler düzenleyebilirsiniz. Etkinliği 'Özel' olarak ayarladığınızda hiçbir ana sayfada veya arama sonucunda çıkmaz. Özel davetiye linkini gönderdiğiniz misafirleriniz sayfaya girip biletini/LCV (Katılım) kaydını oluşturabilir, böylece admin panelinden kimlerin katılacağını anlık olarak net bir şekilde takip edebilirsiniz."
+      description: <><span className="font-bold text-rose-600">Doğum günü partileri, özel davetler veya VIP toplantılar</span> gibi sadece belirli bir kapalı gruba yönelik etkinlikler düzenleyebilirsiniz. Etkinliği <strong>'Özel'</strong> olarak ayarladığınızda hiçbir ana sayfada veya arama sonucunda çıkmaz. Özel davetiye linkini gönderdiğiniz misafirleriniz sayfaya girip biletini/LCV (Katılım) kaydını oluşturabilir, böylece admin panelinden <span className="font-bold underline decoration-rose-400 decoration-2 underline-offset-2">kimlerin katılacağını anlık olarak net bir şekilde</span> takip edebilirsiniz.</>
     },
     {
       icon: <Armchair className="text-amber-500 w-8 h-8" />,
       title: "3. Dinamik Oturma Planı",
-      description: "Koltuklu etkinlikler için gelişmiş sürükle-bırak destekli 'Salon Tasarımcısı'nı kullanabilirsiniz. Koltukları sıralar halinde dizip numaralandırabilir ve fiyatlandırabilirsiniz. Kullanıcılar bilet alırken istedikleri koltuğu etkileşimli şemadan seçerek alırlar."
+      description: <>Koltuklu etkinlikler için gelişmiş sürükle-bırak destekli <strong>'Salon Tasarımcısı'</strong>nı kullanabilirsiniz. Koltukları sıralar halinde dizip numaralandırabilir ve fiyatlandırabilirsiniz. Kullanıcılar bilet alırken istedikleri koltuğu <span className="font-bold text-amber-600">etkileşimli şemadan seçerek</span> alırlar.</>
     },
     {
       icon: <CreditCard className="text-emerald-500 w-8 h-8" />,
       title: "4. Akıllı Ödeme Sistemi",
-      description: "Etkinlikler için Kredi Kartı, Kartsız Ödeme (Banka Havalesi/WhatsApp onayı) veya Ücretsiz seçeneklerini belirleyebilirsiniz. Sistem, ücretsiz etkinliklerde anında bilet oluştururken, kartsız işlemlerde admin onayına (Pending) düşürür."
+      description: <>Etkinlikler için <strong>Kredi Kartı</strong>, <strong>Kartsız Ödeme</strong> (Banka Havalesi/WhatsApp onayı) veya <strong>Ücretsiz</strong> seçeneklerini belirleyebilirsiniz. Sistem, ücretsiz etkinliklerde anında bilet oluştururken, kartsız işlemlerde admin onayına (Pending) düşürür.</>
     },
     {
       icon: <Users className="text-purple-500 w-8 h-8" />,
       title: "5. Bekleme Listesi (Waitlist)",
-      description: "Kapasitesi dolan etkinliklerinizde potansiyel müşterileri kaçırmayın! Sistem otomatik olarak 'Bekleme Listesi' butonunu aktif eder. Kullanıcılar isim ve e-postalarını bırakarak iptal durumunda size ulaşabilecekleri bir sıraya girerler."
+      description: <><span className="font-bold text-purple-600">Kapasitesi dolan etkinliklerinizde potansiyel müşterileri kaçırmayın!</span> Sistem otomatik olarak 'Bekleme Listesi' butonunu aktif eder. Kullanıcılar isim ve e-postalarını bırakarak iptal durumunda size ulaşabilecekleri bir sıraya girerler.</>
     },
     {
       icon: <QrCode className="text-indigo-500 w-8 h-8" />,
       title: "6. QR Kod ile Kapı Kontrolü",
-      description: "Satılan her bilet benzersiz bir şifrelenmiş QR kod içerir. Kapı girişindeki görevlileriniz, mobil cihazlarıyla sisteme girerek bu QR kodları saniyeler içinde okutup biletin sahte mi yoksa kullanılmış mı olduğunu anında denetleyebilir."
+      description: <>Satılan her bilet benzersiz bir <span className="font-bold text-indigo-600">şifrelenmiş QR kod</span> içerir. Kapı girişindeki görevlileriniz, mobil cihazlarıyla sisteme girerek bu QR kodları saniyeler içinde okutup biletin <strong className="underline decoration-indigo-400 decoration-2 underline-offset-2">sahte mi yoksa kullanılmış mı</strong> olduğunu anında denetleyebilir.</>
     }
   ];
 
