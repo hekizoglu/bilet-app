@@ -14,7 +14,7 @@ export default function HowItWorksPage() {
     {
       icon: <Lock className="text-rose-500 w-8 h-8" />,
       title: "2. Özel (Gizli) Etkinlikler",
-      description: "Sadece VIP müşterilerinize veya belirli bir kapalı gruba bilet satmak isterseniz etkinliği 'Özel' olarak ayarlayabilirsiniz. Bu etkinlikler hiçbir ana sayfada veya arama sonucunda çıkmaz, sadece benzersiz özel bağlantıyı paylaştığınız kişiler bilet alabilir."
+      description: "Doğum günü partileri, özel davetler veya VIP toplantılar gibi sadece belirli bir kapalı gruba yönelik etkinlikler düzenleyebilirsiniz. Etkinliği 'Özel' olarak ayarladığınızda hiçbir ana sayfada veya arama sonucunda çıkmaz. Özel davetiye linkini gönderdiğiniz misafirleriniz sayfaya girip biletini/LCV (Katılım) kaydını oluşturabilir, böylece admin panelinden kimlerin katılacağını anlık olarak net bir şekilde takip edebilirsiniz."
     },
     {
       icon: <Armchair className="text-amber-500 w-8 h-8" />,
