@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from 'sonner';
 import CookieConsent from '@/components/CookieConsent';
+import PublicNavbar from '@/components/PublicNavbar';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,6 +59,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="min-h-full flex flex-col">
+        <PublicNavbar />
         {children}
         <Toaster position="top-center" richColors />
         <CookieConsent />

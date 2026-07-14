@@ -114,42 +114,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header / Navbar */}
-      <div className="absolute top-0 right-0 p-4 md:p-6 w-full flex justify-end z-10 pointer-events-none">
-        <div className="pointer-events-auto flex items-center gap-4">
-          <Link 
-            href="/nasil-calisir"
-            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-full transition font-bold shadow-lg backdrop-blur-md border border-white/20"
-          >
-            <Info size={18} />
-            Nasıl Çalışır?
-          </Link>
-          <Link 
-            href="/aggregator"
-            className="flex items-center gap-2 bg-indigo-600/90 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-full transition font-bold shadow-lg backdrop-blur-md"
-          >
-            <Globe size={18} />
-            Keşif Portalı
-          </Link>
-          {isLoggedIn ? (
-            <Link 
-              href="/profile"
-              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full backdrop-blur-md border border-white/20 transition text-sm font-semibold shadow-lg"
-            >
-              <User size={18} />
-              Hesabım / Yönetim
-            </Link>
-          ) : (
-            <Link 
-              href="/login"
-              className="flex items-center gap-2 bg-white text-blue-900 px-5 py-2.5 rounded-full hover:bg-gray-100 transition font-bold shadow-lg"
-            >
-              <LogIn size={18} />
-              Giriş Yap
-            </Link>
-          )}
-        </div>
-      </div>
 
       {/* Hero Section */}
       <div className="bg-blue-900 text-white pt-24 pb-20 px-4 text-center relative">
