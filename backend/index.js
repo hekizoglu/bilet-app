@@ -228,8 +228,7 @@ app.get('/api/admin/reports', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
     }
 
-    const { PrismaClient } = require('@prisma/client');
-    const prismaInstance = new PrismaClient();
+    const prismaInstance = require('./prisma');
 
     // Tüm rezervasyonları çek (sadece gereken alanlar)
     const reservations = await prismaInstance.reservation.findMany({
