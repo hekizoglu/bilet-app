@@ -289,6 +289,7 @@ export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeat
           {elements.map(renderElement)}
         </Layer>
       </Stage>
+      </div>
     </div>
   );
 }

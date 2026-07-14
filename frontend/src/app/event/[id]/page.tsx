@@ -67,7 +67,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
 
     if (data?.eventId) {
       // 2. Gerçek Zamanlı Socket Bağlantısı
-      socket = io(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/localhost:5000'}`}/');
+      socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
       socket.emit('join_event', data.eventId);
 
       socket.on('seat_booked', (payload: { seatId: string }) => {

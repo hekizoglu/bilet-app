@@ -1,4 +1,4 @@
-generator client {
+generator client {
   provider = "prisma-client-js"
 }
 
@@ -41,9 +41,9 @@ model Hall {
   name            String
   description     String?
   seatCount       Int
-  layoutJson      String   // SQLite için String, parse edilecek
-  backgroundImage String?  // Salona eklenecek kroki / arka plan görseli
-  address         String?  // Salonun açık adresi
+  layoutJson      String
+  backgroundImage String?
+  address         String?
   isGlobal        Boolean  @default(false)
   events          Event[]
   createdAt       DateTime @default(now())
@@ -55,26 +55,25 @@ model Event {
   id           String        @id @default(uuid())
   name         String
   date         DateTime
-  price        Float         // SQLite için Float (orijinali Decimal)
+  price        Float
   status       String        @default("Taslak")
-  visibility   String        @default("PUBLIC") // "PUBLIC" or "PRIVATE"
-  privateSlug  String?       @unique            // Gizli etkinlikler için özel paylaşım linki kodu
-  isSeated     Boolean       @default(true) // Koltuklu mu (true) yoksa Genel Giriş mi (false)?
-  capacity     Int?          // Koltuksuz ise toplam bilet kapasitesi
-  hallId       String?       // Koltuksuz ise NULL olabilir
+  visibility   String        @default("PUBLIC")
+  privateSlug  String?       @unique
+  isSeated     Boolean       @default(true)
+  capacity     Int?
+  hallId       String?
   hall         Hall?         @relation(fields: [hallId], references: [id])
-  paymentType  String        @default("free") // "free", "creditcard", "cardless"
-  
-  isPubliclyListed Boolean   @default(false) // Bilet-App Aggregator portalında sergilensin mi?
-  doorSalesEndTime DateTime? // Etkinlik başladıktan sonra kapı satışının biteceği saat (opsiyonel)
-  
-  // Dynamic Pricing
-  dynamicPricingThreshold Int? // Yüzde kaç doluluğa ulaşınca fiyat artacak? (örn: 70)
-  maxPrice     Float?        // Fiyat maksimum ne kadar olabilir?
-  
+  paymentType  String        @default("free")
+
+  isPubliclyListed        Boolean   @default(false)
+  doorSalesEndTime        DateTime?
+
+  dynamicPricingThreshold Int?
+  maxPrice                Float?
+
   organizerId  String?
   organizer    User?         @relation("OrganizerEvents", fields: [organizerId], references: [id])
-  
+
   reservations Reservation[]
   waitlists    Waitlist[]
   createdAt    DateTime      @default(now())
@@ -89,26 +88,26 @@ model Event {
 }
 
 model Reservation {
-  id              String    @id @default(uuid())
-  eventId         String
-  event           Event     @relation(fields: [eventId], references: [id])
-  ticketCode      String    @unique @default(uuid()) // Kapıda sorgulama/QR okutma için eşsiz kod
-  seatId          String?   // Koltuksuz etkinliklerde NULL olur
-  seatName        String?
-  customer        String
-  email           String
-  phone           String?
-  status          String    @default("Beklemede") // Beklemede, Onaylı, İptal
-  paymentStatus   String    @default("pending") // 'pending', 'paid', 'failed', 'refunded'
-  paymentMethod   String?
-  paidAt          DateTime?
+  id               String    @id @default(uuid())
+  eventId          String
+  event            Event     @relation(fields: [eventId], references: [id])
+  ticketCode       String    @unique @default(uuid())
+  seatId           String?
+  seatName         String?
+  customer         String
+  email            String
+  phone            String?
+  status           String    @default("Beklemede")
+  paymentStatus    String    @default("pending")
+  paymentMethod    String?
+  paidAt           DateTime?
   paymentReference String?
-  paymentDetails  String?   // SQLite için JSON string
-  earnedPoints    Float     @default(0) // Bu rezervasyondan kazanılan puan
-  isUsed          Boolean   @default(false) // Bilet kapıda okutuldu mu? (Check-in)
-  usedAt          DateTime? // Bilet ne zaman okutuldu?
-  expiresAt       DateTime? // Waitlist soft-hold timeout süresi
-  createdAt       DateTime  @default(now())
+  paymentDetails   String?
+  earnedPoints     Float     @default(0)
+  isUsed           Boolean   @default(false)
+  usedAt           DateTime?
+  expiresAt        DateTime?
+  createdAt        DateTime  @default(now())
 
   @@index([eventId])
   @@index([email])
@@ -125,7 +124,7 @@ model Waitlist {
   customerName String
   email        String
   phone        String?
-  status       String   @default("PENDING") // PENDING, NOTIFIED
+  status       String   @default("PENDING")
   createdAt    DateTime @default(now())
 
   event        Event    @relation(fields: [eventId], references: [id])
@@ -136,18 +135,18 @@ model Waitlist {
 }
 
 model Coupon {
-  id            String   @id @default(uuid())
-  code          String   @unique // e.g., YAZ20
-  discountType  String   // "PERCENTAGE" or "FIXED"
+  id            String    @id @default(uuid())
+  code          String    @unique
+  discountType  String
   discountValue Float
-  maxUses       Int?     // NULL means unlimited
-  usedCount     Int      @default(0)
+  maxUses       Int?
+  usedCount     Int       @default(0)
   validUntil    DateTime?
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  organizerId   String?  // If null, it's a global coupon created by Admin
-  
-  organizer     User?    @relation("OrganizerCoupons", fields: [organizerId], references: [id])
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  organizerId   String?
+
+  organizer     User?     @relation("OrganizerCoupons", fields: [organizerId], references: [id])
 
   @@index([code])
   @@index([organizerId])
@@ -157,10 +156,10 @@ model Feedback {
   id        String   @id @default(uuid())
   name      String
   email     String
-  type      String   @default("FEEDBACK") // COMPLAINT, SUGGESTION, FEEDBACK
+  type      String   @default("FEEDBACK")
   message   String
   ipAddress String?
-  status    String   @default("UNREAD") // UNREAD, READ, RESOLVED
+  status    String   @default("UNREAD")
   createdAt DateTime @default(now())
 
   @@index([type])
