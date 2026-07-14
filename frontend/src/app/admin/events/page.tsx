@@ -45,6 +45,7 @@ export default function EventsPage() {
   const [hallId, setHallId] = useState('');
   const [paymentType, setPaymentType] = useState('free');
   const [visibility, setVisibility] = useState('PUBLIC');
+  const [isPubliclyListed, setIsPubliclyListed] = useState(false);
 
   const fetchEvents = async () => {
     const token = getCookie('token');
@@ -100,6 +101,7 @@ export default function EventsPage() {
       isSeated,
       paymentType,
       visibility,
+      isPubliclyListed,
       ...(isSeated ? { hallId } : { capacity: Number(capacity) })
     };
 
@@ -117,7 +119,7 @@ export default function EventsPage() {
         setIsModalOpen(false);
         fetchEvents();
         // Formu temizle
-        setName(''); setDate(''); setPrice(''); setStatus('Taslak'); setIsSeated(true); setCapacity(''); setHallId(''); setPaymentType('free'); setVisibility('PUBLIC');
+        setName(''); setDate(''); setPrice(''); setStatus('Taslak'); setIsSeated(true); setCapacity(''); setHallId(''); setPaymentType('free'); setVisibility('PUBLIC'); setIsPubliclyListed(false);
       } else {
         const errData = await res.json();
         let errMsg = errData.error || errData.message || "Bilinmeyen hata";
@@ -458,16 +460,37 @@ export default function EventsPage() {
                       <option value="cardless">Kartsız Ödeme (Banka/WhatsApp)</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Görünürlük</label>
-                    <select 
-                      value={visibility}
-                      onChange={(e) => setVisibility(e.target.value)}
-                      className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-                    >
-                      <option value="PUBLIC">Genel (Ana sayfada listelenir)</option>
-                      <option value="PRIVATE">Özel (Sadece link ile girilir)</option>
-                    </select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Görünürlük</label>
+                      <select 
+                        value={visibility}
+                        onChange={(e) => setVisibility(e.target.value)}
+                        className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                      >
+                        <option value="PUBLIC">Genel (Ana sayfada listelenir)</option>
+                        <option value="PRIVATE">Özel (Sadece link ile girilir)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col justify-end pb-1">
+                      <label className="flex items-center gap-2 cursor-pointer group">
+                        <div className="relative">
+                          <input 
+                            type="checkbox" 
+                            checked={isPubliclyListed}
+                            onChange={(e) => setIsPubliclyListed(e.target.checked)}
+                            className="sr-only"
+                          />
+                          <div className={`block w-10 h-6 rounded-full transition-colors ${isPubliclyListed ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
+                          <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${isPubliclyListed ? 'transform translate-x-4' : ''}`}></div>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-gray-800">Keşif Portalında Göster</span>
+                          <span className="text-xs text-gray-500 group-hover:text-blue-500 transition">Ana sayfa haricinde global "Tüm Etkinlikler" (Aggregator) sayfasında çıkar.</span>
+                        </div>
+                      </label>
+                    </div>
                   </div>
                 </div>
 

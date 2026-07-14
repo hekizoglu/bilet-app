@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Calendar, MapPin, Users, ArrowRight, Filter, Zap, Tag, LogIn, User, Globe } from 'lucide-react';
+import { Calendar, MapPin, Users, ArrowRight, Filter, Zap, Tag, LogIn, User, Globe, Info } from 'lucide-react';
 import SkeletonLoader from '@/components/SkeletonLoader';
 import { motion } from 'framer-motion';
 
@@ -117,6 +117,13 @@ export default function Home() {
       {/* Header / Navbar */}
       <div className="absolute top-0 right-0 p-4 md:p-6 w-full flex justify-end z-10 pointer-events-none">
         <div className="pointer-events-auto flex items-center gap-4">
+          <Link 
+            href="/nasil-calisir"
+            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-5 py-2.5 rounded-full transition font-bold shadow-lg backdrop-blur-md border border-white/20"
+          >
+            <Info size={18} />
+            Nasıl Çalışır?
+          </Link>
           <Link 
             href="/aggregator"
             className="flex items-center gap-2 bg-indigo-600/90 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-full transition font-bold shadow-lg backdrop-blur-md"
