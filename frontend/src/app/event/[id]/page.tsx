@@ -29,6 +29,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
   const [discount, setDiscount] = useState<{type: string, value: number} | null>(null);
   const [selectionMode, setSelectionMode] = useState<'list' | 'map'>('list');
   const [socketInstance, setSocketInstance] = useState<any>(null);
+  const [lockedSeats, setLockedSeats] = useState<string[]>([]); // FIND-005: Locked seats state
 
   const [reservationSuccess, setReservationSuccess] = useState<any>(null);
   const [adminPaymentInfo, setAdminPaymentInfo] = useState<any>(null);
@@ -78,6 +79,15 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
             availableSeats: prev.availableSeats.filter((s: any) => s.id !== payload.seatId)
           };
         });
+        setLockedSeats(prev => prev.filter(id => id !== payload.seatId));
+      });
+      
+      socket.on('seat_locked', (payload: { seatId: string }) => {
+        setLockedSeats(prev => [...prev, payload.seatId]);
+      });
+
+      socket.on('seat_released', (payload: { seatId: string }) => {
+        setLockedSeats(prev => prev.filter(id => id !== payload.seatId));
       });
       
       // Save socket instance to state for checkout
@@ -92,7 +102,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     if (data.isSeated && !form.seatId) {
-      alert("Lütfen bir koltuk seçin.");
+      toast.error("Lütfen bir koltuk seçin.");
       return;
     }
     
@@ -127,10 +137,10 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
       }
       else {
         const err = await res.json();
-        alert(`Hata: ${err.error || 'Bilinmeyen hata'}`);
+        toast.error(`Hata: ${err.error || 'Bilinmeyen hata'}`);
       }
     } catch (err) {
-      alert("Bağlantı hatası");
+      toast.error("Bağlantı hatası");
     } finally {
       setIsSubmitting(false);
     }
@@ -151,13 +161,13 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
       });
       const result = await res.json();
       if (res.ok) {
-        alert("Bekleme listesine başarıyla eklendiniz! Bilet iptali olursa anında haber vereceğiz.");
-        window.location.reload();
+        toast.success("Bekleme listesine başarıyla eklendiniz! Bilet iptali olursa anında haber vereceğiz.");
+        setTimeout(() => window.location.reload(), 2000);
       } else {
-        alert(`Hata: ${result.error || 'Bilinmeyen hata'}`);
+        toast.error(`Hata: ${result.error || 'Bilinmeyen hata'}`);
       }
     } catch (err) {
-      alert("Bağlantı hatası");
+      toast.error("Bağlantı hatası");
     } finally {
       setIsSubmitting(false);
     }
@@ -364,20 +374,27 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                           Sıra {index + 1}:
                         </span>
                         <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin scrollbar-thumb-gray-200">
-                          {row.seats.map((seat: any) => (
-                            <button 
-                              key={seat.id}
-                              type="button"
-                              onClick={() => setForm({ ...form, seatId: seat.id, seatName: seat.name })}
-                              className={`min-w-[44px] min-h-[44px] px-3 py-2 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
-                                form.seatId === seat.id 
-                                  ? 'bg-blue-600 text-white border-blue-700 shadow-md shadow-blue-500/20' 
-                                  : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300'
-                              }`}
-                            >
-                              {seat.name}
-                            </button>
-                          ))}
+                          {row.seats.map((seat: any) => {
+                            const isLocked = lockedSeats.includes(seat.id);
+                            return (
+                              <button 
+                                key={seat.id}
+                                type="button"
+                                disabled={isLocked}
+                                onClick={() => setForm({ ...form, seatId: seat.id, seatName: seat.name })}
+                                className={`min-w-[44px] min-h-[44px] px-3 py-2 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
+                                  isLocked 
+                                    ? 'bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed opacity-70' 
+                                    : form.seatId === seat.id 
+                                      ? 'bg-blue-600 text-white border-blue-700 shadow-md shadow-blue-500/20 active:scale-95' 
+                                      : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300 active:scale-95'
+                                }`}
+                                title={isLocked ? "Şu an başka bir müşteri tarafından işlem yapılıyor" : ""}
+                              >
+                                {seat.name}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     ))
@@ -432,9 +449,9 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                               const result = await res.json();
                               if (res.ok) {
                                 setDiscount({ type: result.discountType, value: result.discountValue });
-                                alert("Kupon başarıyla uygulandı!");
+                                toast.success("Kupon başarıyla uygulandı!");
                               } else {
-                                alert(result.error);
+                                toast.error(result.error);
                                 setDiscount(null);
                                 setForm({...form, couponCode: ''});
                               }

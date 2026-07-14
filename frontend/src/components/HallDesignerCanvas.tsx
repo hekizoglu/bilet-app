@@ -72,9 +72,6 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   
   const [elements, setElements] = useState<DesignerElement[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [elementModalOpen, setElementModalOpen] = useState(false);
-  const [pendingElementType, setPendingElementType] = useState<ElementType | null>(null);
-  const [elementProps, setElementProps] = useState({ label: '', size: 40, height: 40, seatCount: 8 });
   const [chairCounter, setChairCounter] = useState(1);
   const [selectionBox, setSelectionBox] = useState<{ visible: boolean, x1: number, y1: number, x2: number, y2: number }>({ visible: false, x1: 0, y1: 0, x2: 0, y2: 0 });
   
@@ -208,49 +205,48 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   };
 
   const addElement = (type: ElementType) => {
-    setPendingElementType(type);
+    let localProps = { label: '', size: 40, height: 40, seatCount: 8 };
     if (type === 'round_table') {
-      setElementProps({ label: 'A01', size: 40, height: 40, seatCount: 8 });
+      localProps = { label: 'A01', size: 40, height: 40, seatCount: 8 };
     } else if (type === 'rect_table') {
-      setElementProps({ label: 'B01', size: 120, height: 60, seatCount: 6 });
+      localProps = { label: 'B01', size: 120, height: 60, seatCount: 6 };
     } else if (type === 'bistro') {
-      setElementProps({ label: 'C01', size: 25, height: 25, seatCount: 4 });
+      localProps = { label: 'C01', size: 25, height: 25, seatCount: 4 };
     } else if (type === 'chair') {
-      setElementProps({ label: 'Sandalye ' + chairCounter.toString().padStart(2, '0'), size: 30, height: 30, seatCount: 0 });
+      localProps = { label: 'Sandalye ' + chairCounter.toString().padStart(2, '0'), size: 30, height: 30, seatCount: 0 };
     } else if (type === 'stage') {
-      setElementProps({ label: 'Sahne', size: 200, height: 80, seatCount: 0 });
+      localProps = { label: 'Sahne', size: 200, height: 80, seatCount: 0 };
     } else if (type === 'dance_floor') {
-      setElementProps({ label: '💃 Dans Pisti', size: 160, height: 160, seatCount: 0 });
+      localProps = { label: '💃 Dans Pisti', size: 160, height: 160, seatCount: 0 };
     } else if (type === 'emergency_exit') {
-      setElementProps({ label: '🆘 Acil Çıkış', size: 50, height: 30, seatCount: 0 });
+      localProps = { label: '🆘 Acil Çıkış', size: 50, height: 30, seatCount: 0 };
     } else if (type === 'entrance') {
-      setElementProps({ label: '🚪 Ana Giriş', size: 60, height: 30, seatCount: 0 });
+      localProps = { label: '🚪 Ana Giriş', size: 60, height: 30, seatCount: 0 };
     }
-    setElementModalOpen(true);
-  };
 
-  const confirmAddElement = () => {
-    if (!pendingElementType) return;
-    const type = pendingElementType;
     const id = type + '-' + Date.now();
-    const baseElement = { id, type, label: elementProps.label, x: 100, y: 100, rotation: 0, numberingType: 'none' as const };
+    
+    // Canvas'ın orta noktasını hesapla
+    const centerX = stagePos.x ? (canvasWidth / 2 - stagePos.x) / stageScale : canvasWidth / 2;
+    const centerY = stagePos.y ? (canvasHeight / 2 - stagePos.y) / stageScale : canvasHeight / 2;
+    
+    const baseElement = { id, type, label: localProps.label, x: centerX - 50, y: centerY - 50, rotation: 0, numberingType: 'none' as const };
 
     if (type === 'round_table') {
-      Object.assign(baseElement, { radius: elementProps.size, seatCount: elementProps.seatCount, numberingType: 'table_and_seats' });
+      Object.assign(baseElement, { radius: localProps.size, seatCount: localProps.seatCount, numberingType: 'table_and_seats' });
     } else if (type === 'rect_table') {
-      Object.assign(baseElement, { width: elementProps.size, height: elementProps.height, seatCount: elementProps.seatCount, numberingType: 'table_and_seats' });
+      Object.assign(baseElement, { width: localProps.size, height: localProps.height, seatCount: localProps.seatCount, numberingType: 'table_and_seats' });
     } else if (type === 'chair') {
-      Object.assign(baseElement, { width: elementProps.size, height: elementProps.height, numberingType: 'seats_only' });
+      Object.assign(baseElement, { width: localProps.size, height: localProps.height, numberingType: 'seats_only' });
       setChairCounter(prev => prev + 1);
     } else if (type === 'bistro') {
-      Object.assign(baseElement, { radius: elementProps.size, seatCount: elementProps.seatCount, numberingType: 'table_only' });
+      Object.assign(baseElement, { radius: localProps.size, seatCount: localProps.seatCount, numberingType: 'table_only' });
     } else {
-      Object.assign(baseElement, { width: elementProps.size, height: elementProps.height });
+      Object.assign(baseElement, { width: localProps.size, height: localProps.height });
     }
-    setElements([...elements, baseElement as any]);
+    
+    setElements(prev => [...prev, baseElement as any]);
     setSelectedIds([id]);
-    setElementModalOpen(false);
-    setPendingElementType(null);
   };
 
   const deleteSelected = () => {
