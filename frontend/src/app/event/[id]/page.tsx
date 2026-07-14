@@ -174,8 +174,17 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+    <div className="max-w-5xl mx-auto p-4 sm:p-8 font-sans animate-pulse">
+      <div className="mb-6">
+        <div className="h-10 bg-gray-200 rounded-lg w-1/3 mb-4"></div>
+        <div className="h-6 bg-gray-200 rounded-full w-48"></div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-gray-100 p-6 rounded-2xl h-80 border border-gray-200"></div>
+        </div>
+        <div className="bg-gray-100 p-6 rounded-2xl h-[400px] border border-gray-200"></div>
+      </div>
     </div>
   );
 
