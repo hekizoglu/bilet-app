@@ -379,10 +379,10 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                   {groupedSeats.length > 0 ? (
                     groupedSeats.map((row, index) => (
                       <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-2 border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[70px]">
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider min-w-[70px] mt-2 sm:mt-0">
                           Sıra {index + 1}:
                         </span>
-                        <div className="flex gap-2 overflow-x-auto py-1 scrollbar-thin scrollbar-thumb-gray-200">
+                        <div className="flex flex-wrap gap-2 py-1">
                           {row.seats.map((seat: any) => {
                             const isLocked = lockedSeats.includes(seat.id);
                             return (
@@ -416,8 +416,8 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
           )}
         </div>
 
-        {/* Sağ Sütun: Rezervasyon Formu veya Bekleme Listesi */}
-        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+        {/* Sağ Sütun: Form */}
+        <div className="bg-white p-5 sm:p-6 lg:p-8 rounded-2xl border border-gray-200 shadow-xl shadow-gray-200/50 relative overflow-hidden">
           {(data.isSeated ? data.availableSeats?.length === 0 : data.available === 0) ? (
             <>
               <h2 className="text-xl font-bold text-gray-900">Etkinlik Dolu 🎫</h2>

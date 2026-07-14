@@ -253,8 +253,15 @@ export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeat
   };
 
   return (
-    <div ref={containerRef} className="w-full h-[600px] bg-gray-50 border rounded-2xl overflow-hidden relative cursor-grab active:cursor-grabbing shadow-inner">
-      {/* Harita Lejantı */}
+    <div className="flex flex-col gap-2">
+      {/* Mobile Hint Banner */}
+      <div className="sm:hidden bg-blue-50 border border-blue-100 text-blue-800 text-xs px-3 py-2 rounded-lg flex items-center justify-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 9l-3 3 3 3"/><path d="M19 9l3 3-3 3"/><path d="M2 12h20"/></svg>
+        Haritayı parmağınızla sürükleyerek gezinebilirsiniz
+      </div>
+
+      <div ref={containerRef} className="w-full h-[600px] bg-gray-50 border rounded-2xl overflow-hidden relative cursor-grab active:cursor-grabbing shadow-inner">
+        {/* Harita Lejantı */}
       <div className="absolute top-4 right-4 bg-white/90 backdrop-blur p-3 rounded-xl shadow-lg z-10 flex flex-col gap-2 border">
         <div className="flex items-center gap-2 text-sm"><div className="w-4 h-4 rounded-full bg-[#22c55e]"></div> Boş</div>
         <div className="flex items-center gap-2 text-sm"><div className="w-4 h-4 rounded-full bg-[#3b82f6]"></div> Seçili</div>
