@@ -1,4 +1,4 @@
-﻿# Context Graph (00_CONTEXT_GRAPH.md)
+# Context Graph (00_CONTEXT_GRAPH.md)
 
 ## Purpose
 This document provides the master map and dependency graph of the entire AI operating system documentation infrastructure. It establishes the entry points, task-specific loading strategies, and rules for token-efficient agent operation.
@@ -100,5 +100,5 @@ To prevent token waste, read only the minimal subset of files required for your 
 2. **Consult [PROJECT_MEMORY.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/PROJECT_MEMORY.md) first:** This holds the summarized active state. Only read full files when the summary is insufficient.
 3. **Keep files modular:** Do not allow documents to grow past 500 lines. Use structured files like [DECISIONS.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/DECISIONS.md) to log historical records.
 
-Last updated: TODO
+Last updated: 2026-07-23
 Related files: [manifest.json](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/manifest.json), [CLAUDE.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/CLAUDE.md), [TOKEN_OPTIMIZATION.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/TOKEN_OPTIMIZATION.md)

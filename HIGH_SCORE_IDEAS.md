@@ -1,4 +1,4 @@
-﻿# Prioritized Scored Ideas (HIGH_SCORE_IDEAS.md)
+# Prioritized Scored Ideas (HIGH_SCORE_IDEAS.md)
 
 ## Purpose
 This document scores and prioritizes ideas from [IDEAS.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/IDEAS.md) using a standardized evaluation formula to determine what gets promoted to the active [ROADMAP.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/ROADMAP.md).
@@ -41,5 +41,5 @@ $$\text{Final Score} = \frac{(\text{User Value} \times 2) + \text{Strategic Fit}
 | **IDEA-002** | DEV | SQLite local database fallback altyapısı | 8 | 9 | 1 | 3 | 3 | 1 | **3.67** | Approved |
 | **IDEA-003** | SEC | Centralized Zod middleware validasyon | 8 | 9 | 1 | 9 | 2 | 1 | **4.5** | Approved |
 
-Last updated: TODO
+Last updated: 2026-07-23
 Related files: [IDEAS.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/IDEAS.md), [ROADMAP.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/ROADMAP.md)

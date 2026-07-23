@@ -1,4 +1,4 @@
-﻿# Observability and Production Monitoring (OBSERVABILITY.md)
+# Observability and Production Monitoring (OBSERVABILITY.md)
 
 ## Purpose
 This document specifies the logging rules, telemetry requirements, crash reporting, incident response protocols, and monitoring tools used to track production system health.
@@ -41,5 +41,5 @@ This document specifies the logging rules, telemetry requirements, crash reporti
 3. **Mitigation:** Revert deployment if necessary (see [RELEASE.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/RELEASE.md)), or apply hotfix.
 4. **Post-Mortem:** Record findings, root cause, and preventative actions in [ERRORS.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/ERRORS.md).
 
-Last updated: TODO
+Last updated: 2026-07-23
 Related files: [RELEASE.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/RELEASE.md), [ERRORS.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/ERRORS.md)

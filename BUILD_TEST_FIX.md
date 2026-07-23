@@ -1,4 +1,4 @@
-﻿# Build, Test, and Fix Loop (BUILD_TEST_FIX.md)
+# Build, Test, and Fix Loop (BUILD_TEST_FIX.md)
 
 ## Purpose
 This document controls the exact commands used to build, test, and lint the application, and specifies the recovery procedure when execution steps fail.
@@ -58,5 +58,5 @@ If a fix fails 3 times:
 2. Log the exact symptoms, error output, and failed attempts in [ERRORS.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/ERRORS.md).
 3. Report the state to the user and request manual intervention.
 
-Last updated: TODO
+Last updated: 2026-07-23
 Related files: [ERRORS.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/ERRORS.md), [QA.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/QA.md)

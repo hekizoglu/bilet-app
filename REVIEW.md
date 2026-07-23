@@ -1,4 +1,4 @@
-﻿# Review Gates & Guidelines (REVIEW.md)
+# Review Gates & Guidelines (REVIEW.md)
 
 ## Purpose
 This document defines the review process applied to the codebase *after* automated tests have passed. It focuses on qualitative analysis, code health, user experience, and risk mitigation.
@@ -42,5 +42,5 @@ A change must receive one of the following verdicts before integration:
 * **`CHANGES_REQUIRED`**: Must be modified. Logical bugs, UX flaws, or bad design patterns were found.
 * **`BLOCKED`**: Hard stop. Critical security flaws, credentials leaks, or [SECURITY.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/SECURITY.md) violations were discovered.
 
-Last updated: TODO
+Last updated: 2026-07-23
 Related files: [QA.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/QA.md), [RELEASE.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/RELEASE.md)

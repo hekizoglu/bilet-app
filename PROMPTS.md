@@ -1,4 +1,4 @@
-﻿# Prompt Library (PROMPTS.md)
+# Prompt Library (PROMPTS.md)
 
 ## Purpose
 This document catalogs standardized, reusable prompt templates used by the primary agent to instruct subagents on specific tasks.
@@ -71,5 +71,5 @@ Check for:
 3. Large Markdown files (>500 lines) requiring modularization.
 ```
 
-Last updated: TODO
+Last updated: 2026-07-23
 Related files: [AGENTS.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/AGENTS.md), [BOOTSTRAP_PROMPT.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/BOOTSTRAP_PROMPT.md)

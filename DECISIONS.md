@@ -1,4 +1,4 @@
-﻿# Architecture Decision Records (DECISIONS.md)
+# Architecture Decision Records (DECISIONS.md)
 
 ## Purpose
 This document logs the Architecture Decision Records (ADRs) explaining why key technical and architectural paths were selected.
@@ -49,7 +49,7 @@ Under what specific circumstances should this decision be reverted or modified?
 
 * **Status:** Accepted
 * **Date:** 2026-06-29
-* **Owner:** TODO
+* **Owner:** Lead Architect
 
 #### Context
 Geliştirici ortamında Docker veya MySQL yerel olarak yüklü olmadığında veritabanı işlemlerinin geliştirilmesini engellememek.
@@ -69,7 +69,7 @@ Accepted Option B. SQLite is zero-configuration and runs in-process, allowing ag
 
 * **Status:** Accepted
 * **Date:** 2026-06-29
-* **Owner:** TODO
+* **Owner:** Lead Architect
 
 #### Context
 The user requested to run the ticket application up to a certain stage on Google Apps Script and provided a verified script ID for active online development.
@@ -85,5 +85,5 @@ Accepted Option B. It aligns the local codebase with the new online project wher
 * Local edits must be pushed using `npx clasp push --force`.
 * Care must be taken to verify that remote script properties (e.g., SPREADSHEET_ID) are initialized correctly in the new environment via the `setup()` function.
 
-Last updated: 2026-06-29
+Last updated: 2026-07-23
 Related files: [ARCHITECTURE.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/ARCHITECTURE.md), [PROJECT_MEMORY.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/PROJECT_MEMORY.md), [.clasp.json](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/.clasp.json)

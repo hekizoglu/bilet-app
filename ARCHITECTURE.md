@@ -1,4 +1,4 @@
-﻿# Technical Architecture Control (ARCHITECTURE.md)
+# Technical Architecture Control (ARCHITECTURE.md)
 
 ## Purpose
 This document establishes the technical structure, stack constraints, modular boundaries, and architectural patterns required to keep the system clean, fast, and scalable.
@@ -70,5 +70,5 @@ This document establishes the technical structure, stack constraints, modular bo
 * Do not bypass Prisma ORM with raw SQL queries unless indexing performance demands it.
 * Do not store business logic inside Next.js components; delegate all calculations to custom hooks or utility modules.
 
-Last updated: TODO
+Last updated: 2026-07-23
 Related files: [DECISIONS.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/DECISIONS.md), [PRODUCT.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/PRODUCT.md)

@@ -354,7 +354,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
               </div>
               
               {selectionMode === 'map' ? (
-                <div className="bg-white rounded-xl overflow-hidden border border-gray-200 mb-4">
+                <div className="bg-white rounded-xl overflow-x-auto touch-pan-x touch-pan-y border border-gray-200 mb-4">
                   {data.hallLayout ? (
                     <DynamicSeatMapViewer 
                       layoutJson={data.hallLayout}

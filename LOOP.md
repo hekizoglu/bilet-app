@@ -1,4 +1,4 @@
-﻿# Core Development Loop (LOOP.md)
+# Core Development Loop (LOOP.md)
 
 ## Purpose
 This document defines the standard execution cycle that all AI agents must follow when executing a task. It ensures structure, quality gates, and cost-efficient context loading.
@@ -58,5 +58,5 @@ flowchart TD
 * **Deliberate Approval & Safety checks** are handled in [REVIEW.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/REVIEW.md).
 * **Deployment & Submissions** are managed in [RELEASE.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/RELEASE.md).
 
-Last updated: TODO
+Last updated: 2026-07-23
 Related files: [BUILD_TEST_FIX.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/BUILD_TEST_FIX.md), [QA.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/QA.md), [REVIEW.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/REVIEW.md), [RELEASE.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/RELEASE.md)

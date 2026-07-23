@@ -1,4 +1,4 @@
-﻿# Multi-Agent Coordination (AGENTS.md)
+# Multi-Agent Coordination (AGENTS.md)
 
 ## Purpose
 This document governs the division of labor among multiple AI agents. It ensures specialized focus, restricts file writing privileges, and defines target model recommendations.
@@ -60,7 +60,9 @@ This document governs the division of labor among multiple AI agents. It ensures
 * **Output Files:** Release logs, version tags.
 * **Allowed to Change:** [RELEASE.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/RELEASE.md) lists.
 * **Not Allowed to Change:** Source code.
-* **Model Type:** Large.
+### 7. Strict Operational Rules (Zero Hallucination & Explicit Confirmation)
+* **Zero Hallucination Rule:** NEVER guess, assume, or invent code logic, database schemas, function signatures, or file paths. Always verify against authoritative source code using tools.
+* **Mandatory Explicit Confirmation Rule:** NEVER execute code edits, database schema migrations, or major architectural changes without presenting an explicit plan and receiving user approval first.
 
-Last updated: TODO
+Last updated: 2026-07-23
 Related files: [PROMPTS.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/PROMPTS.md), [TOKEN_OPTIMIZATION.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/TOKEN_OPTIMIZATION.md)

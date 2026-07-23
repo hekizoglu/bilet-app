@@ -1,4 +1,4 @@
-﻿# Startup Bootstrapper (BOOTSTRAP_PROMPT.md)
+# Startup Bootstrapper (BOOTSTRAP_PROMPT.md)
 
 ## Purpose
 This document provides a copy-pasteable bootstrap prompt that newly instantiated AI agents should read at the beginning of their session to align context and establish working bounds immediately.
@@ -30,8 +30,10 @@ After reading these documents, respond with:
 - Active priorities and current milestone.
 - List of identified project risks.
 - Recommended next action.
-- Confirmation that no application files will be modified without planning approval.
+- Confirmation that no application files will be modified without planning approval and explicit user confirmation.
+- Absolute commitment to Zero-Hallucination (never guess code logic, file locations, or schemas without inspecting source files).
 ```
 
-Last updated: TODO
+
+Last updated: 2026-07-23
 Related files: [00_CONTEXT_GRAPH.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/00_CONTEXT_GRAPH.md), [CLAUDE.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/CLAUDE.md), [PROJECT_MEMORY.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/PROJECT_MEMORY.md)

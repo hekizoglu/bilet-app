@@ -1,4 +1,4 @@
-﻿# Claude Agent Constitution (CLAUDE.md)
+# Claude Agent Constitution (CLAUDE.md)
 
 ## Purpose
 This document defines the core behavior, constraints, and authority rules for any AI agent operating in this repository. It serves as the primary instructions for task execution.
@@ -53,5 +53,5 @@ In case of conflicting rules or instructions, the hierarchy of authority must be
 9. [PROJECT_MEMORY.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/PROJECT_MEMORY.md)
 10. All other supporting files.
 
-Last updated: TODO
+Last updated: 2026-07-23
 Related files: [00_CONTEXT_GRAPH.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/00_CONTEXT_GRAPH.md), [SECURITY.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/SECURITY.md), [PROJECT_MEMORY.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/PROJECT_MEMORY.md)

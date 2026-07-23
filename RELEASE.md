@@ -1,4 +1,4 @@
-﻿# Release Control (RELEASE.md)
+# Release Control (RELEASE.md)
 
 ## Purpose
 This document controls release types, changelog standards, store submission requirements, rollback plans, and hotfix workflows.
@@ -60,5 +60,5 @@ If post-release metrics degrade (e.g., error rate spike > 1% in first 30 mins):
 - Database schema migrations or environment variable configurations.
 ```
 
-Last updated: TODO
+Last updated: 2026-07-23
 Related files: [REVIEW.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/REVIEW.md), [OBSERVABILITY.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/OBSERVABILITY.md)
