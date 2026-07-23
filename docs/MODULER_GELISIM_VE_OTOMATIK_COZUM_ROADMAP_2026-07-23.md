@@ -72,9 +72,9 @@ Bir görev `TAMAMLANDI` yapılırken şu kanıtlar zorunludur:
 **Amaç:** Kullanıcı kimliğinin güvenilir olması ve herkesin yalnız kendi verisine erişmesi.
 
 **Roadmap:**
-- [x] **M1-001 / P0:** LOCAL test tokenlarını varsayılan kapalı yap; production'da kesin engelle.
-- [x] **M1-002 / P0:** JWT içine kullanıcı `id` ekle; issuer, audience ve algoritma doğrulaması uygula.
-- [x] **M1-003 / P0:** Güvensiz sabit JWT fallback secret kullanımını kaldır.
+- [ ] **M1-001 / P0 / TESTTE:** LOCAL test tokenlarını varsayılan kapalı yap; production'da kesin engelle.
+- [ ] **M1-002 / P0 / TESTTE:** JWT içine kullanıcı `id` ekle; issuer, audience ve algoritma doğrulaması uygula.
+- [ ] **M1-003 / P0 / TESTTE:** Güvensiz sabit JWT fallback secret kullanımını kaldır.
 - [ ] **M1-004 / P0:** Tokenı JavaScript cookie yerine HttpOnly + Secure + SameSite cookie ile yönet.
 - [ ] **M1-005 / P0:** Etkinlik, salon, rezervasyon, kupon, QR ve rapor endpointlerinde owner kontrol matrisi.
 - [ ] **M1-006 / P1:** Rol değiştirme endpointini kaldır; organizatörlüğü etkinlik sahipliği ile belirle.
@@ -95,7 +95,7 @@ Bir görev `TAMAMLANDI` yapılırken şu kanıtlar zorunludur:
 **Roadmap:**
 - [ ] **M2-001 / P0:** SQLite/PostgreSQL çelişkisini kaldır; production şemasını PostgreSQL'e sabitle.
 - [ ] **M2-002 / P0:** Migration geçmişini temiz ortamda doğrula.
-- [ ] **M2-003 / P0:** Para değerlerini `Float` yerine Decimal/kuruş integer modeliyle tut.
+- [ ] **M2-003 / P0:** Para değerlerini `Float` yerine Decimal/kuruş integer modeliyle tut.
 - [ ] **M2-004 / P1:** String status alanlarını enum/state-machine yapısına taşı.
 - [ ] **M2-005 / P1:** Event/Hall/Reservation sahiplik ilişkilerini zorunlu hâle getir.
 - [ ] **M2-006 / P1:** Kritik unique constraint ve index denetimi.
@@ -234,7 +234,7 @@ Bir görev `TAMAMLANDI` yapılırken şu kanıtlar zorunludur:
 - [ ] **M11-001 / P0:** Docker Compose içinde PostgreSQL + Redis + backend + frontend tek gerçek topology.
 - [ ] **M11-002 / P0:** Migration deploy başlamadan tamamlanmalı.
 - [ ] **M11-003 / P0:** Secret taraması ve dependency audit CI kapısı.
-- [ ] **M11-004 / P1:** Backend test, frontend lint/typecheck/build ve E2E CI.
+- [ ] **M11-004 / P1 / BLOKE:** Backend test, frontend lint/typecheck/build ve E2E CI. PR #3 run `30014022962` job başlamadan `startup_failure` verdi.
 - [ ] **M11-005 / P1:** Health/readiness endpointleri ve bağımlılık durumları.
 - [ ] **M11-006 / P1:** Structured log, request ID ve PII maskeleme.
 - [ ] **M11-007 / P1:** Sentry sample rate ve alarm eşikleri.
@@ -300,22 +300,29 @@ AI her çalışma döngüsünde:
 
 ## M1-P0-AUTH — Kimlik temelini güvenli hâle getir
 
-**Durum:** İŞLEME ALINDI  
-**Branch:** `agent/moduler-denetim-p0-auth-2026-07-23`
+**Durum:** BLOKE — Kod ve test senaryoları hazır; GitHub Actions job başlamadan `startup_failure` verdi.  
+**Branch:** `agent/moduler-denetim-p0-auth-2026-07-23`  
+**Draft PR:** `#3`
 
-### Kapsam
+### Uygulanan kapsam
 
-- LOCAL tokenları environment flag arkasına al.
-- Production'da LOCAL tokenı kesin reddet.
-- JWT sabit fallback secretını kaldır.
-- JWT'ye kullanıcı `id` alanını ekle.
-- JWT issuer/audience/algorithm doğrulaması ekle.
-- Login ekranında local girişleri varsayılan gizle.
-- Eksik kimlik ve yanlış token testlerini ekle.
+- LOCAL tokenlar environment flag arkasına alındı.
+- Production'da LOCAL token reddediliyor.
+- JWT sabit fallback secretı kaldırıldı.
+- JWT'ye kullanıcı `id` alanı eklendi.
+- JWT issuer/audience/algorithm doğrulaması eklendi.
+- Login ekranında local giriş varsayılan gizlendi.
+- Eksik kimlik ve yanlış token testleri eklendi.
+
+### Kalan doğrulama
+
+- Backend auth testleri GitHub Actions veya doğrulanmış yerel ortamda çalışmalı.
+- Frontend production build çalışmalı.
+- CI başlangıç hatasının sebebi çözülmeli.
 
 ### Tamamlanma kriteri
 
 - Production varsayılanında local giriş görünmez ve backend kabul etmez.
 - İmzalı token `id`, `email`, `role`, `iss`, `aud`, `sub` taşır.
 - Yanlış issuer/audience/secret ve eksik id reddedilir.
-- Auth testleri geçer.
+- Auth testleri ve frontend build geçer.
