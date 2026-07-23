@@ -29,33 +29,60 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
   const [discount, setDiscount] = useState<{type: string, value: number} | null>(null);
   const [selectionMode, setSelectionMode] = useState<'list' | 'map'>('list');
   const [socketInstance, setSocketInstance] = useState<any>(null);
-  const [lockedSeats, setLockedSeats] = useState<string[]>([]); // FIND-005: Locked seats state
-
+  const [selectedSeats, setSelectedSeats] = useState<any[]>([]);
+  const [lockedSeats, setLockedSeats] = useState<string[]>([]);
   const [reservationSuccess, setReservationSuccess] = useState<any>(null);
   const [adminPaymentInfo, setAdminPaymentInfo] = useState<any>(null);
+
+  const handleSeatToggle = (seat: any) => {
+    const isAlreadySelected = selectedSeats.some((s: any) => s.id === seat.id);
+    let newSelected: any[];
+    if (isAlreadySelected) {
+      newSelected = selectedSeats.filter((s: any) => s.id !== seat.id);
+      toast.info(`Koltuk ${seat.name} seçimi kaldırıldı.`);
+    } else {
+      newSelected = [...selectedSeats, seat];
+      toast.success(`Koltuk ${seat.name} seçildi.`);
+    }
+    setSelectedSeats(newSelected);
+    const names = newSelected.map(s => s.name).join(', ');
+    const lastId = newSelected.length > 0 ? newSelected[newSelected.length - 1].id : '';
+    setForm(prev => ({ ...prev, seatId: lastId, seatName: names }));
+  };
 
   useEffect(() => {
     // 1. Veriyi Getir
     fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/availability/${id}`)
-      .then(r => r.json())
+      .then(r => {
+        const contentType = r.headers.get('content-type');
+        if (r.ok && contentType && contentType.includes('application/json')) {
+          return r.json();
+        }
+        return { error: 'Etkinlik verisi yüklenemedi veya geçersiz ID.' };
+      })
       .then(d => {
         setData(d);
         setLoading(false);
-        if (d.paymentType === 'cardless') {
+        if (d && d.paymentType === 'cardless') {
           fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/users/admin-payment-info`)
-            .then(r => r.json())
-            .then(p => setAdminPaymentInfo(p))
+            .then(r => r.ok && r.headers.get('content-type')?.includes('application/json') ? r.json() : null)
+            .then(p => p && setAdminPaymentInfo(p))
             .catch(console.error);
         }
       })
-      .catch(console.error);
+      .catch(err => {
+        console.error(err);
+        setData({ error: 'Bağlantı hatası.' });
+        setLoading(false);
+      });
 
     // Get user points if logged in
     const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
     if (token) {
       fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/users/me`, { headers: { 'Authorization': `Bearer ${token}` }})
-        .then(r => r.json())
+        .then(r => r.ok && r.headers.get('content-type')?.includes('application/json') ? r.json() : null)
         .then(u => {
+           if (!u) return;
            if (u.points) setUserPoints(u.points);
            if (u.email) setForm(prev => ({...prev, email: u.email}));
            if (u.name) setForm(prev => ({...prev, name: u.name}));
@@ -360,11 +387,11 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                       layoutJson={data.hallLayout}
                       availableSeats={data.availableSeats}
                       selectedSeatId={form.seatId}
+                      selectedSeatIds={selectedSeats.map((s: any) => s.id)}
                       onSeatSelect={(id) => {
                         const seat = data.availableSeats.find((s: any) => s.id === id);
                         if (seat) {
-                          setForm({ ...form, seatId: seat.id, seatName: seat.name });
-                          toast.success(`Koltuk ${seat.name} seçildi`);
+                          handleSeatToggle(seat);
                         }
                       }}
                     />
@@ -385,16 +412,17 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                         <div className="flex flex-wrap gap-2 py-1">
                           {row.seats.map((seat: any) => {
                             const isLocked = lockedSeats.includes(seat.id);
+                            const isSelected = selectedSeats.some((s: any) => s.id === seat.id);
                             return (
                               <button 
                                 key={seat.id}
                                 type="button"
                                 disabled={isLocked}
-                                onClick={() => setForm({ ...form, seatId: seat.id, seatName: seat.name })}
+                                onClick={() => handleSeatToggle(seat)}
                                 className={`min-w-[44px] min-h-[44px] px-3 py-2 rounded-xl border text-sm font-semibold transition-all cursor-pointer ${
                                   isLocked 
                                     ? 'bg-gray-200 text-gray-400 border-gray-300 cursor-not-allowed opacity-70' 
-                                    : form.seatId === seat.id 
+                                    : isSelected 
                                       ? 'bg-blue-600 text-white border-blue-700 shadow-md shadow-blue-500/20 active:scale-95' 
                                       : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300 active:scale-95'
                                 }`}
@@ -442,8 +470,8 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                 </div>
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">İndirim Kuponu (Opsiyonel)</label>
-                  <div className="flex gap-2">
-                    <input type="text" className="flex-1 border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm uppercase"
+                  <div className="flex gap-2 items-center mb-3">
+                    <input type="text" className="flex-1 min-w-0 border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm uppercase"
                            placeholder="KOD"
                            value={form.couponCode}
                            onChange={e => setForm({...form, couponCode: e.target.value.toUpperCase()})} />
@@ -465,7 +493,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                                 setForm({...form, couponCode: ''});
                               }
                             }}
-                            className="bg-gray-100 px-4 rounded-xl font-bold hover:bg-gray-200 transition">Uygula</button>
+                            className="shrink-0 h-[46px] bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-xl font-bold text-sm transition flex items-center justify-center cursor-pointer active:scale-95 shadow-sm">Uygula</button>
                   </div>
                   {discount && (
                     <p className="text-green-600 text-xs mt-2 font-bold">Kupon aktif: {discount.type === 'PERCENTAGE' ? `%${discount.value} indirim` : `${discount.value} TL indirim`}</p>
@@ -507,9 +535,18 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
             <>
               <h2 className="text-xl font-bold text-gray-900">Müşteri Bilgileri</h2>
           
-          {form.seatId && (
-            <div className="p-3 bg-blue-50 text-blue-800 rounded-xl text-sm font-semibold border border-blue-100">
-              Seçilen Koltuk: <span className="underline font-mono">{form.seatName}</span>
+          {form.seatName && (
+            <div className="p-3 bg-blue-50 text-blue-800 rounded-xl text-sm font-semibold border border-blue-100 flex items-center justify-between mb-4">
+              <span>Seçilen Koltuklar ({selectedSeats.length}): <strong className="underline font-mono">{form.seatName}</strong></span>
+              {selectedSeats.length > 0 && (
+                <button 
+                  type="button" 
+                  onClick={() => { setSelectedSeats([]); setForm(prev => ({...prev, seatId: '', seatName: ''})); }}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-bold ml-2"
+                >
+                  Temizle
+                </button>
+              )}
             </div>
           )}
 
@@ -537,8 +574,8 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
             {/* Fiyat Özeti ve İndirimler */}
             <div className="border-t border-gray-100 pt-4 mt-4">
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">İndirim Kuponu</label>
-              <div className="flex gap-2 mb-3">
-                <input type="text" className="flex-1 border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm uppercase"
+              <div className="flex gap-2 items-center mb-3">
+                <input type="text" className="flex-1 min-w-0 border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm uppercase"
                        placeholder="KOD"
                        value={form.couponCode}
                        onChange={e => setForm({...form, couponCode: e.target.value.toUpperCase()})} />
@@ -560,7 +597,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                             setForm({...form, couponCode: ''});
                           }
                         }}
-                        className="bg-gray-100 px-4 rounded-xl font-bold hover:bg-gray-200 transition text-sm">Uygula</button>
+                        className="shrink-0 h-[46px] bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-xl font-bold text-sm transition flex items-center justify-center cursor-pointer active:scale-95 shadow-sm">Uygula</button>
               </div>
 
               {userPoints > 0 && data.price > 0 && (
@@ -579,21 +616,21 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
               )}
 
               <div className="flex justify-between items-center text-sm mb-1 text-gray-600">
-                <span>Bilet Fiyatı:</span>
-                <span className="font-semibold">{data.price} ₺</span>
+                <span>Bilet Fiyatı {selectedSeats.length > 1 ? `(${selectedSeats.length} Koltuk)` : ''}:</span>
+                <span className="font-semibold">{(data.price * Math.max(1, selectedSeats.length)).toFixed(2)} ₺</span>
               </div>
               
               {discount && (
                 <div className="flex justify-between items-center text-sm text-green-600 mb-1">
                   <span>Kupon İndirimi:</span>
-                  <span>-{discount.type === 'PERCENTAGE' ? (data.price * discount.value / 100).toFixed(2) : discount.value.toFixed(2)} ₺</span>
+                  <span>-{discount.type === 'PERCENTAGE' ? ((data.price * Math.max(1, selectedSeats.length)) * discount.value / 100).toFixed(2) : discount.value.toFixed(2)} ₺</span>
                 </div>
               )}
 
               {form.usePoints && (
                 <div className="flex justify-between items-center text-sm text-yellow-600 mb-1">
                   <span>Kullanılan Puan:</span>
-                  <span>-{Math.min(userPoints, Math.max(0, data.price - (discount ? (discount.type === 'PERCENTAGE' ? (data.price * discount.value / 100) : discount.value) : 0))).toFixed(2)} ₺</span>
+                  <span>-{Math.min(userPoints, Math.max(0, (data.price * Math.max(1, selectedSeats.length)) - (discount ? (discount.type === 'PERCENTAGE' ? ((data.price * Math.max(1, selectedSeats.length)) * discount.value / 100) : discount.value) : 0))).toFixed(2)} ₺</span>
                 </div>
               )}
 
@@ -601,14 +638,15 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                 <span>Toplam Ödenecek:</span>
                 <span className="text-blue-700">
                   {(() => {
-                    let price = data.price;
+                    let baseTotal = data.price * Math.max(1, selectedSeats.length);
                     if (discount) {
-                      price -= discount.type === 'PERCENTAGE' ? (data.price * discount.value / 100) : discount.value;
+                      const discAmount = discount.type === 'PERCENTAGE' ? (baseTotal * discount.value / 100) : discount.value;
+                      baseTotal = Math.max(0, baseTotal - discAmount);
                     }
                     if (form.usePoints) {
-                      price -= Math.min(userPoints, Math.max(0, price));
+                      baseTotal = Math.max(0, baseTotal - userPoints);
                     }
-                    return Math.max(0, price).toFixed(2);
+                    return baseTotal.toFixed(2);
                   })()} ₺
                 </span>
               </div>

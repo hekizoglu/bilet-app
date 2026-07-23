@@ -299,6 +299,7 @@ router.post('/lock-seat', checkoutLimiter, async (req, res) => {
 const resSchema = z.object({
   eventIdOrSlug: z.string(), // can be event UUID or privateSlug
   seatId: z.string().optional().nullable(),
+  seatIds: z.array(z.string()).optional().nullable(),
   customer: z.string().min(2),
   email: z.string().email(),
   phone: z.string().optional(),
@@ -450,8 +451,8 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
           if (updatedCoupon.count === 0) throw new Error("Kupon kullanım limiti eşzamanlı bir işlemle dolmuş olabilir.");
         }
 
-        // eventIdOrSlug parametresini temizleyip gerçek eventId ve doğrulanmış seatName ile kaydet
-        const { eventIdOrSlug, couponCode, usePoints, ...rest } = req.body;
+        // eventIdOrSlug parametresini ve geçici UI alanlarını (socketId, seatIds) temizleyip gerçek eventId ve doğrulanmış seatName ile kaydet
+        const { eventIdOrSlug, couponCode, usePoints, socketId, seatIds, ...rest } = req.body;
 
         // Puan kullanımı
         let pointsUsed = 0;

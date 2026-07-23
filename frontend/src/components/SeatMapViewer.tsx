@@ -14,11 +14,12 @@ interface Seat {
 interface SeatMapViewerProps {
   layoutJson: any;
   availableSeats: Seat[];
-  selectedSeatId: string | null;
+  selectedSeatId?: string | null;
+  selectedSeatIds?: string[];
   onSeatSelect: (seatId: string) => void;
 }
 
-export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeatId, onSeatSelect }: SeatMapViewerProps) {
+export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeatId, selectedSeatIds, onSeatSelect }: SeatMapViewerProps) {
   const [elements, setElements] = useState<any[]>([]);
   const [bgImageObj, setBgImageObj] = useState<HTMLImageElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -62,7 +63,11 @@ export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeat
   };
 
   const getSeatColor = (seatId: string) => {
-    if (selectedSeatId === seatId) return '#3b82f6'; // Blue for selected
+    const isSelected = selectedSeatIds 
+      ? selectedSeatIds.includes(seatId)
+      : selectedSeatId === seatId;
+      
+    if (isSelected) return '#3b82f6'; // Blue for selected
     if (availableSet.has(seatId)) return '#22c55e'; // Green for available
     return '#9ca3af'; // Gray for taken/unavailable
   };

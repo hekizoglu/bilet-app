@@ -75,7 +75,7 @@ function MobilePaymentContent() {
 
     fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/public/${id}`)
       .then((r) => {
-        if (!r.ok) throw new Error("Bilet detayları yüklenemedi.");
+        if (!r.ok || !r.headers.get('content-type')?.includes('application/json')) throw new Error("Bilet detayları yüklenemedi.");
         return r.json();
       })
       .then((data) => {

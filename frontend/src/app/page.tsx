@@ -116,17 +116,43 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50">
 
       {/* Hero Section */}
-      <div className="bg-blue-900 text-white pt-24 pb-20 px-4 text-center relative">
-        <h1 className="text-4xl md:text-5xl font-extrabold mb-4">Hoş Geldiniz</h1>
-        <p className="text-xl text-blue-200 mb-8 max-w-2xl mx-auto">
-          En sevdiğiniz konserler, tiyatrolar ve özel organizasyonlar için biletlerinizi hemen ayırtın.
-        </p>
+      <div className="bg-gradient-to-br from-indigo-900 via-purple-900 to-slate-900 text-white pt-28 pb-24 px-4 text-center relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.15),transparent_50%)] pointer-events-none" />
+        <div className="max-w-4xl mx-auto relative z-10">
+          <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-indigo-200 text-xs font-semibold uppercase tracking-wider mb-6 shadow-inner">
+            ✨ Premium Etkinlik Biletleme Platformu
+          </span>
+          <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-6 leading-tight">
+            Etkinlikleri Keşfet, <span className="gradient-text">Biletini Kolayca Al</span>
+          </h1>
+          <p className="text-lg md:text-xl text-indigo-100/90 mb-10 max-w-2xl mx-auto font-light leading-relaxed">
+            En sevdiğiniz konserler, tiyatrolar ve özel organizasyonlar için koltuğunuzu harita üzerinden anında seçin.
+          </p>
+
+          {/* Category Filter Tabs */}
+          <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
+            {categories.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setFilter(cat.id)}
+                className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all duration-300 flex items-center gap-2 min-h-[44px] ${
+                  filter === cat.id
+                    ? 'bg-white text-indigo-900 shadow-lg shadow-indigo-500/20 scale-105'
+                    : 'bg-white/10 text-white hover:bg-white/20 backdrop-blur-md border border-white/10'
+                }`}
+              >
+                <span>{cat.emoji}</span>
+                <span>{cat.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Events Grid */}
       <main className="max-w-7xl mx-auto px-4 py-12 relative z-10">
         <h2 className="text-3xl font-bold text-gray-900 mb-8 flex items-center gap-3">
-          <Calendar className="text-blue-600" size={32} />
+          <Calendar className="text-indigo-600" size={32} />
           Yaklaşan Etkinlikler
         </h2>
 
@@ -146,7 +172,7 @@ export default function Home() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {events.map((event: any, index: number) => (
+            {filteredEvents.map((event: any, index: number) => (
               <motion.div
                 key={event.id}
                 initial={{ opacity: 0, y: 20 }}
