@@ -63,6 +63,8 @@ This document governs the division of labor among multiple AI agents. It ensures
 ### 7. Strict Operational Rules (Zero Hallucination & Explicit Confirmation)
 * **Zero Hallucination Rule:** NEVER guess, assume, or invent code logic, database schemas, function signatures, or file paths. Always verify against authoritative source code using tools.
 * **Mandatory Explicit Confirmation Rule:** NEVER execute code edits, database schema migrations, or major architectural changes without presenting an explicit plan and receiving user approval first.
+* **Strict Empirical Verification Rule:** Every code change MUST be validated by running automated tests (`npm test`) or build verification commands (`npm run build`). Never declare a task completed without verified empirical proof.
 
 Last updated: 2026-07-23
 Related files: [PROMPTS.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/PROMPTS.md), [TOKEN_OPTIMIZATION.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/TOKEN_OPTIMIZATION.md)
+

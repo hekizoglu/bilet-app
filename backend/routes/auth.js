@@ -27,13 +27,15 @@ router.post('/google', authLimiter, async (req, res) => {
     let payload;
     let mockRole = null;
 
-    if (token === "LOCAL_TEST_TOKEN" || token === "LOCAL_ADMIN_TOKEN") {
+    const isDevOrTest = process.env.NODE_ENV !== 'production';
+
+    if (isDevOrTest && (token === "LOCAL_TEST_TOKEN" || token === "LOCAL_ADMIN_TOKEN")) {
       payload = { email: ADMIN_EMAIL, name: 'Local Admin' };
       mockRole = 'ADMIN';
-    } else if (token === "LOCAL_ORGANIZER_TOKEN") {
+    } else if (isDevOrTest && token === "LOCAL_ORGANIZER_TOKEN") {
       payload = { email: 'organizasyon@example.com', name: 'Local Organizatör' };
       mockRole = 'ORGANIZER';
-    } else if (token === "LOCAL_CUSTOMER_TOKEN" || token === "LOCAL_CITIZEN_TOKEN") {
+    } else if (isDevOrTest && (token === "LOCAL_CUSTOMER_TOKEN" || token === "LOCAL_CITIZEN_TOKEN")) {
       payload = { email: 'kullanici@example.com', name: 'Local Kullanıcı' };
       mockRole = 'CUSTOMER';
     } else {
