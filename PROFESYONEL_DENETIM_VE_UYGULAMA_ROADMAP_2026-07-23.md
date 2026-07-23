@@ -20,6 +20,8 @@
 - [x] **2.2. Admin Paneli Mobil Kırılımları:** `/admin` rotalarındaki (etkinlikler, salonlar, rezervasyonlar) tabloların ve filtre butonlarının mobilde düzgün görünümünü doğrula.
 - [x] **2.3. Backlog Senkronizasyonu:** `aie-system/fikirler/backlog.md` içerisindeki `IDEA-MRJ7GHNO-M3YK` maddesini tamamlandı (`[x]`) olarak güncelle.
 
+> **Önemli:** Yukarıdaki maddeler yalnız ilk mobil uyumluluk fazını temsil eder. Tam tasarım sistemi, profesyonel salon çizimi, gerçek ölçü, öğe kütüphanesi, çakışma denetimi, mobil yönetim kartları, erişilebilirlik ve görsel performans çalışmaları ayrı denetimde açık görevlerdir.
+
 ---
 
 ### ═══ FAZ 3: Performans, Hata Toleransı ve Turbopack Uyarılarının Temizliği ═══
@@ -32,5 +34,25 @@
 ### ═══ FAZ 4: Uçtan Uca Doğrulama ve Canlıya Geçiş Hazırlığı ═══
 - [x] **4.1. Otomatik Test Koşumu:** Backend `npm test` (49 test) ve Frontend `npm run build` süreçlerini son kez koştur ve doğrulama çıktılarını al.
 - [x] **4.2. Dokümantasyon Güncellemesi:** `ROADMAP.md`, `PROJECT_MEMORY.md` ve `ERRORS.md` dosyalarını yapılan çalışmalarla senkronize et.
+
+---
+
+### ═══ FAZ 5: TAM TASARIM, UX VE SALON ÇİZİM DENETİMİ ═══
+
+**Durum:** BEKLEMEDE  
+**Ana belge:** `docs/TASARIM_UX_SALON_CIZIM_DENETIM_RAPORU_2026-07-23.md`
+
+- [ ] **5.1. Tasarım sistemi:** Tokenlar ve ortak UI bileşenleri.
+- [ ] **5.2. Mobil bilgi mimarisi:** En fazla 4 ana sekme + Daha Fazla.
+- [ ] **5.3. Mobil tablolar:** Etkinlik, salon ve rezervasyon listelerini kart görünümüne çevir.
+- [ ] **5.4. Salon tasarımcısı:** Gerçek ölçü, profesyonel öğe kütüphanesi ve katmanlar.
+- [ ] **5.5. Hata önleme:** Çakışma, çıkış engeli, kapasite ve numara doğrulaması.
+- [ ] **5.6. Telefon düzenleme:** Sihirbaz + hızlı düzenleme + bottom sheet.
+- [ ] **5.7. Katılımcı koltuk seçimi:** Bölüm/sıra/koltuk hiyerarşisi ve sabit özet.
+- [ ] **5.8. Erişilebilirlik:** WCAG 2.2 AA, klavye ve ekran okuyucu desteği.
+- [ ] **5.9. Görsel performans:** Konva katman, cache, görünürlük ve büyük salon testleri.
+- [ ] **5.10. Görsel regresyon:** Playwright cihaz ve ekran görüntüsü testleri.
+
+**Tamamlanma kuralı:** Faz 5, ana belgede tanımlanan ekran görüntüsü, E2E, erişilebilirlik ve performans kanıtları olmadan tamamlandı işaretlenemez.
 
 ---
