@@ -1,267 +1,525 @@
-# Strategic Roadmap (ROADMAP.md) — AKTİF GÖREVLER
+# APP BİLET — SELF-SERVİS ETKİNLİK ROADMAP
 
-**Durum:** FAZ 19-26 (Production Readiness & Go-Live) 🔄 Devam Ediyor  
-**Tamamlananlar:** Lütfen [ARCHIVE_ROADMAP.md](ARCHIVE_ROADMAP.md) dosyasına bakınız (FAZ 1-18)  
-**Hata Kaydı:** [ERRORS.md](ERRORS.md) — her hata buraya loglanır, süreç durmaz  
-**Son Güncelleme:** 2026-07-07
-
-> **Kural:** Herhangi bir adımda hata oluşursa `ERRORS.md` dosyasına kaydet ve bir sonraki adıma geç. Asla durma.
+**Durum:** Yeni ürün modeli aktif  
+**Son güncelleme:** 2026-07-16  
+**Ana ürün kararı:** Her kayıtlı kullanıcı kendi etkinliğini oluşturabilir ve kendi etkinliğinin organizatörüdür. Ayrı bir organizatör onayı gerekmez. Yalnızca etkinliğin doğrulanmış kapasitesi 50 kişiyi/sandalyeyi geçtiğinde etkinlik yönetici onayına düşer.
 
 ---
 
-## 📋 Proje Durumu Özeti
+# 1. Ürün vizyonu
 
-| Faz | Başlık | Durum | İlerleme |
-|-----|--------|-------|----------|
-| 1-18 | Tamamlandı / Arşivlendi | ✅ Bitmiş | 100% |
-| **19** | **Temel Altyapı & Veritabanı Geçişi** | ✅ Tamamlandı (Locally Skipped) | 100% |
-| **20** | **Backend Performansı & PM2** | ✅ Tamamlandı | 100% |
-| **21** | **Nginx Ters Proxy & SSL** | 🔄 Bekliyor (Sunucu Gerekli) | 56% |
-| **22** | **Next.js Frontend Prod Build** | ✅ Tamamlandı | 100% |
-| **23** | **Güvenlik Sıkılaştırma** | ✅ Tamamlandı | 100% |
-| **24** | **İzlenebilirlik & Sağlık Kontrolleri** | ✅ Tamamlandı (Sentry Key Bekliyor) | 100% |
-| **25** | **CI/CD Pipeline Tamamlama** | ✅ Tamamlandı (Secret'lar Bekliyor) | 100% |
-| **26** | **Son Doğrulama & Yayın (Launch)** | 🔄 Devam Ediyor (E2E Testler Yapıldı) | 50% |
-| **29** | **Veritabanı Sorgu Optimizasyonu** | ✅ Tamamlandı | 100% |
-| **30** | **Redis Entegrasyonu (Geçici Koltuk Kilitleri)** | ✅ Tamamlandı | 100% |
-| **31** | **Backlog Senkronizasyonu** | ✅ Tamamlandı | 100% |
+App Bilet; kullanıcıların doğum günü, nişan, düğün, piknik, toplantı, mezuniyet, sınıf buluşması, spor etkinliği, konser ve benzeri organizasyonlarını oluşturabildiği; davetlilerini, sandalyelerini, biletlerini ve girişlerini yönetebildiği self-servis etkinlik platformudur.
+
+> Kullanıcı kayıt olur, etkinliğini oluşturur, davet bağlantısını paylaşır ve kendi etkinliğini yönetir. 50 kişiye kadar sistem otomatik çalışır. 50 kişi aşıldığında yalnızca yayın/onay kontrolü devreye girer.
 
 ---
 
-## 🔄 Cron Görevi Çalışma Modeli
+# 2. Değişmez ürün kuralları
 
+## 2.1 Her kullanıcı organizatör olabilir
+
+- Kayıtlı her kullanıcı etkinlik oluşturabilir.
+- Kullanıcının ayrıca organizatör başvurusu yapmasına gerek yoktur.
+- Kullanıcı kendi etkinliklerinde organizatör yetkisine sahiptir.
+- Kullanıcı yalnızca kendi etkinliklerini, davetlilerini, rezervasyonlarını, salonlarını ve raporlarını yönetebilir.
+- Başka kullanıcının etkinlik verilerine erişemez.
+- `CUSTOMER → ORGANIZER` şeklinde genel ve tehlikeli bir rol yükseltme akışı kullanılmaz.
+- Organizatörlük bir platform rolünden çok, etkinlik sahipliği üzerinden belirlenen yetkidir.
+
+## 2.2 Onay eşiği
+
+Etkinliğin etkin kapasitesi **50 veya daha azsa**:
+
+- Yönetici onayı gerekmez.
+- Kullanıcı etkinliği doğrudan yayınlayabilir.
+- Özel veya herkese açık oluşturabilir.
+- Davet bağlantısı ve QR kod oluşturabilir.
+- Katılımcılarını ve girişlerini yönetebilir.
+
+Etkinliğin etkin kapasitesi **51 veya daha fazlaysa**:
+
+- Etkinlik taslak olarak oluşturulabilir.
+- Kullanıcı bütün bilgileri ve salon planını hazırlayabilir.
+- Ancak etkinlik yönetici onayı olmadan yayınlanamaz.
+- Durum `PENDING_APPROVAL` olur.
+- Yönetici onayından sonra yayınlanır.
+
+## 2.3 Etkin kapasite hesabı
+
+Backend aşağıdaki değeri tek kaynak olarak hesaplar:
+
+```text
+Koltuklu etkinlik:
+effectiveCapacity = salon planındaki gerçek sandalye/koltuk sayısı
+
+Genel giriş etkinliği:
+effectiveCapacity = kullanıcının belirlediği kapasite
 ```
-CRON ─► [FAZ 19] ─► [FAZ 20] ─► [FAZ 21] ─► [FAZ 22] ─► [FAZ 23] ─► [FAZ 24] ─► [FAZ 25] ─► [FAZ 26] ─► ✅ CANLI
-         ↕ hata         ↕ hata        ↕ hata
-         ERRORS.md'e    ERRORS.md'e   ERRORS.md'e
-         yaz & devam    yaz & devam   yaz & devam
+
+Frontend tarafından gönderilen sandalye sayısına doğrudan güvenilmez. Salon planı backend tarafından ayrıştırılır ve gerçek sandalye sayısı hesaplanır.
+
+## 2.4 Sonradan kapasite artırma
+
+- 50 veya altındaki yayınlanmış etkinlik 51 ve üzerine çıkarılırsa mevcut yayın durdurulur.
+- Etkinlik `PENDING_APPROVAL` durumuna alınır.
+- Eski davet bağlantısı etkinliği göstermeye devam edebilir ancak yeni rezervasyon kabul etmez.
+- Kullanıcıya şu mesaj gösterilir:
+
+> Etkinlik kapasitesi 50 kişiyi geçtiği için yayınlanmadan önce yönetici onayı gerekmektedir.
+
+- Kapasite yeniden 50 veya altına düşürülürse ve etkinlik daha önce güvenlik nedeniyle reddedilmediyse otomatik yayınlanabilir.
+
+---
+
+# 3. Yetki modeli
+
+## USER
+
+Her kayıtlı kullanıcıdır.
+
+- Etkinlik oluşturabilir.
+- Kendi etkinliğinin organizatörüdür.
+- Kendi salonunu ve sandalye düzenini oluşturabilir.
+- Kendi katılımcılarını görebilir.
+- Kendi QR giriş ekranını kullanabilir.
+- Kendi etkinliğini iptal edebilir.
+- Kendi etkinliğini düzenleyebilir.
+- Başkasının verisini göremez.
+
+## ADMIN
+
+- 50 kişi üzerindeki etkinlikleri inceler.
+- Etkinliği onaylar veya gerekçeli olarak reddeder.
+- Şikâyet edilen etkinlikleri inceler.
+- Etkinliği askıya alabilir.
+- Sistem genel ayarlarını yönetir.
+- Denetim kayıtlarına erişebilir.
+
+## Kritik sahiplik kuralı
+
+Bütün korumalı endpointlerde yalnızca rol kontrolü yapılması yeterli değildir.
+
+```text
+ADMIN ise erişebilir.
+Etkinliğin ownerId değeri req.user.id ile aynıysa erişebilir.
+Aksi durumda 403 döner.
 ```
 
----
-
-## ═══ FAZ 19: Temel Altyapı & Veritabanı Geçişi ═══
-**Sıra:** 1 | **Önkoşul:** Yok | **Tahmini Süre:** 2-3 saat
-
-- [x] `.env.production.example` dosyasını gerçek değerlerle doldurulmuş `.env.production` olarak sunucuya kopyala
-- [x] `NODE_ENV=production` tüm backend ve frontend başlangıç komutlarında zorunlu olarak ayarla
-- [x] `JWT_SECRET` için `openssl rand -base64 64` ile 64+ karakterlik güçlü secret üret
-- [x] `ALLOWED_ORIGINS` değişkenini gerçek production domain'iyle güncelle
-- [x] Frontend `.env.production` dosyasında `NEXT_PUBLIC_API_URL` ve `NEXT_PUBLIC_SOCKET_URL` değerlerini üretim URL'leriyle ayarla
-- [x] Sunucuda PostgreSQL 16 container'ı `docker compose --profile production up db -d` ile başlat *(Yerel test için Atlandı - ERR-005)*
-- [x] `schema.prisma` içinde `provider = "sqlite"` → `provider = env("DB_PROVIDER")` olarak değiştir
-- [x] `DATABASE_URL` ortam değişkenini PostgreSQL bağlantı string'i olarak ayarla *(Yerel test için Atlandı)*
-- [x] `npx prisma migrate deploy` ile şemayı üretim veritabanına uygula *(Yerel test için Atlandı)*
-- [x] Mevcut SQLite verilerini PostgreSQL'e taşı (prisma db seed veya manuel SQL) *(Yerel test için Atlandı)*
-
-**✅ Tamamlanma Kriteri:** `NODE_ENV=production` ile backend ayağa kalkıyor ve veritabanına bağlanıyor.
+Bu kontrol etkinlik, salon, rezervasyon, katılımcı, rapor, kupon, QR ve ödeme işlemlerinin tamamında uygulanır.
 
 ---
 
-## ═══ FAZ 20: Backend Performansı & PM2 ═══
-**Sıra:** 2 | **Önkoşul:** FAZ 19 ✅
+# FAZ 0 — KRİTİK GÜVENLİK VE VERİ İZOLASYONU
 
-- [x] `npm install -g pm2` ile PM2'yi sunucuya kur *(Locally)*
-- [x] Proje kökünde `ecosystem.config.js` dosyası oluştur (cluster mode, max instances)
-- [x] `pm2 start ecosystem.config.js --env production` ile başlat *(Locally)*
-- [x] `pm2 startup` ile sunucu yeniden başlatılmasında otomatik başlatmayı etkinleştir *(Atlandı)*
-- [x] `pm2 save` ile proses listesini kaydet *(Locally)*
-- [x] `--trace-sync-io` bayrağıyla senkron I/O çağrılarını tespit et ve gider *(ecosystem config'e eklendi)*
+**Öncelik:** P0  
+**Amaç:** Yeni özellik eklemeden önce mevcut güvenlik açıklarını kapatmak.
 
-**✅ Tamamlanma Kriteri:** `pm2 status` tüm prosesleri `online` gösteriyor. *(Local environment nedeniyle limitli test)*
+- [ ] Production ortamında bütün `LOCAL_*` test tokenlarını devre dışı bırak.
+- [ ] Kullanıcının kendisini genel `ORGANIZER` rolüne yükselttiği endpointi kaldır veya yeni sahiplik modeline göre değiştir.
+- [ ] JWT içine `userId`, `email`, `role` ve `tokenVersion` ekle.
+- [ ] JWT üretimini tek bir auth servisinde birleştir.
+- [ ] Bütün etkinlik sorgularına `ownerId` filtresi ekle.
+- [ ] Bütün salon sorgularına sahiplik kontrolü ekle.
+- [ ] Bütün rezervasyon ve rapor sorgularını etkinlik sahibi ile sınırla.
+- [ ] Organizatörün başka kullanıcıların rezervasyonlarını onaylamasını engelle.
+- [ ] Organizatörün başka etkinliğe ait QR bileti okutmasını engelle.
+- [ ] Production ortamında sahte kredi kartı ödeme endpointini kapat.
+- [ ] İmzasız banka webhook endpointini kapat.
+- [ ] Kod içine gömülmüş SMTP bilgilerini kaldır ve secretları yenile.
+- [ ] Ortak Prisma istemcisini istek içinde kapatan `$disconnect()` çağrılarını kaldır.
+- [ ] Prisma production şemasını PostgreSQL üzerinde doğrula.
+- [ ] Frontend API URL yapısını tek standarda geçir.
+- [ ] Production ortamında debug endpointlerini kapat.
 
----
-
-## ═══ FAZ 21: Nginx Ters Proxy & SSL Yapılandırması ═══
-**Sıra:** 3 | **Önkoşul:** FAZ 20 ✅
-
-- [x] Sunucuya Nginx kur *(Yerel test için atlandı)*
-- [x] Backend (`:5000`) için `/api/` ve `/socket.io/` proxy'i yapılandır (nginx.conf dosyası hazırlandı)
-- [x] Frontend (`:3005`) için root proxy'i yapılandır
-- [x] WebSocket upgrade (socket.io) desteğini etkinleştir
-- [x] `nginx -t` ile konfigürasyonu doğrula *(Yerel test için atlandı)*
-- [x] Let's Encrypt ile SSL sertifikası edin: `certbot --nginx -d biletapp.com` *(Yerel test için atlandı)*
-- [x] Otomatik sertifika yenileme `certbot renew --dry-run` testini geç *(Yerel test için atlandı)*
-- [x] HTTP → HTTPS yönlendirmesini etkinleştir (301 redirect)
-- [x] Gzip/Brotli sıkıştırmasını Nginx seviyesinde etkinleştir
-
-**✅ Tamamlanma Kriteri:** `https://biletapp.com` üzerinden güvenli erişim sağlanıyor. *(Yerel test)*
+**Tamamlanma kriteri:** Bir kullanıcı başka kullanıcıya ait hiçbir etkinlik, salon, rezervasyon veya rapora erişemez.
 
 ---
 
-## ═══ FAZ 22: Next.js Frontend Production Build ═══
-**Sıra:** 4 | **Önkoşul:** FAZ 21 ✅
+# FAZ 1 — SAHİPLİK VE ONAY VERİ MODELİ
 
-- [x] `npm --prefix frontend run build` komutunu prod env ile çalıştır
-- [x] Build çıktısında TypeScript hataları ve ESLint uyarıları 0 olduğunu doğrula
-- [x] `npm --prefix frontend run start` ile production modu test et
-- [x] Tüm `<img>` tag'lerinin `next/image` ile değiştirildiğini kontrol et
-- [x] Google Fonts kullanımını `next/font` ile self-hosted hale getir
-- [x] Lighthouse ile Core Web Vitals ölç (LCP < 2.5s hedefle) *(Manuel gerçekleştirilecek)*
-- [x] Her route segment klasörüne `error.tsx` bileşeni ekle
-- [x] Proje kökünde `global-error.tsx` oluştur
+**Öncelik:** P0
 
-**✅ Tamamlanma Kriteri:** `next build` hatasız, Lighthouse skoru > 80. *(Build başarıyla tamamlandı)*
+## Event modeline eklenecek/güncellenecek alanlar
 
----
+```text
+ownerId              String
+capacity             Int?
+effectiveCapacity    Int
+approvalStatus       NOT_REQUIRED | PENDING_APPROVAL | APPROVED | REJECTED | SUSPENDED
+approvalReason       String?
+approvedAt           DateTime?
+approvedById         String?
+submittedForApprovalAt DateTime?
+publishedAt          DateTime?
+```
 
-## ═══ FAZ 23: Güvenlik Sıkılaştırma ═══
-**Sıra:** 5 | **Önkoşul:** FAZ 22 ✅
+## Hall modeline eklenecek alanlar
 
-- [x] `helmet()` middleware'inin `backend/index.js`'de aktif olduğunu doğrula
-- [x] `Content-Security-Policy` başlığını yapılandır
-- [x] [securityheaders.com](https://securityheaders.com) üzerinden test et, A+ rating hedefle
-- [x] `ALLOWED_ORIGINS`'in yalnızca production domain'lerini içerdiğini doğrula
-- [x] Wildcard (`*`) CORS yapılandırması olmadığını test et
-- [x] Rate limit değerlerini production trafiğine göre ayarla (100 req/15min genel, 5 req/min checkout)
-- [x] `/api/auth/login` endpoint'ine özel sıkı rate limit ekle
-- [x] `trufflehog` veya `git-secrets` ile repo taraması yap
-- [x] `.gitignore`'da `.env*` dosyalarının görmezden gelindiğini doğrula
+```text
+ownerId              String?
+isGlobal             Boolean
+calculatedSeatCount  Int
+```
 
-**✅ Tamamlanma Kriteri:** A+ güvenlik rating, `trufflehog` clean, rate limit testleri geçiyor.
+Kurallar:
 
----
+- Kullanıcının oluşturduğu salon `ownerId` ile kullanıcıya bağlanır.
+- Global salonları yalnızca admin oluşturur ve düzenler.
+- Kullanıcı kendi salonlarını ve global salonları kullanabilir.
+- Kullanıcı başka kullanıcının özel salonunu göremez veya düzenleyemez.
+- `effectiveCapacity` her kaydetme ve yayınlama işleminde backend tarafından yeniden hesaplanır.
 
-## ═══ FAZ 24: İzlenebilirlik & Sağlık Kontrolleri ═══
-**Sıra:** 6 | **Önkoşul:** FAZ 23 ✅
+## Onay karar servisi
 
-- [x] `backend/index.js`'e `/api/health` endpoint'i ekle (DB bağlantısı + uptime kontrolü)
-- [x] Nginx/Docker health check'e bu endpoint'i ekle
-- [x] `npm install winston winston-daily-rotate-file` backend'e ekle
-- [x] `backend/logger.js` modülü oluştur (JSON format, level: prod=warn, dev=debug)
-- [x] Tüm `console.log`, `console.error` çağrılarını `logger.info`, `logger.error` ile değiştir
-- [MANUAL] [sentry.io](https://sentry.io) üzerinde proje oluştur, DSN anahtarını al
-- [x] `@sentry/node` backend'e, `@sentry/nextjs` frontend'e ekle
-- [MANUAL] Test hatası fırlatarak Sentry dashboard'unda göründüğünü doğrula
+Tek bir merkezi fonksiyon oluşturulmalıdır:
 
-**✅ Tamamlanma Kriteri:** `/api/health` 200 dönüyor, Winston logları akıyor, Sentry test hatası yakalandı.
+```text
+evaluateApprovalRequirement(event, hallLayout)
+```
 
----
+Beklenen sonuç:
 
-## ═══ FAZ 25: CI/CD Pipeline Tamamlama ═══
-**Sıra:** 7 | **Önkoşul:** FAZ 24 ✅
+```text
+{
+  effectiveCapacity: 48,
+  requiresApproval: false,
+  approvalStatus: "NOT_REQUIRED"
+}
+```
 
-- [x] `.github/workflows/deploy.yml` dosyasını gerçek adımlarla tamamla (Appleboy SSH)
-- [MANUAL] GitHub Actions secret'larını (`SERVER_HOST`, `SERVER_USER`, `SERVER_SSH_KEY`, vb.) projeye ekle
-- [MANUAL] Pipeline'ın success logunu GitHub sekmesinden gör
-- [MANUAL] SSH ile sunucuya bağlanıp build ve PM2 süreçlerinin hatasız çalıştığını kontrol et
-- [x] Sunucuda `backup.sh` betiği oluştur (pg_dump, 30 gün saklama)
-- [MANUAL] `crontab -e` ile günlük gece 02:00'de otomatik yedekleme kur: `0 2 * * * /scripts/backup.sh`
-- [MANUAL] Yedeği manuel geri yükleyerek veri bütünlüğünü doğrula
-- [MANUAL] PM2 `reload` komutunun mevcut bağlantıları kesmeden çalıştığını doğrula
+veya:
 
-**✅ Tamamlanma Kriteri:** `main`'e push → CI/CD deploy tetiklendi. Yedekleme script'i hazır.
+```text
+{
+  effectiveCapacity: 120,
+  requiresApproval: true,
+  approvalStatus: "PENDING_APPROVAL"
+}
+```
 
----
-
-## ═══ FAZ 26: Son Doğrulama & Yayın (Launch) ═══
-**Sıra:** 8 | **Önkoşul:** FAZ 25 ✅
-
-- [MANUAL] Admin → Etkinlik oluştur → Salon tasarımcısı → Yayınla tam akışını test et
-- [MANUAL] Müşteri → Etkinlik görüntüle → Koltuk seç → Ödeme başlat akışını test et
-- [MANUAL] QR Kod doğrulama akışını test et
-- [MANUAL] Canlı analitik dashboard'unun socket.io ile çalıştığını doğrula
-- [MANUAL] Apache Benchmark yük testi: `ab -n 1000 -c 50 https://biletapp.com/api/events`
-- [MANUAL] Lighthouse mobile skoru ≥ 80 doğrula
-- [MANUAL] Domain'in A kaydını IP adresine yönlendir
-- [MANUAL] Veritabanı seed datası çalıştırılarak (admin, vb.) test et
-- [MANUAL] İlk uçtan uca bilet alma testini gerçek ortamda gerçekleştir
-- [x] Gizlilik politikası ve kullanım şartları sayfaları oluştur
-- [x] Cookie kullanımı için consent banner ekle
-- [MANUAL] Tüm işlemler sorunsuzsa projeyi canlı ortama taşı, `ARCHIVE_ROADMAP.md`'e aktarı oluştur
-
-**✅ Tamamlanma Kriteri:** Sistem `https://biletapp.com` üzerinde tam çalışıyor.
+**Tamamlanma kriteri:** Kapasite kuralı frontendden bağımsız ve yalnızca backend tarafından uygulanır.
 
 ---
 
-## ═══ FAZ 27: React Konva Performans Optimizasyonu ═══
-**Sıra:** 9 | **Önkoşul:** Yok | **Tahmini Süre:** 2-3 saat
+# FAZ 2 — ETKİNLİK OLUŞTURMA SİHİRBAZI
 
-- [x] Çok koltuklu (1000+) salonlarda Stage ve Layer render performansını artır.
-- [x] Gereksiz render'ları önlemek için React.memo veya useMemo kullanımlarını Konva bileşenlerine uygula.
-- [x] Mümkün olan yerlerde Shape Caching (cache() metodu) kullanarak çizim yükünü hafiflet.
+**Öncelik:** P0  
+**Amaç:** Her kullanıcının birkaç dakika içinde etkinlik oluşturabilmesi.
 
-**✅ Tamamlanma Kriteri:** Büyük bir salon tasarımında (örneğin 2000 koltuklu) UI'ın donmadan çalışması ve seçimin akıcı (60fps) olması.
+## Adım 1 — Etkinlik türü
 
----
+- Doğum günü
+- Nişan
+- Düğün
+- Piknik
+- Parti
+- Toplantı
+- Mezuniyet
+- Spor etkinliği
+- Konser
+- Diğer
 
-## ═══ FAZ 28: Kritik Akışlar İçin E2E Testler ═══
-**Sıra:** 10 | **Önkoşul:** Yok 
-- [x] **Aşama 28: End-to-End (E2E) Testleri (Playwright)**  
-  - [x] Playwright kurulumu ve konfigürasyonu.  
-  - [x] Temel akışlar için E2E test senaryolarının yazılması (Bilet alma, Admin login).  
-  - [x] CI/CD pipeline'ında çalışacak şekilde test script'lerinin ayarlanması.
+## Adım 2 — Temel bilgiler
 
-**✅ Tamamlanma Kriteri:** E2E test suite'inin `npx playwright test` ile başarıyla tamamlanması.
+- Etkinlik adı
+- Açıklama
+- Kapak görseli
+- Tarih
+- Başlangıç saati
+- Bitiş saati
+- Özel veya herkese açık seçimi
 
----
+## Adım 3 — Katılım düzeni
 
-## ═══ FAZ 29: Veritabanı Sorgu Optimizasyonu (IDEA-MR8ZZB2N-XROQ) ═══
-**Sıra:** 11 | **Önkoşul:** Yok | **Tahmini Süre:** 1-2 saat
+Kullanıcı iki seçenekten birini seçer:
 
-- [x] `schema.prisma` dosyasındaki tablolar için sık sorgulanan kolonlara (ör. email, eventId) index ekle
-- [x] Backend endpoint'lerindeki N+1 sorgu problemlerini `include` kullanarak çöz
-- [x] Prisma performans optimizasyonlarını test et
+### Sandalyeli/koltuklu
 
-**✅ Tamamlanma Kriteri:** Veritabanı sorgularının hızlanması ve N+1 problemlerinin ortadan kalkması.
+- Hazır salon seçebilir.
+- Kendi salon planını oluşturabilir.
+- Masa ve sandalye ekleyebilir.
+- Sistem gerçek sandalye sayısını otomatik hesaplar.
 
----
+### Genel giriş
 
-## ═══ FAZ 30: Redis Entegrasyonu (Geçici Koltuk Kilitleri) (IDEA-REDIS-LOCKS) ═══
-**Sıra:** 12 | **Önkoşul:** FAZ 29 ✅ | **Tahmini Süre:** 1 saat
+- Katılımcı kapasitesini manuel girer.
 
-- [x] Backend `reservations.js` içine `POST /lock-seat` endpoint'i ekle
-- [x] Redis ile `NX` (Not Exists) kuralıyla 5 dakikalık PX kilidi at
-- [x] Rezervasyon tamamlanınca geçici kilidi Redis'ten sil
-- [x] Soket aracılığıyla kilitlenen koltuğu diğer kullanıcılara anlık bildir (`seat_locked`, `seat_unlocked`)
+## Adım 4 — Onay durumu gösterimi
 
-**✅ Tamamlanma Kriteri:** Aynı koltuğu iki kişinin aynı anda seçmesinin Redis lock ile %100 engellenmesi.
+Kapasite 50 veya altındaysa:
 
----
+> Etkinliğiniz yönetici onayı gerektirmiyor. Hemen yayınlayabilirsiniz.
 
-## ═══ FAZ 31: Backlog Senkronizasyonu (Tüm Kalan Fikirler) ═══
-**Sıra:** 13 | **Önkoşul:** Yok | **Tahmini Süre:** 15 dk
+Kapasite 51 veya üzerindeyse:
 
-- [x] `IDEA-RATE-LIMIT` görevi kontrol edildi (FAZ 23'te global, auth ve checkout limiter olarak uygulanmış).
-- [x] `IDEA-KONVA-OPT` görevi kontrol edildi (FAZ 27'de uygulanmış).
-- [x] `IDEA-E2E-TESTS` görevi kontrol edildi (FAZ 28'de Playwright ile uygulanmış).
-- [x] İlgili tüm maddeler `backlog.md` dosyasında tamamlandı (`[x]`) olarak işaretlendi.
+> Etkinliğiniz 50 kişiyi geçtiği için yayınlanmadan önce yönetici onayına gönderilecektir.
 
-**✅ Tamamlanma Kriteri:** `backlog.md` içindeki tüm açık görevlerin mevcut sisteme yansıması ve işaretlenmesi.
+Kullanıcıya onay şartı son adımda sürpriz olarak gösterilmez. Sandalye sayısı 51’e ulaştığı anda salon tasarım ekranında uyarı gösterilir.
 
----
+## Adım 5 — Önizleme ve yayın
 
-## 🗓️ Cron Görevi Takvimi
+- Davet sayfası önizlemesi
+- Kapasite özeti
+- Onay durumu
+- Davet bağlantısı
+- QR davetiye
+- WhatsApp paylaşımı
 
-| Sıra | Faz | Tahmini Süre | Tetikleyici |
-|------|-----|--------------|-------------|
-| 1 | FAZ 19 – Env & DB | 2-3s | Manuel başlatma |
-| 2 | FAZ 20 – PM2 | 1-2s | FAZ 19 ✅ ise oto |
-| 3 | FAZ 21 – Nginx/SSL | 1-2s | FAZ 20 ✅ ise oto |
-| 4 | FAZ 22 – Frontend | 1s | FAZ 21 ✅ ise oto |
-| 5 | FAZ 23 – Güvenlik | 2-3s | FAZ 22 ✅ ise oto |
-| 6 | FAZ 24 – Monitoring | 2-3s | FAZ 23 ✅ ise oto |
-| 7 | FAZ 25 – CI/CD | 2-4s | FAZ 24 ✅ ise oto |
-| 8 | FAZ 26 – Launch | 2-4s | FAZ 25 ✅ ise oto |
-
-**Toplam Tahmini Süre:** 13-22 saat
-
-
-
-## 🔄 Döngü Tarafından Otomatik Eklenen İşler
-
-### Döngü #1 - Zaman Damgası: 2026-07-13T12:35:17.225Z
-
-#### 1. 📱 Mobil responsive kontrolü
-- **ID:** IDEA-MRJ7GHNO-M3YK
-- **Puan:** 49/40
-- **Zorluk:** easy
-- **Açıklama:** Rezervasyon akışının mobil cihazlarda test edilmesi ve iyileştirilmesi.
+**Tamamlanma kriteri:** Kullanıcı 50 kişilik doğum gününü hiçbir admin işlemi olmadan yayınlayabilir.
 
 ---
 
-## 🔗 Dosya Referansları
+# FAZ 3 — 50 ÜZERİ ETKİNLİK ONAY AKIŞI
 
-- **[ARCHIVE_ROADMAP.md](ARCHIVE_ROADMAP.md)** — FAZ 1-18 arşivi
-- **[ERRORS.md](ERRORS.md)** — Hata logu (durdurma olmadan yazılır)
-- **[SECURITY.md](SECURITY.md)** — Güvenlik politikaları
-- **[README.md](README.md)** — Sistem özeti
+**Öncelik:** P0
+
+## Kullanıcı akışı
+
+1. Kullanıcı etkinliği oluşturur.
+2. Sistem kapasiteyi 51 veya üzeri hesaplar.
+3. Kullanıcı taslak üzerinde çalışmaya devam eder.
+4. “Onaya Gönder” butonuna basar.
+5. Etkinlik `PENDING_APPROVAL` olur.
+6. Etkinlik bilgileri onay beklerken kilitlenmez; ancak kapasite, tarih, salon veya içerik değişirse başvuru güncellenir.
+7. Admin onaylarsa etkinlik yayınlanır.
+8. Admin reddederse gerekçe kullanıcıya gösterilir.
+9. Kullanıcı düzeltip yeniden onaya gönderebilir.
+
+## Admin inceleme ekranı
+
+- Etkinlik adı
+- Etkinlik sahibi
+- Tarih ve saat
+- Mekân
+- Kapasite
+- Gerçek sandalye sayısı
+- Salon planı önizlemesi
+- Etkinlik açıklaması
+- İletişim bilgisi
+- Önceki etkinlikler
+- Şikâyet geçmişi
+- Onayla
+- Gerekçeli reddet
+- Askıya al
+
+## Durumlar
+
+```text
+DRAFT
+NOT_REQUIRED
+PENDING_APPROVAL
+APPROVED
+REJECTED
+SUSPENDED
+CANCELLED
+COMPLETED
+```
+
+**Tamamlanma kriteri:** 51 kişilik etkinlik onaysız yayınlanamaz; 50 kişilik etkinlik onaya düşmez.
+
+---
+
+# FAZ 4 — DAVET VE KATILIM YÖNETİMİ
+
+**Öncelik:** P0
+
+- [ ] Özel davet bağlantısı oluştur.
+- [ ] QR davetiye oluştur.
+- [ ] WhatsApp paylaşım metni oluştur.
+- [ ] `Katılıyorum`, `Katılamıyorum`, `Kararsızım` cevaplarını ekle.
+- [ ] Yanında getirilecek kişi sayısını destekle.
+- [ ] Çocuk katılım sayısını destekle.
+- [ ] Katılımcı notlarını destekle.
+- [ ] Organizatöre toplam katılımcı sayısını göster.
+- [ ] Onaylanan kişi sayısının kapasiteyi geçmesini engelle.
+- [ ] Kapasite dolunca bekleme listesi aç.
+- [ ] Davet bağlantısını yenileme özelliği ekle.
+- [ ] Adresi yalnızca katılımı kabul edenlere gösterme seçeneği ekle.
+
+**Tamamlanma kriteri:** Kullanıcı doğum gününü WhatsApp yerine App Bilet üzerinden düzenli biçimde yönetebilir.
+
+---
+
+# FAZ 5 — KULLANICI ETKİNLİK PANELİ
+
+**Öncelik:** P1
+
+Her kullanıcının panelinde şunlar bulunmalıdır:
+
+- Etkinliklerim
+- Yeni etkinlik oluştur
+- Taslaklar
+- Onay bekleyenler
+- Yayındaki etkinlikler
+- Geçmiş etkinlikler
+- Katılımcılar
+- Davet bağlantıları
+- QR giriş
+- Duyurular
+- Salonlarım
+- İstatistikler
+
+Bu panel “admin paneli” olarak adlandırılmamalıdır. Kullanıcının kendi organizasyon alanı olmalıdır.
+
+**Tamamlanma kriteri:** Kullanıcı yalnızca kendi etkinliklerini tek panelden yönetebilir.
+
+---
+
+# FAZ 6 — QR GİRİŞ VE KAPI KONTROLÜ
+
+**Öncelik:** P1
+
+- [ ] Her katılımcıya benzersiz QR kod üret.
+- [ ] QR kodu yalnızca etkinlik sahibi veya onun yetkilendirdiği görevli okutabilsin.
+- [ ] Görevli yetkilendirme modeli ekle.
+- [ ] Aynı QR kodun ikinci kullanımını atomik olarak engelle.
+- [ ] Yanlış etkinliğe ait QR kodu reddet.
+- [ ] Manuel isim arama ve giriş desteği ekle.
+- [ ] Offline giriş listesi ve sonradan eşitleme ekle.
+- [ ] Eşitleme çakışmalarını denetim kaydına yaz.
+
+**Tamamlanma kriteri:** Etkinlik sahibi telefonuyla kendi etkinliğinin girişini güvenilir şekilde yönetebilir.
+
+---
+
+# FAZ 7 — BİLDİRİM VE HATIRLATMA
+
+**Öncelik:** P1
+
+- [ ] Davet gönderildi bildirimi
+- [ ] Katılım cevabı değişti bildirimi
+- [ ] Etkinliğe 24 saat kaldı bildirimi
+- [ ] Etkinliğe 2 saat kaldı bildirimi
+- [ ] Etkinlik bilgileri değişti bildirimi
+- [ ] Etkinlik iptal edildi bildirimi
+- [ ] 50 kişi sınırına yaklaşıldı uyarısı
+- [ ] 50 kişi aşıldı ve onay gerekiyor bildirimi
+- [ ] Onaylandı bildirimi
+- [ ] Reddedildi ve gerekçe bildirimi
+
+Bildirimler uygulama içi ve e-posta ile başlamalı; SMS daha sonra ücretli özellik olabilir.
+
+---
+
+# FAZ 8 — ŞİKÂYET, DENETİM VE GÜVEN
+
+**Öncelik:** P1
+
+50 kişi altındaki etkinlikler onaysız olsa da platform denetimsiz değildir.
+
+- [ ] Etkinliği şikâyet et butonu ekle.
+- [ ] Şikâyet kategorileri ekle.
+- [ ] Etkinliği askıya alma özelliği ekle.
+- [ ] Kullanıcıya itiraz hakkı ekle.
+- [ ] Yasaklı içerik ve bağlantı kontrolü ekle.
+- [ ] Seri etkinlik ve spam sınırları ekle.
+- [ ] Bütün admin müdahalelerini audit loga yaz.
+- [ ] Özel etkinlikleri arama motorlarından gizle.
+- [ ] Davet bağlantısı tahmin edilemez ve yenilenebilir olsun.
+
+---
+
+# FAZ 9 — BETA TESTİ
+
+**Öncelik:** P0
+
+## Test senaryoları
+
+1. Kullanıcı 20 kişilik doğum günü oluşturur ve doğrudan yayınlar.
+2. Kullanıcı 50 sandalyeli salon oluşturur ve doğrudan yayınlar.
+3. Kullanıcı 51. sandalyeyi eklediğinde anında onay uyarısı görür.
+4. 51 kişilik etkinlik yayınlanamaz ve onaya gönderilir.
+5. Admin etkinliği onaylar ve yayın açılır.
+6. Admin etkinliği gerekçeli reddeder; kullanıcı düzenleyip yeniden gönderir.
+7. 40 kişilik yayınlanmış etkinlik 70 kişiye çıkarıldığında satış/davet kabulü durur ve onaya düşer.
+8. Kullanıcı başka kullanıcının etkinliğine erişemez.
+9. Etkinlik sahibi QR giriş yapabilir; başka kullanıcı yapamaz.
+10. Aynı QR kod ikinci kez kullanılamaz.
+
+## Başarı ölçütleri
+
+- Etkinlik oluşturma süresi 3 dakikanın altında
+- 50 kişi altındaki etkinliklerde admin müdahalesi sıfır
+- 50 üzeri etkinliklerde onaysız yayın oranı sıfır
+- Kullanıcılar arası veri sızıntısı sıfır
+- Kritik ödeme ve auth açığı sıfır
+- Mobil oluşturma tamamlama oranı en az %65
+
+---
+
+# FAZ 10 — GELİR MODELİ
+
+İlk sürümde 50 kişiye kadar etkinlik oluşturma ücretsizdir.
+
+## Ücretsiz
+
+- 50 kişiye kadar etkinlik
+- Etkinlik oluşturma
+- Davet bağlantısı
+- RSVP
+- QR davetiye
+- Temel giriş kontrolü
+- Temel katılımcı raporu
+
+## Plus
+
+- Premium davetiye temaları
+- Fotoğraf albümü
+- Gelişmiş hatırlatma
+- SMS gönderimi
+- Masa planı çıktısı
+- Gelişmiş rapor
+- Özel bağlantı adı
+- Reklamsız etkinlik sayfası
+
+## Büyük etkinlik
+
+- 50 kişi üzeri kapasite
+- Yönetici onayı
+- Profesyonel salon araçları
+- Ücretli bilet ve gerçek ödeme altyapısı
+- İade ve finansal raporlama
+- Platform komisyonu veya etkinlik başına ücret
+
+Not: 50 üzeri etkinliğin onaya tabi olması, mutlaka ücretli olması anlamına gelmez. Onay ve ücretlendirme birbirinden ayrı kavramlardır.
+
+---
+
+# UYGULAMA SIRASI
+
+| Sıra | Faz | Öncelik |
+|---:|---|---|
+| 1 | Kritik güvenlik ve izolasyon | P0 |
+| 2 | Sahiplik ve onay veri modeli | P0 |
+| 3 | Etkinlik oluşturma sihirbazı | P0 |
+| 4 | 50 üzeri onay akışı | P0 |
+| 5 | Davet ve katılım yönetimi | P0 |
+| 6 | Kullanıcı etkinlik paneli | P1 |
+| 7 | QR giriş | P1 |
+| 8 | Bildirimler | P1 |
+| 9 | Şikâyet ve denetim | P1 |
+| 10 | Beta testi | P0 |
+| 11 | Gelir modeli ve büyük etkinlikler | P2 |
+
+---
+
+# İLK BETA YAYIN TANIMI
+
+App Bilet Beta aşağıdakiler tamamlandığında yayınlanabilir:
+
+- Her kullanıcı etkinlik oluşturabiliyor.
+- Her kullanıcı kendi etkinliğinin organizatörü olabiliyor.
+- 50 kişi ve altındaki etkinlikler otomatik yayınlanabiliyor.
+- 51 kişi ve üzerindeki etkinlikler onaya düşüyor.
+- Gerçek sandalye sayısı backend tarafından hesaplanıyor.
+- Kullanıcı yalnızca kendi etkinlik ve katılımcı verilerini görebiliyor.
+- Davet bağlantısı, RSVP ve QR giriş çalışıyor.
+- Admin onay ve ret ekranı çalışıyor.
+- Sahte ödeme ve test auth açıkları production ortamında kapalı.
+- PostgreSQL, CI ve uçtan uca testler gerçek ortamda başarılı.
+
+---
+
+# SON ÜRÜN CÜMLESİ
+
+> App Bilet’te herkes kendi etkinliğinin organizatörüdür. 50 kişiye kadar doğrudan yayınlar; 50 kişiyi aşan etkinlikler güvenlik ve operasyon kontrolü için onaya gönderilir.
