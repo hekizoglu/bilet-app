@@ -93,6 +93,7 @@ model Event {
   waitlists    Waitlist[]
   staff        EventStaff[]
   auditLogs    AuditLog[]
+  reports      Report[]
   createdAt    DateTime      @default(now())
 
   @@index([hallId])
@@ -228,5 +229,20 @@ model Notification {
 
   @@index([userId])
   @@index([isRead])
+  @@index([createdAt])
+}
+
+model Report {
+  id          String   @id @default(uuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id])
+  reporterId  String?
+  category    String
+  description String?
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now())
+
+  @@index([eventId])
+  @@index([status])
   @@index([createdAt])
 }

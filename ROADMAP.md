@@ -411,15 +411,15 @@ Bildirimler uygulama içi ve e-posta ile başlamalı; SMS daha sonra ücretli ö
 
 50 kişi altındaki etkinlikler onaysız olsa da platform denetimsiz değildir.
 
-- [ ] Etkinliği şikâyet et butonu ekle.
-- [ ] Şikâyet kategorileri ekle.
-- [ ] Etkinliği askıya alma özelliği ekle.
-- [ ] Kullanıcıya itiraz hakkı ekle.
-- [ ] Yasaklı içerik ve bağlantı kontrolü ekle.
-- [ ] Seri etkinlik ve spam sınırları ekle.
-- [ ] Bütün admin müdahalelerini audit loga yaz.
-- [ ] Özel etkinlikleri arama motorlarından gizle.
-- [ ] Davet bağlantısı tahmin edilemez ve yenilenebilir olsun.
+- [x] Etkinliği şikâyet et butonu ekle.
+- [x] Şikâyet kategorileri ekle.
+- [x] Etkinliği askıya alma özelliği ekle.
+- [x] Kullanıcıya itiraz hakkı ekle.
+- [x] Yasaklı içerik ve bağlantı kontrolü ekle.
+- [x] Seri etkinlik ve spam sınırları ekle.
+- [x] Bütün admin müdahalelerini audit loga yaz.
+- [x] Özel etkinlikleri arama motorlarından gizle.
+- [x] Davet bağlantısı tahmin edilemez ve yenilenebilir olsun.
 
 ---
 

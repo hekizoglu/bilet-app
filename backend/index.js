@@ -182,6 +182,7 @@ app.use('/api/payments', require('./routes/payments'));
 app.use('/api/coupons', require('./routes/coupons'));
 app.use('/api/telegram', require('./routes/telegram'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/reports', require('./routes/reports'));
 
 const feedbackLimiter = createRateLimiter({
   windowMs: 60 * 60 * 1000, // 1 saat

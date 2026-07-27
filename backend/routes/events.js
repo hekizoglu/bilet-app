@@ -1,3 +1,4 @@
+ï»¿const { createNotification } = require('../services/notificationService');
 const express = require('express');
 const router = express.Router();
 const prisma = require('../prisma');
@@ -361,11 +362,11 @@ router.post('/:id/staff', requireAuth, async (req, res) => {
     const { email, role } = req.body;
     const event = await prisma.event.findUnique({ where: { id: req.params.id } });
     if (!event || event.organizerId !== req.user.id) {
-      return res.status(403).json({ error: "Yetkisiz iþlem." });
+      return res.status(403).json({ error: "Yetkisiz iï¿½lem." });
     }
     const staffUser = await prisma.user.findUnique({ where: { email } });
     if (!staffUser) {
-      return res.status(404).json({ error: "Kullanýcý bulunamadý." });
+      return res.status(404).json({ error: "Kullanï¿½cï¿½ bulunamadï¿½." });
     }
     const staff = await prisma.eventStaff.create({
       data: {
@@ -377,7 +378,7 @@ router.post('/:id/staff', requireAuth, async (req, res) => {
     });
     res.json({ success: true, staff });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatasý veya kullanýcý zaten ekli." });
+    res.status(500).json({ error: "Sunucu hatasï¿½ veya kullanï¿½cï¿½ zaten ekli." });
   }
 });
 
@@ -385,7 +386,7 @@ router.delete('/:id/staff/:userId', requireAuth, async (req, res) => {
   try {
     const event = await prisma.event.findUnique({ where: { id: req.params.id } });
     if (!event || event.organizerId !== req.user.id) {
-      return res.status(403).json({ error: "Yetkisiz iþlem." });
+      return res.status(403).json({ error: "Yetkisiz iï¿½lem." });
     }
     await prisma.eventStaff.deleteMany({
       where: {
@@ -395,7 +396,7 @@ router.delete('/:id/staff/:userId', requireAuth, async (req, res) => {
     });
     res.json({ success: true });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatasý." });
+    res.status(500).json({ error: "Sunucu hatasï¿½." });
   }
 });
 
@@ -403,7 +404,7 @@ router.get('/:id/staff', requireAuth, async (req, res) => {
   try {
     const event = await prisma.event.findUnique({ where: { id: req.params.id } });
     if (!event || event.organizerId !== req.user.id) {
-      return res.status(403).json({ error: "Yetkisiz iþlem." });
+      return res.status(403).json({ error: "Yetkisiz iï¿½lem." });
     }
     const staff = await prisma.eventStaff.findMany({
       where: { eventId: req.params.id },
@@ -411,7 +412,7 @@ router.get('/:id/staff', requireAuth, async (req, res) => {
     });
     res.json({ success: true, staff });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatasý." });
+    res.status(500).json({ error: "Sunucu hatasï¿½." });
   }
 });
 
@@ -421,19 +422,19 @@ router.get('/:id/attendees', requireAuth, async (req, res) => {
       where: { id: req.params.id },
       include: { staff: true }
     });
-    if (!event) return res.status(404).json({ error: "Etkinlik bulunamadý." });
+    if (!event) return res.status(404).json({ error: "Etkinlik bulunamadï¿½." });
 
     const isStaff = event.staff.some(s => s.userId === req.user.id);
     if (event.organizerId !== req.user.id && !isStaff && req.user.role !== 'ADMIN') {
-      return res.status(403).json({ error: "Yetkisiz iþlem." });
+      return res.status(403).json({ error: "Yetkisiz iï¿½lem." });
     }
 
     const attendees = await prisma.reservation.findMany({
-      where: { eventId: req.params.id, status: 'Onaylandý' }
+      where: { eventId: req.params.id, status: 'Onaylandï¿½' }
     });
     res.json({ success: true, attendees });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatasý." });
+    res.status(500).json({ error: "Sunucu hatasï¿½." });
   }
 });
 
