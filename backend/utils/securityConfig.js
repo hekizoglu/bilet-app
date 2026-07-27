@@ -17,7 +17,9 @@ function getJwtSecret() {
 }
 
 function isLocalAuthEnabled() {
-  return process.env.NODE_ENV !== 'production' && process.env.ENABLE_LOCAL_AUTH === 'true';
+  if (process.env.ENABLE_LOCAL_AUTH === 'true') return true;
+  if (process.env.ENABLE_LOCAL_AUTH === 'false') return false;
+  return process.env.NODE_ENV !== 'production';
 }
 
 module.exports = {
