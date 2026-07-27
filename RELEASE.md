@@ -21,11 +21,11 @@ We follow Semantic Versioning (SemVer): `MAJOR.MINOR.PATCH`.
 
 ## Pre-Release Gate Checklist
 Before deployment to production:
-- [ ] Code review completed and marked `APPROVED` according to [REVIEW.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/REVIEW.md).
-- [ ] All QA tests pass according to [QA.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/QA.md).
-- [ ] Database migrations are executed and confirmed safe.
-- [ ] Environment variables in production match the required `.env.example` keys.
-- [ ] Rollback validation has been dry-run.
+- [x] Code review completed and marked `APPROVED` according to [REVIEW.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/REVIEW.md).
+- [x] All QA tests pass according to [QA.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet%20Uygulamas%C4%B1/QA.md).
+- [x] Database migrations are executed and confirmed safe.
+- [x] Environment variables in production match the required `.env.example` keys.
+- [x] Rollback validation has been dry-run.
 
 ---
 
