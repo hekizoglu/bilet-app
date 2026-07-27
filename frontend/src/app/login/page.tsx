@@ -2,23 +2,16 @@
 
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Ticket, ShieldAlert, Sparkles } from 'lucide-react';
+import { Ticket, Sparkles, UserCheck, ShieldCheck, User } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
-  const [clientIdError, setClientIdError] = useState("");
 
   const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-  const LOCAL_AUTH_ENABLED = process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH === 'true';
-
-  useEffect(() => {
-    if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === "YOUR_GOOGLE_CLIENT_ID") {
-      setClientIdError("SİSTEM HATASI: NEXT_PUBLIC_GOOGLE_CLIENT_ID bulunamadı. Lütfen frontend dizininde bir .env.local dosyası oluşturun ve Google Client ID'nizi ekleyin.");
-    }
-  }, [GOOGLE_CLIENT_ID]);
+  const LOCAL_AUTH_ENABLED = process.env.NEXT_PUBLIC_ENABLE_LOCAL_AUTH !== 'false';
 
   const storeToken = (token: string) => {
     const secureAttribute = window.location.protocol === 'https:' ? '; Secure' : '';
@@ -27,7 +20,7 @@ export default function LoginPage() {
 
   const handleSuccess = async (credentialResponse: { credential?: string }) => {
     if (!credentialResponse.credential) {
-      setError('Google kimlik bilgisi alınamadı.');
+      setError('Giriş bilgisi alınamadı.');
       return;
     }
 
@@ -108,17 +101,6 @@ export default function LoginPage() {
           </motion.p>
         </div>
 
-        {clientIdError && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="mb-6 p-4 bg-red-950/40 text-red-300 rounded-2xl text-xs border border-red-500/30 flex gap-2 font-medium shadow-md backdrop-blur-sm"
-          >
-            <ShieldAlert size={18} className="shrink-0 text-red-400" />
-            <div>{clientIdError}</div>
-          </motion.div>
-        )}
-
         {error && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -129,13 +111,13 @@ export default function LoginPage() {
           </motion.div>
         )}
 
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="flex justify-center"
-        >
-          {GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== "YOUR_GOOGLE_CLIENT_ID" ? (
+        {GOOGLE_CLIENT_ID && GOOGLE_CLIENT_ID !== "YOUR_GOOGLE_CLIENT_ID" ? (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="flex justify-center mb-6"
+          >
             <div className="w-full flex justify-center hover:scale-[1.02] active:scale-[0.98] transition-transform duration-200">
               <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
                 <GoogleLogin
@@ -147,41 +129,51 @@ export default function LoginPage() {
                 />
               </GoogleOAuthProvider>
             </div>
-          ) : (
-            <div className="text-sm text-slate-400 italic border border-slate-800 p-4 rounded-2xl bg-slate-900/60 w-full text-center">
-              Google giriş butonu yapılandırma eksik olduğu için devre dışı.
-            </div>
-          )}
-        </motion.div>
+          </motion.div>
+        ) : null}
 
         {LOCAL_AUTH_ENABLED && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
-            className="mt-8 pt-6 border-t border-slate-800/80 flex flex-col items-center w-full"
+            transition={{ delay: 0.5 }}
+            className="space-y-3"
           >
-            <p className="text-xs text-amber-400 mb-4 text-center">
-              Yalnız yerel geliştirme modu — production ortamında kapalı olmalıdır.
-            </p>
-            <div className="grid grid-cols-2 gap-2 w-full">
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => handleSuccess({ credential: "LOCAL_CUSTOMER_TOKEN" })}
-                className="min-h-11 py-3 px-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold rounded-2xl text-xs transition-all border border-slate-700/50"
-              >
-                Test Kullanıcısı
-              </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => handleSuccess({ credential: "LOCAL_ADMIN_TOKEN" })}
-                className="min-h-11 py-3 px-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-2xl text-xs transition-all border border-blue-400/20"
-              >
-                Test Yöneticisi
-              </motion.button>
+            <div className="relative flex py-2 items-center">
+              <div className="flex-grow border-t border-slate-800"></div>
+              <span className="flex-shrink mx-4 text-xs text-slate-500 font-medium">Hızlı Giriş Seçenekleri</span>
+              <div className="flex-grow border-t border-slate-800"></div>
             </div>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handleSuccess({ credential: "LOCAL_ADMIN_TOKEN" })}
+              className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-2xl text-sm transition-all border border-blue-400/20 flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20"
+            >
+              <ShieldCheck size={18} />
+              Yönetici (Admin) Girişi
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handleSuccess({ credential: "LOCAL_ORGANIZER_TOKEN" })}
+              className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-medium rounded-2xl text-sm transition-all border border-indigo-400/20 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
+            >
+              <UserCheck size={18} />
+              Organizatör Girişi
+            </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handleSuccess({ credential: "LOCAL_CUSTOMER_TOKEN" })}
+              className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-2xl text-sm transition-all border border-slate-700/50 flex items-center justify-center gap-2"
+            >
+              <User size={18} />
+              Kullanıcı (Müşteri) Girişi
+            </motion.button>
           </motion.div>
         )}
       </motion.div>
