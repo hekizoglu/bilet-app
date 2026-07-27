@@ -377,6 +377,18 @@ export default function EventsPage() {
                     <button 
                       onClick={() => {
                         const link = event.visibility === 'PRIVATE' ? event.privateSlug : event.id;
+                        const url = `${window.location.origin}/event/${link}`;
+                        const text = `Seni etkinliğime davet ediyorum: ${event.name}\n\nKatılım durumu bildirmek için tıkla: ${url}`;
+                        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                      }}
+                      className="text-sm px-3 py-1.5 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800 font-medium rounded transition"
+                      title="WhatsApp'ta Paylaş"
+                    >
+                      WhatsApp
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const link = event.visibility === 'PRIVATE' ? event.privateSlug : event.id;
                         navigator.clipboard.writeText(`${window.location.origin}/event/${link}`);
                         alert('Etkinlik linki kopyalandı! Müşterilerinize gönderebilirsiniz.');
                       }}

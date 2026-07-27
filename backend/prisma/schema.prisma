@@ -121,6 +121,13 @@ model Reservation {
   isUsed           Boolean   @default(false)
   usedAt           DateTime?
   expiresAt        DateTime?
+  
+  // RSVP Özellikleri
+  rsvpStatus       String?   // "ATTENDING", "NOT_ATTENDING", "MAYBE"
+  guestCount       Int       @default(0)
+  childCount       Int       @default(0)
+  notes            String?
+
   createdAt        DateTime  @default(now())
 
   @@index([eventId])

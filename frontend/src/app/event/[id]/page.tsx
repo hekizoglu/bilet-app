@@ -25,6 +25,13 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     couponCode: '',
     usePoints: false
   });
+  
+  const [rsvpData, setRsvpData] = useState({
+    status: 'ATTENDING',
+    guestCount: 0,
+    childCount: 0,
+    notes: ''
+  });
   const [userPoints, setUserPoints] = useState<number>(0);
   const [discount, setDiscount] = useState<{type: string, value: number} | null>(null);
   const [selectionMode, setSelectionMode] = useState<'list' | 'map'>('list');
@@ -128,7 +135,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
-    if (data.isSeated && !form.seatId) {
+    if (data.isSeated && !form.seatId && data.paymentType !== 'free') {
       toast.error("Lütfen bir koltuk seçin.");
       return;
     }
@@ -136,35 +143,64 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      const payload: any = {
-        eventIdOrSlug: id,
-        customer: form.name,
-        email: form.email,
-        phone: form.phone,
-        couponCode: form.couponCode || undefined,
-        usePoints: form.usePoints,
-        socketId: socketInstance ? socketInstance.id : undefined
-      };
-      if (data.isSeated) {
-        payload.seatId = form.seatId;
-      }
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        const result = await res.json();
-        // EĞER ÖDEMELİ İSE DOĞRUDAN MOBİL ÖDEME SAYFASINA YÖNLENDİR
-        if (data.paymentType && data.paymentType !== 'free') {
-          router.push(`/payment/mobile?id=${result.reservation.id}`);
-        } else {
+      if (data.paymentType === 'free') {
+        const payload: any = {
+          eventId: data.eventId,
+          customer: form.name,
+          email: form.email,
+          phone: form.phone,
+          rsvpStatus: rsvpData.status,
+          guestCount: rsvpData.guestCount,
+          childCount: rsvpData.childCount,
+          notes: rsvpData.notes
+        };
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/rsvp`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const result = await res.json();
           setReservationSuccess(result.reservation);
+        } else {
+          const err = await res.json();
+          if (err.requiresWaitlist) {
+            toast.error(err.error);
+            // Optionally redirect to waitlist or show waitlist button
+          } else {
+            toast.error(`Hata: ${err.error || 'Bilinmeyen hata'}`);
+          }
         }
-      }
-      else {
-        const err = await res.json();
-        toast.error(`Hata: ${err.error || 'Bilinmeyen hata'}`);
+      } else {
+        const payload: any = {
+          eventIdOrSlug: id,
+          customer: form.name,
+          email: form.email,
+          phone: form.phone,
+          couponCode: form.couponCode || undefined,
+          usePoints: form.usePoints,
+          socketId: socketInstance ? socketInstance.id : undefined
+        };
+        if (data.isSeated) {
+          payload.seatId = form.seatId;
+        }
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+          const result = await res.json();
+          if (data.paymentType && data.paymentType !== 'free') {
+            router.push(`/payment/mobile?id=${result.reservation.id}`);
+          } else {
+            setReservationSuccess(result.reservation);
+          }
+        }
+        else {
+          const err = await res.json();
+          toast.error(`Hata: ${err.error || 'Bilinmeyen hata'}`);
+        }
       }
     } catch (err) {
       toast.error("Bağlantı hatası");
@@ -237,9 +273,16 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
           <h1 className="text-3xl font-bold mb-4">Rezervasyon Başarılı!</h1>
           <p className="text-lg mb-6">Bilet talebiniz alınmıştır.</p>
           
-          {(reservationSuccess.mailSent === 'queued' || reservationSuccess.mailSent === false) && (
+          {(reservationSuccess.mailSent === 'queued' || reservationSuccess.mailSent === false) && data.paymentType !== 'free' && (
             <div className="bg-orange-50 border border-orange-200 text-orange-800 p-4 rounded-xl text-sm mb-6 text-left">
               <strong>🔔 Bilgilendirme:</strong> Biletiniz başarıyla sistemimize kaydedildi. E-posta sistemindeki yoğunluk nedeniyle e-bilet gönderiminiz arka planda işlenmektedir (Lütfen daha sonra Spam klasörünüzü de kontrol edin). Biletinize anında <strong>"Biletlerim"</strong> sekmesinden ulaşabilirsiniz.
+            </div>
+          )}
+
+          {data.paymentType === 'free' && reservationSuccess.rsvpStatus === 'ATTENDING' && data.address && (
+            <div className="bg-white p-6 rounded-xl border border-gray-200 mt-6 text-left shadow-sm">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">📍 Etkinlik Adresi</h2>
+              <p className="text-gray-700 whitespace-pre-line">{data.address}</p>
             </div>
           )}
 
@@ -571,7 +614,44 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                      onChange={e => setForm({...form, phone: e.target.value})} />
             </div>
 
-            {/* Fiyat Özeti ve İndirimler */}
+            {/* RSVP Alanları */}
+            {data.paymentType === 'free' ? (
+              <div className="border-t border-gray-100 pt-4 mt-4 space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Katılım Durumunuz</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button type="button" onClick={() => setRsvpData({...rsvpData, status: 'ATTENDING'})} className={`py-2 px-3 rounded-lg text-sm font-semibold border transition-all ${rsvpData.status === 'ATTENDING' ? 'bg-green-600 text-white border-green-700' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Katılıyorum</button>
+                    <button type="button" onClick={() => setRsvpData({...rsvpData, status: 'NOT_ATTENDING'})} className={`py-2 px-3 rounded-lg text-sm font-semibold border transition-all ${rsvpData.status === 'NOT_ATTENDING' ? 'bg-red-600 text-white border-red-700' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Katılamıyorum</button>
+                    <button type="button" onClick={() => setRsvpData({...rsvpData, status: 'MAYBE'})} className={`py-2 px-3 rounded-lg text-sm font-semibold border transition-all ${rsvpData.status === 'MAYBE' ? 'bg-yellow-500 text-white border-yellow-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Kararsızım</button>
+                  </div>
+                </div>
+
+                {rsvpData.status === 'ATTENDING' && (
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Yanınızda Getireceğiniz Yetişkin Sayısı</label>
+                      <input type="number" min="0" max="10" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                             value={rsvpData.guestCount}
+                             onChange={e => setRsvpData({...rsvpData, guestCount: parseInt(e.target.value) || 0})} />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Çocuk Sayısı</label>
+                      <input type="number" min="0" max="10" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                             value={rsvpData.childCount}
+                             onChange={e => setRsvpData({...rsvpData, childCount: parseInt(e.target.value) || 0})} />
+                    </div>
+                  </div>
+                )}
+                
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Notunuz (İsteğe bağlı)</label>
+                  <textarea className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm resize-none" rows={2}
+                            placeholder="Örn: Yemekte alerjim var..."
+                            value={rsvpData.notes}
+                            onChange={e => setRsvpData({...rsvpData, notes: e.target.value})}></textarea>
+                </div>
+              </div>
+            ) : (
             <div className="border-t border-gray-100 pt-4 mt-4">
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">İndirim Kuponu</label>
               <div className="flex gap-2 items-center mb-3">
@@ -651,6 +731,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                 </span>
               </div>
             </div>
+            )}
             <button 
               type="submit" 
               disabled={isSubmitting}
@@ -662,7 +743,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                   İşleniyor...
                 </>
               ) : (
-                'Rezervasyonu Tamamla'
+                data.paymentType === 'free' ? 'Katılım Durumunu Bildir' : 'Rezervasyonu Tamamla'
               )}
             </button>
           </form>

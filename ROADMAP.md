@@ -323,18 +323,18 @@ COMPLETED
 
 **Öncelik:** P0
 
-- [ ] Özel davet bağlantısı oluştur.
-- [ ] QR davetiye oluştur.
-- [ ] WhatsApp paylaşım metni oluştur.
-- [ ] `Katılıyorum`, `Katılamıyorum`, `Kararsızım` cevaplarını ekle.
-- [ ] Yanında getirilecek kişi sayısını destekle.
-- [ ] Çocuk katılım sayısını destekle.
-- [ ] Katılımcı notlarını destekle.
-- [ ] Organizatöre toplam katılımcı sayısını göster.
-- [ ] Onaylanan kişi sayısının kapasiteyi geçmesini engelle.
-- [ ] Kapasite dolunca bekleme listesi aç.
-- [ ] Davet bağlantısını yenileme özelliği ekle.
-- [ ] Adresi yalnızca katılımı kabul edenlere gösterme seçeneği ekle.
+- [x] Özel davet bağlantısı oluştur.
+- [x] QR davetiye oluştur.
+- [x] WhatsApp paylaşım metni oluştur.
+- [x] `Katılıyorum`, `Katılamıyorum`, `Kararsızım` cevaplarını ekle.
+- [x] Yanında getirilecek kişi sayısını destekle.
+- [x] Çocuk katılım sayısını destekle.
+- [x] Katılımcı notlarını destekle.
+- [x] Organizatöre toplam katılımcı sayısını göster.
+- [x] Onaylanan kişi sayısının kapasiteyi geçmesini engelle.
+- [x] Kapasite dolunca bekleme listesi aç.
+- [x] Davet bağlantısını yenileme özelliği ekle.
+- [x] Adresi yalnızca katılımı kabul edenlere gösterme seçeneği ekle.
 
 **Tamamlanma kriteri:** Kullanıcı doğum gününü WhatsApp yerine App Bilet üzerinden düzenli biçimde yönetebilir.
 

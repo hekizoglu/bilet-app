@@ -1388,4 +1388,77 @@ router.post('/bulk-checkin', requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/reservations/rsvp - Davet ve Katılım Yönetimi
+router.post('/rsvp', async (req, res) => {
+  try {
+    const { eventId, customer, email, phone, rsvpStatus, guestCount = 0, childCount = 0, notes } = req.body;
+    
+    if (!eventId || !customer || !email || !rsvpStatus) {
+      return res.status(400).json({ error: "Eksik bilgi girdiniz." });
+    }
+
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!event) {
+      return res.status(404).json({ error: "Etkinlik bulunamadı." });
+    }
+
+    let status = "Onaylı"; // Ücretsiz RSVP için varsayılan onaylı
+    const gCount = parseInt(guestCount) || 0;
+    const cCount = parseInt(childCount) || 0;
+    const totalRequested = 1 + gCount + cCount;
+
+    if (rsvpStatus === 'ATTENDING' && event.effectiveCapacity > 0) {
+      // Mevcut katılımcıları hesapla
+      const reservations = await prisma.reservation.findMany({
+        where: { eventId, status: 'Onaylı', rsvpStatus: 'ATTENDING' }
+      });
+      
+      let currentAttendees = 0;
+      for (const r of reservations) {
+        currentAttendees += 1 + (r.guestCount || 0) + (r.childCount || 0);
+      }
+
+      if (currentAttendees + totalRequested > event.effectiveCapacity) {
+        return res.status(400).json({ 
+          error: "Kapasite dolu. Bekleme listesine katılabilirsiniz.", 
+          requiresWaitlist: true 
+        });
+      }
+    }
+
+    // Aynı e-posta ile daha önce RSVP yapmış mı? Güncelleyebiliriz.
+    const existing = await prisma.reservation.findFirst({
+      where: { eventId, email }
+    });
+
+    let reservation;
+    if (existing) {
+      reservation = await prisma.reservation.update({
+        where: { id: existing.id },
+        data: { customer, phone, rsvpStatus, guestCount: gCount, childCount: cCount, notes, status: rsvpStatus === 'ATTENDING' ? 'Onaylı' : 'Beklemede' }
+      });
+    } else {
+      reservation = await prisma.reservation.create({
+        data: {
+          eventId,
+          customer,
+          email,
+          phone,
+          rsvpStatus,
+          guestCount: gCount,
+          childCount: cCount,
+          notes,
+          status: rsvpStatus === 'ATTENDING' ? 'Onaylı' : 'Beklemede',
+          paymentStatus: 'free',
+          ticketCode: require('crypto').randomUUID()
+        }
+      });
+    }
+
+    res.json({ success: true, message: "Katılım durumunuz kaydedildi.", reservation });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+  }
+});
+
 module.exports = router;
