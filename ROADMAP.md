@@ -118,22 +118,22 @@ Bu kontrol etkinlik, salon, rezervasyon, katılımcı, rapor, kupon, QR ve ödem
 **Öncelik:** P0  
 **Amaç:** Yeni özellik eklemeden önce mevcut güvenlik açıklarını kapatmak.
 
-- [ ] Production ortamında bütün `LOCAL_*` test tokenlarını devre dışı bırak.
-- [ ] Kullanıcının kendisini genel `ORGANIZER` rolüne yükselttiği endpointi kaldır veya yeni sahiplik modeline göre değiştir.
-- [ ] JWT içine `userId`, `email`, `role` ve `tokenVersion` ekle.
-- [ ] JWT üretimini tek bir auth servisinde birleştir.
-- [ ] Bütün etkinlik sorgularına `ownerId` filtresi ekle.
-- [ ] Bütün salon sorgularına sahiplik kontrolü ekle.
-- [ ] Bütün rezervasyon ve rapor sorgularını etkinlik sahibi ile sınırla.
-- [ ] Organizatörün başka kullanıcıların rezervasyonlarını onaylamasını engelle.
-- [ ] Organizatörün başka etkinliğe ait QR bileti okutmasını engelle.
-- [ ] Production ortamında sahte kredi kartı ödeme endpointini kapat.
-- [ ] İmzasız banka webhook endpointini kapat.
-- [ ] Kod içine gömülmüş SMTP bilgilerini kaldır ve secretları yenile.
-- [ ] Ortak Prisma istemcisini istek içinde kapatan `$disconnect()` çağrılarını kaldır.
-- [ ] Prisma production şemasını PostgreSQL üzerinde doğrula.
-- [ ] Frontend API URL yapısını tek standarda geçir.
-- [ ] Production ortamında debug endpointlerini kapat.
+- [x] Production ortamında bütün `LOCAL_*` test tokenlarını devre dışı bırak.
+- [x] Kullanıcının kendisini genel `ORGANIZER` rolüne yükselttiği endpointi kaldır veya yeni sahiplik modeline göre değiştir.
+- [x] JWT içine `userId`, `email`, `role` ve `tokenVersion` ekle.
+- [x] JWT üretimini tek bir auth servisinde birleştir.
+- [x] Bütün etkinlik sorgularına `ownerId` filtresi ekle.
+- [x] Bütün salon sorgularına sahiplik kontrolü ekle.
+- [x] Bütün rezervasyon ve rapor sorgularını etkinlik sahibi ile sınırla.
+- [x] Organizatörün başka kullanıcıların rezervasyonlarını onaylamasını engelle.
+- [x] Organizatörün başka etkinliğe ait QR bileti okutmasını engelle.
+- [x] Production ortamında sahte kredi kartı ödeme endpointini kapat.
+- [x] İmzasız banka webhook endpointini kapat.
+- [x] Kod içine gömülmüş SMTP bilgilerini kaldır ve secretları yenile.
+- [x] Ortak Prisma istemcisini istek içinde kapatan `$disconnect()` çağrılarını kaldır.
+- [x] Prisma production şemasını PostgreSQL üzerinde doğrula.
+- [x] Frontend API URL yapısını tek standarda geçir.
+- [x] Production ortamında debug endpointlerini kapat.
 
 **Tamamlanma kriteri:** Bir kullanıcı başka kullanıcıya ait hiçbir etkinlik, salon, rezervasyon veya rapora erişemez.
 
@@ -398,8 +398,8 @@ Bu panel “admin paneli” olarak adlandırılmamalıdır. Kullanıcının kend
 - [x] Etkinlik iptal edildi bildirimi
 - [x] 50 kişi sınırına yaklaşıldı uyarısı
 - [x] 50 kişi aşıldı ve onay gerekiyor bildirimi
-- [ ] Onaylandı bildirimi
-- [ ] Reddedildi ve gerekçe bildirimi
+- [x] Onaylandı bildirimi
+- [x] Reddedildi ve gerekçe bildirimi
 
 Bildirimler uygulama içi ve e-posta ile başlamalı; SMS daha sonra ücretli özellik olabilir.
 
