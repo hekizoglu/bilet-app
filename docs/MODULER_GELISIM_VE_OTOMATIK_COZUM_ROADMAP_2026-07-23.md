@@ -75,11 +75,11 @@ Bir görev `TAMAMLANDI` yapılırken şu kanıtlar zorunludur:
 - [x] **M1-001 / P0 / TESTTE:** LOCAL test tokenlarını varsayılan kapalı yap; production'da kesin engelle.
 - [x] **M1-002 / P0 / TESTTE:** JWT içine kullanıcı `id` ekle; issuer, audience ve algoritma doğrulaması uygula.
 - [x] **M1-003 / P0 / TESTTE:** Güvensiz sabit JWT fallback secret kullanımını kaldır.
-- [ ] **M1-004 / P0:** Tokenı JavaScript cookie yerine HttpOnly + Secure + SameSite cookie ile yönet.
-- [ ] **M1-005 / P0:** Etkinlik, salon, rezervasyon, kupon, QR ve rapor endpointlerinde owner kontrol matrisi.
-- [ ] **M1-006 / P1:** Rol değiştirme endpointini kaldır; organizatörlüğü etkinlik sahipliği ile belirle.
-- [ ] **M1-007 / P1:** Oturum yenileme, çıkış ve token iptal modeli.
-- [ ] **M1-008 / P1:** Socket odalarında kimlik ve etkinlik sahipliği kontrolü.
+- [x] **M1-004 / P0:** Tokenı JavaScript cookie yerine HttpOnly + Secure + SameSite cookie ile yönet.
+- [x] **M1-005 / P0:** Etkinlik, salon, rezervasyon, kupon, QR ve rapor endpointlerinde owner kontrol matrisi.
+- [x] **M1-006 / P1:** Rol değiştirme endpointini kaldır; organizatörlüğü etkinlik sahipliği ile belirle.
+- [x] **M1-007 / P1:** Oturum yenileme, çıkış ve token iptal modeli.
+- [x] **M1-008 / P1:** Socket odalarında kimlik ve etkinlik sahipliği kontrolü.
 
 **Negatif testler:**
 - Kullanıcı A, Kullanıcı B'nin etkinliğini göremez/değiştiremez.
@@ -124,13 +124,13 @@ Bir görev `TAMAMLANDI` yapılırken şu kanıtlar zorunludur:
 **Amaç:** En kısa ve hatasız etkinlik oluşturma deneyimi.
 
 **Roadmap:**
-- [ ] **M4-001 / P0:** `effectiveCapacity` hesabını yalnız backend yapar.
-- [ ] **M4-002 / P0:** 50 ve altı doğrudan yayın; 51+ `PENDING_APPROVAL`.
-- [ ] **M4-003 / P0:** Kapasite sonradan 51+'a çıkarsa yayın durdurma.
-- [ ] **M4-004 / P1:** Tek rehberli etkinlik sihirbazı.
-- [ ] **M4-005 / P1:** Otomatik taslak kaydı ve devam etme.
-- [ ] **M4-006 / P1:** Yayından önce özet/doğrulama ekranı.
-- [ ] **M4-007 / P2:** Doğum günü, toplantı, düğün ve konser şablonları.
+- [x] **M4-001 / P0:** `effectiveCapacity` hesabını yalnız backend yapar.
+- [x] **M4-002 / P0:** 50 ve altı doğrudan yayın; 51+ `PENDING_APPROVAL`.
+- [x] **M4-003 / P0:** Kapasite sonradan 51+'a çıkarsa yayın durdurma.
+- [x] **M4-004 / P1:** Tek rehberli etkinlik sihirbazı.
+- [x] **M4-005 / P1:** Otomatik taslak kaydı ve devam etme.
+- [x] **M4-006 / P1:** Yayından önce özet/doğrulama ekranı.
+- [x] **M4-007 / P2:** Doğum günü, toplantı, düğün ve konser şablonları.
 
 ---
 
