@@ -45,11 +45,11 @@ Her aşamada zorunlu kanıtlar:
 - [x] **E0-001 / P0 / KODLANDI-TEST BEKLİYOR:** Merkezi backend feature flag kataloğu.
 - [x] **E0-002 / P0 / KODLANDI-TEST BEKLİYOR:** Kupon API’sini varsayılan kapalı feature flag arkasına al.
 - [x] **E0-003 / P0 / KODLANDI-TEST BEKLİYOR:** Telegram giriş API’sini varsayılan kapalı feature flag arkasına al.
-- [ ] **E0-004 / P0:** Kupon, puan ve dinamik fiyat hesaplarını rezervasyon rotasından ayrı servislere çıkar.
-- [ ] **E0-005 / P1:** Telegram bildirimlerini ayrı notification servisine çıkar ve ayrı flag kullan.
-- [ ] **E0-006 / P1:** Admin için salt-okunur özellik durum ekranı.
-- [ ] **E0-007 / P1:** Özellik açma/kapatma audit log’u.
-- [ ] **E0-008 / P1:** Kullanıcı, organizasyon ve etkinlik bazlı kademeli yayın.
+- [x] **E0-004 / P0:** Kupon, puan ve dinamik fiyat hesaplarını rezervasyon rotasından ayrı servislere çıkar.
+- [x] **E0-005 / P1:** Telegram bildirimlerini ayrı notification servisine çıkar ve ayrı flag kullan.
+- [x] **E0-006 / P1:** Admin için salt-okunur özellik durum ekranı.
+- [x] **E0-007 / P1:** Özellik açma/kapatma audit log’u.
+- [x] **E0-008 / P1:** Kullanıcı, organizasyon ve etkinlik bazlı kademeli yayın.
 - [ ] **E0-009 / P1:** Hata oranı, p95 gecikme ve finansal tutarsızlık alarmları.
 - [ ] **E0-010 / P2:** Özellik kullanım ve dönüşüm analitiği.
 
