@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken');
+const { generateToken } = require('../services/authService');
 const { OAuth2Client } = require('google-auth-library');
 const prisma = require('../prisma');
 const { createRateLimiter } = require('../utils/rateLimiter');
@@ -28,6 +28,10 @@ router.post('/google', authLimiter, async (req, res) => {
     let mockRole = null;
 
     const isDevOrTest = process.env.NODE_ENV !== 'production';
+
+    if (!isDevOrTest && token.startsWith('LOCAL_')) {
+      return res.status(403).json({ error: 'Local token kullanımı production ortamında yasaktır.' });
+    }
 
     if (isDevOrTest && (token === "LOCAL_TEST_TOKEN" || token === "LOCAL_ADMIN_TOKEN")) {
       payload = { email: ADMIN_EMAIL, name: 'Local Admin' };
@@ -95,20 +99,10 @@ router.post('/google', authLimiter, async (req, res) => {
         });
       }
 
-      const secret = process.env.JWT_SECRET;
-      if (!secret && process.env.NODE_ENV === 'production') {
-        console.error("CRITICAL: JWT_SECRET ortam değişkeni ayarlanmamış!");
-        throw new Error('Sunucu yapılandırma hatası.');
-      }
-
       // Başarılıysa JWT üret
-      const jwtToken = jwt.sign(
-        { email: payload.email, role: role },
-        secret || 'super-secret-key',
-        { expiresIn: '12h' }
-      );
+      const jwtToken = generateToken(user);
 
-      res.json({ success: true, token: jwtToken, user: { email: payload.email, name: payload.name, role: role } });
+      res.json({ success: true, token: jwtToken, user: { email: user.email, name: payload.name, role: user.role } });
     } catch (dbErr) {
       console.error("Auth Database Error:", dbErr.message);
       res.status(500).json({ error: 'Veritabanı işlemi gerçekleştirilemedi.' });

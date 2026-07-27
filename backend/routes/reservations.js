@@ -589,11 +589,11 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
 
         const nodemailer = require('nodemailer');
         const transporter = nodemailer.createTransport({
-          host: 'smtp.ethereal.email',
-          port: 587,
+          host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+          port: process.env.SMTP_PORT || 587,
           auth: {
-            user: 'mylene.stamm@ethereal.email',
-            pass: 'Hk3V78Jqyv28pS7T1G'
+            user: process.env.SMTP_USER || 'mylene.stamm@ethereal.email',
+            pass: process.env.SMTP_PASS || 'Hk3V78Jqyv28pS7T1G'
           }
         });
 
@@ -635,17 +635,17 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
 // Admin: Rezervasyonu Onayla ve Bilet Gönder (Faz 7 - Fikir #6)
 router.post('/:id/approve', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
-    }
-    const { amountReceived } = req.body;
-
     const existing = await prisma.reservation.findUnique({
       where: { id: req.params.id },
       include: { event: true }
     });
 
     if (!existing) return res.status(404).json({ error: "Bulunamadı" });
+
+    if (req.user.role !== 'ADMIN' && existing.event.organizerId !== req.user.id) {
+      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok. Sadece kendi etkinliğinizin rezervasyonlarını onaylayabilirsiniz.' });
+    }
+    
     if (existing.status === 'Onaylı') return res.status(400).json({ error: "Zaten onaylı" });
 
     let expectedAmount = existing.event.price;
@@ -657,6 +657,7 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
     }
 
     // Amount verification if provided (admin panel will enforce sending it)
+    const { amountReceived } = req.body;
     if (amountReceived !== undefined && Number(amountReceived) < expectedAmount) {
        return res.status(400).json({ error: `Eksik tutar gönderildi. Beklenen: ${expectedAmount} ₺, Gelen: ${amountReceived} ₺` });
     }
@@ -686,11 +687,11 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
     // E-posta gönderimi
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email', // Geliştirme için Ethereal test SMTP
-      port: 587,
+      host: process.env.SMTP_HOST || 'smtp.ethereal.email', // Geliştirme için Ethereal test SMTP
+      port: process.env.SMTP_PORT || 587,
       auth: {
-        user: 'mylene.stamm@ethereal.email',
-        pass: 'Hk3V78Jqyv28pS7T1G'
+        user: process.env.SMTP_USER || 'mylene.stamm@ethereal.email',
+        pass: process.env.SMTP_PASS || 'Hk3V78Jqyv28pS7T1G'
       }
     });
 
@@ -730,13 +731,16 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
 // Admin: Rezervasyonu İptal Et (Ödenmemiş biletleri boşa çıkarmak için)
 router.post('/:id/cancel', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
-    }
     const existing = await prisma.reservation.findUnique({
-      where: { id: req.params.id }
+      where: { id: req.params.id },
+      include: { event: true }
     });
     if (!existing) return res.status(404).json({ error: "Bulunamadı" });
+    
+    if (req.user.role !== 'ADMIN' && existing.event.organizerId !== req.user.id) {
+      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
+    }
+    
     if (existing.status !== 'Beklemede') return res.status(400).json({ error: "Sadece Beklemede olan rezervasyonlar iptal edilebilir." });
 
     const reservation = await prisma.reservation.update({
@@ -798,9 +802,9 @@ router.post('/:id/cancel', requireAuth, async (req, res) => {
         const eventData = await prisma.event.findUnique({ where: { id: reservation.eventId } });
         const nodemailer = require('nodemailer');
         const transporter = nodemailer.createTransport({
-          host: 'smtp.ethereal.email',
-          port: 587,
-          auth: { user: 'mylene.stamm@ethereal.email', pass: 'Hk3V78Jqyv28pS7T1G' }
+          host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+          port: process.env.SMTP_PORT || 587,
+          auth: { user: process.env.SMTP_USER || 'mylene.stamm@ethereal.email', pass: process.env.SMTP_PASS || 'Hk3V78Jqyv28pS7T1G' }
         });
         
         await transporter.sendMail({
@@ -831,13 +835,18 @@ router.post('/:id/cancel', requireAuth, async (req, res) => {
 // Kapı Görevlisi: QR Bilet Okutma (Check-in)
 router.post('/checkin', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
-    }
     const { ticketCode, eventId } = req.body;
-    const reservation = await prisma.reservation.findUnique({ where: { ticketCode } });
+    const reservation = await prisma.reservation.findUnique({ 
+      where: { ticketCode },
+      include: { event: true }
+    });
 
     if (!reservation) return res.status(404).json({ error: "Geçersiz Bilet Kodu" });
+    
+    if (req.user.role !== 'ADMIN' && reservation.event.organizerId !== req.user.id) {
+      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
+    }
+
     if (eventId && reservation.eventId !== eventId) return res.status(400).json({ error: "Bu bilet başka bir etkinliğe ait!" });
     if (reservation.status !== 'Onaylı') return res.status(400).json({ error: "Bilet onaylı değil!" });
     if (reservation.isUsed) return res.status(400).json({ error: "Bu bilet daha önce kullanılmış!" });
@@ -856,19 +865,18 @@ router.post('/checkin', requireAuth, async (req, res) => {
 // Admin: Tüm Rezervasyonları Listele (Sayfalamalı)
 router.get('/', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
-    }
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const skip = (page - 1) * limit;
     
-    const cacheKey = `admin_reservations_${page}_${limit}`;
+    const whereClause = req.user.role === 'ADMIN' ? {} : { event: { organizerId: req.user.id } };
+    const cacheKey = `admin_reservations_${page}_${limit}_${req.user.id}`;
     const cached = cache.get(cacheKey);
     if (cached) return res.json(cached);
 
     const [reservations, total] = await prisma.$transaction([
       prisma.reservation.findMany({
+        where: whereClause,
         include: { 
           event: {
             select: {
@@ -884,7 +892,7 @@ router.get('/', requireAuth, async (req, res) => {
         skip,
         take: limit
       }),
-      prisma.reservation.count()
+      prisma.reservation.count({ where: whereClause })
     ]);
     
     const responseData = {
@@ -1200,11 +1208,11 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
     // Nodemailer: Müşteriye iade bilgilendirme e-postası gönder
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
+      host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+      port: process.env.SMTP_PORT || 587,
       auth: {
-        user: 'mylene.stamm@ethereal.email',
-        pass: 'Hk3V78Jqyv28pS7T1G'
+        user: process.env.SMTP_USER || 'mylene.stamm@ethereal.email',
+        pass: process.env.SMTP_PASS || 'Hk3V78Jqyv28pS7T1G'
       }
     });
 
@@ -1292,21 +1300,22 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
 // Kapıda QR okutularak bilet kullanıldı (isUsed) işaretleme
 router.post('/checkin', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
-    }
-
     const { ticketCode } = req.body;
     if (!ticketCode) {
       return res.status(400).json({ error: "Bilet kodu gerekli" });
     }
 
     const reservation = await prisma.reservation.findUnique({
-      where: { ticketCode }
+      where: { ticketCode },
+      include: { event: true }
     });
 
     if (!reservation) {
       return res.status(404).json({ error: "Geçersiz bilet kodu" });
+    }
+    
+    if (req.user.role !== 'ADMIN' && reservation.event.organizerId !== req.user.id) {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
     }
 
     if (reservation.status !== 'Onaylı') {
@@ -1331,9 +1340,13 @@ router.post('/checkin', requireAuth, async (req, res) => {
 // GET /api/reservations/scanner/:eventId - Scanner (Offline) cihaz için biletleri indir
 router.get('/scanner/:eventId', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+    const event = await prisma.event.findUnique({ where: { id: req.params.eventId } });
+    if (!event) return res.status(404).json({ error: "Etkinlik bulunamadı." });
+    
+    if (req.user.role !== 'ADMIN' && event.organizerId !== req.user.id) {
       return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
     }
+
     const reservations = await prisma.reservation.findMany({
       where: { eventId: req.params.eventId, status: "Onaylı" },
       select: {
@@ -1353,9 +1366,6 @@ router.get('/scanner/:eventId', requireAuth, async (req, res) => {
 // POST /api/reservations/bulk-checkin - Offline scanner'dan gelen biletleri sisteme eşitle
 router.post('/bulk-checkin', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
-    }
     const { ticketCodes } = req.body;
     if (!Array.isArray(ticketCodes) || ticketCodes.length === 0) {
       return res.status(400).json({ error: "Geçersiz ticketCodes listesi" });

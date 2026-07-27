@@ -1,0 +1,12 @@
+.gcloudignore
+.git
+.gitignore
+node_modules
+npm-debug.log
+.env
+coverage
+logs
+__tests__
+playwright-report
+test-results
+tests

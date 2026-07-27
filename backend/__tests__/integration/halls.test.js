@@ -45,22 +45,24 @@ describe('Halls API Endpoints', () => {
         address: 'İstanbul, Türkiye'
       });
 
+    if (res.status !== 201) console.log(res.body);
     expect(res.status).toBe(201);
     expect(res.body.name).toBe('Gala Salonu');
     testHallId = res.body.id;
   });
 
-  test('POST /api/halls - CUSTOMER rolü ile salon oluşturulmasını engellemeli (403)', async () => {
+  test('POST /api/halls - CUSTOMER rolü ile kendi salonunu oluşturabilmeli (201)', async () => {
     const res = await request(app)
       .post('/api/halls')
       .set('Authorization', `Bearer ${customerToken}`)
       .send({
-        name: 'Yetkisiz Salon',
+        name: 'Müşteri Salonu',
         seatCount: 50,
         layoutJson: JSON.stringify({ elements: [] })
       });
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(201);
+    expect(res.body.name).toBe('Müşteri Salonu');
   });
 
   test('GET /api/halls - Salonları listeleyebilmeli', async () => {

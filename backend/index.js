@@ -216,8 +216,6 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
       return sum + (resv.event?.price || 0);
     }, 0);
 
-    await prismaInstance.$disconnect();
-
     res.json({
       eventsCount,
       hallsCount,
@@ -305,8 +303,6 @@ app.get('/api/admin/reports', requireAuth, async (req, res) => {
         }
       }
     });
-
-    await prismaInstance.$disconnect();
 
     res.json({
       summary: {

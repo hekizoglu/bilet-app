@@ -125,11 +125,11 @@ router.post('/:reservationId/manual-verify', paymentVerifyLimiter, requireAuth, 
 
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
+      host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+      port: process.env.SMTP_PORT || 587,
       auth: {
-        user: 'mylene.stamm@ethereal.email',
-        pass: 'Hk3V78Jqyv28pS7T1G'
+        user: process.env.SMTP_USER || 'mylene.stamm@ethereal.email',
+        pass: process.env.SMTP_PASS || 'Hk3V78Jqyv28pS7T1G'
       }
     });
 
@@ -256,11 +256,11 @@ router.post('/bank-webhook', validate(webhookSchema), async (req, res) => {
 
     const nodemailer = require('nodemailer');
     const transporter = nodemailer.createTransport({
-      host: 'smtp.ethereal.email',
-      port: 587,
+      host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+      port: process.env.SMTP_PORT || 587,
       auth: {
-        user: 'mylene.stamm@ethereal.email',
-        pass: 'Hk3V78Jqyv28pS7T1G'
+        user: process.env.SMTP_USER || 'mylene.stamm@ethereal.email',
+        pass: process.env.SMTP_PASS || 'Hk3V78Jqyv28pS7T1G'
       }
     });
 
@@ -316,6 +316,9 @@ const creditCardLimiter = createRateLimiter({
 // 13.8: Credit Card payment simulation
 router.post('/:reservationId/pay-creditcard', creditCardLimiter, validate(creditCardSchema), async (req, res) => {
   try {
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: "Sanal pos entegrasyonu test aşamasındadır. Production ortamında test kartı ile ödeme yapılamaz." });
+    }
     const { cardNumber, expiry, cvv, holderName } = req.body;
     const cleanCard = cardNumber.replace(/\s+/g, '');
 
@@ -358,11 +361,11 @@ router.post('/:reservationId/pay-creditcard', creditCardLimiter, validate(credit
 
         const nodemailer = require('nodemailer');
         const transporter = nodemailer.createTransport({
-          host: 'smtp.ethereal.email',
-          port: 587,
+          host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+          port: process.env.SMTP_PORT || 587,
           auth: {
-            user: 'mylene.stamm@ethereal.email',
-            pass: 'Hk3V78Jqyv28pS7T1G'
+            user: process.env.SMTP_USER || 'mylene.stamm@ethereal.email',
+            pass: process.env.SMTP_PASS || 'Hk3V78Jqyv28pS7T1G'
           }
         });
 

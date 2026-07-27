@@ -7,6 +7,7 @@ const { requireAuth } = require('../middlewares/auth');
 const cache = require('../utils/cache');
 const crypto = require('crypto');
 const { createRateLimiter } = require('../utils/rateLimiter');
+const { evaluateApprovalRequirement } = require('../services/approvalService');
 
 const waitlistLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 dakika
@@ -39,16 +40,30 @@ const generateSlug = () => crypto.randomBytes(6).toString('hex');
 // Create Event
 router.post('/', requireAuth, validate(eventSchema), async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
-    }
     const data = { ...req.body, date: new Date(req.body.date) };
     if (data.visibility === 'PRIVATE') {
       data.privateSlug = generateSlug();
     }
-    if (req.user.role === 'ORGANIZER') {
-      data.organizerId = req.user.id;
+    
+    // Faz 1: Kapasite ve Onay durumu hesaplama
+    let hallLayout = null;
+    if (data.isSeated && data.hallId) {
+      const hall = await prisma.hall.findUnique({ where: { id: data.hallId } });
+      if (hall) {
+        try { hallLayout = JSON.parse(hall.layoutJson); } catch(e) {}
+      }
     }
+    const { effectiveCapacity, approvalStatus } = evaluateApprovalRequirement(data, hallLayout);
+    data.effectiveCapacity = effectiveCapacity;
+    data.approvalStatus = approvalStatus;
+    
+    if (approvalStatus === 'PENDING_APPROVAL') {
+      data.submittedForApprovalAt = new Date();
+      data.status = 'Taslak';
+    }
+
+    // Etkinliği oluşturan kişi, o etkinliğin organizatörüdür
+    data.organizerId = req.user.id;
     const event = await prisma.event.create({ data });
     cache.del('events');
     cache.del('public_events');
@@ -82,19 +97,15 @@ router.post('/:id/regenerate-slug', requireAuth, async (req, res) => {
   }
 });
 
-// Get all Events (Admin)
+// Get all Events (Admin and User's own events)
 router.get('/', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
-    }
-
-    const isOrganizer = req.user.role === 'ORGANIZER';
-    const cacheKey = isOrganizer ? `events_org_${req.user.id}` : 'events';
+    const isAdmin = req.user.role === 'ADMIN';
+    const cacheKey = isAdmin ? 'events_admin' : `events_user_${req.user.id}`;
     const cached = cache.get(cacheKey);
     if (cached) return res.json(cached);
 
-    const whereClause = isOrganizer ? { organizerId: req.user.id } : {};
+    const whereClause = isAdmin ? {} : { organizerId: req.user.id };
 
     const events = await prisma.event.findMany({ 
       where: whereClause,
@@ -226,28 +237,50 @@ router.post('/:id/waitlist', waitlistLimiter, async (req, res) => {
 // Update Event (PUT)
 router.put('/:id', requireAuth, validate(eventSchema), async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
+    const existingEvent = await prisma.event.findUnique({ where: { id: req.params.id } });
+    if (!existingEvent) {
+      return res.status(404).json({ error: "Etkinlik bulunamadı." });
     }
-    
-    // Yetki Kontrolü: Organizatör sadece kendi etkinliğini güncelleyebilir
-    if (req.user.role === 'ORGANIZER') {
-      const existingEvent = await prisma.event.findUnique({ where: { id: req.params.id } });
-      if (!existingEvent || existingEvent.organizerId !== req.user.id) {
-        return res.status(403).json({ error: "Sadece size ait etkinlikleri düzenleyebilirsiniz." });
-      }
+
+    if (req.user.role !== 'ADMIN' && existingEvent.organizerId !== req.user.id) {
+      return res.status(403).json({ error: "Sadece size ait etkinlikleri düzenleyebilirsiniz." });
     }
 
     const data = { ...req.body, date: new Date(req.body.date) };
+    
+    // Faz 1: Kapasite ve Onay durumu hesaplama
+    let hallLayout = null;
+    const isSeated = data.isSeated !== undefined ? data.isSeated : existingEvent.isSeated;
+    const hallId = data.hallId || existingEvent.hallId;
+    if (isSeated && hallId) {
+      const hall = await prisma.hall.findUnique({ where: { id: hallId } });
+      if (hall) {
+        try { hallLayout = JSON.parse(hall.layoutJson); } catch(e) {}
+      }
+    }
+    
+    const combinedData = { ...existingEvent, ...data, isSeated };
+    const { effectiveCapacity, approvalStatus } = evaluateApprovalRequirement(combinedData, hallLayout);
+    
+    data.effectiveCapacity = effectiveCapacity;
+    // Sadece eğer sınır aşıldıysa PENDING_APPROVAL olur, veya daha önce PENDING olup limit altına düştüyse NOT_REQUIRED olur
+    if (approvalStatus === 'PENDING_APPROVAL' && existingEvent.approvalStatus !== 'APPROVED') {
+      data.approvalStatus = 'PENDING_APPROVAL';
+      data.submittedForApprovalAt = new Date();
+      data.status = 'Taslak';
+    } else if (approvalStatus === 'NOT_REQUIRED' && existingEvent.approvalStatus === 'PENDING_APPROVAL') {
+      data.approvalStatus = 'NOT_REQUIRED';
+    }
+
     const event = await prisma.event.update({
       where: { id: req.params.id },
       data
     });
     
-    if (req.user.role === 'ORGANIZER') {
-      cache.del(`events_org_${req.user.id}`);
+    if (req.user.role !== 'ADMIN') {
+      cache.del(`events_user_${req.user.id}`);
     } else {
-      cache.del('events');
+      cache.del('events_admin');
     }
     cache.del('public_events');
     cache.del('aggregator_events'); // FIND-006 fix from iteration 3
@@ -258,3 +291,68 @@ router.put('/:id', requireAuth, validate(eventSchema), async (req, res) => {
 });
 
 module.exports = router;
+
+// --- Faz 1: Admin Onay İşlemleri ---
+router.post('/:id/approve', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') return res.status(403).json({ error: "Sadece yöneticiler onay verebilir." });
+    const event = await prisma.event.update({
+      where: { id: req.params.id },
+      data: {
+        approvalStatus: 'APPROVED',
+        approvedAt: new Date(),
+        approvedById: req.user.id,
+        status: 'Aktif'
+      }
+    });
+    cache.del('events');
+    cache.del('public_events');
+    cache.del('aggregator_events');
+    res.json({ success: true, event });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası" });
+  }
+});
+
+router.post('/:id/reject', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') return res.status(403).json({ error: "Sadece yöneticiler reddedebilir." });
+    const { reason } = req.body;
+    if (!reason) return res.status(400).json({ error: "Reddetme sebebi gereklidir." });
+    
+    const event = await prisma.event.update({
+      where: { id: req.params.id },
+      data: {
+        approvalStatus: 'REJECTED',
+        approvalReason: reason,
+        status: 'İptal' // Reddedildiği için taslak veya iptal olabilir
+      }
+    });
+    cache.del('events');
+    res.json({ success: true, event });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası" });
+  }
+});
+
+router.post('/:id/suspend', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') return res.status(403).json({ error: "Sadece yöneticiler askıya alabilir." });
+    const { reason } = req.body;
+    
+    const event = await prisma.event.update({
+      where: { id: req.params.id },
+      data: {
+        approvalStatus: 'SUSPENDED',
+        approvalReason: reason || 'Kural ihlali şüphesi',
+        status: 'Pasif'
+      }
+    });
+    cache.del('events');
+    cache.del('public_events');
+    cache.del('aggregator_events');
+    res.json({ success: true, event });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası" });
+  }
+});

@@ -120,39 +120,4 @@ router.put('/profile', requireAuth, validate(profileSchema), async (req, res) =>
   }
 });
 
-// POST /api/users/switch-role
-// Switch current user's role between CUSTOMER and ORGANIZER
-router.post('/switch-role', requireAuth, async (req, res) => {
-  try {
-    const userEmail = req.user.email;
-    const currentRole = req.user.role;
-    const jwt = require('jsonwebtoken');
-
-    if (currentRole === 'ADMIN') {
-      return res.status(400).json({ error: 'Admin rolü değiştirilemez.' });
-    }
-    
-
-    const newRole = (currentRole === 'CUSTOMER') ? 'ORGANIZER' : 'CUSTOMER';
-
-    // Update user in DB
-    const updatedUser = await prisma.user.update({
-      where: { email: userEmail },
-      data: { role: newRole }
-    });
-
-    // Generate new JWT
-    const jwtToken = jwt.sign(
-      { email: userEmail, role: newRole },
-      process.env.JWT_SECRET || 'super-secret-key',
-      { expiresIn: '12h' }
-    );
-
-    res.json({ success: true, token: jwtToken, role: newRole });
-  } catch (err) {
-    console.error("Error switching role:", err);
-    res.status(500).json({ error: 'Rol geçişi başarısız oldu.' });
-  }
-});
-
 module.exports = router;

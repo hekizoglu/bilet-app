@@ -6,6 +6,16 @@ const { validate } = require('../middlewares/validate');
 const { requireAuth } = require('../middlewares/auth');
 const cache = require('../utils/cache');
 
+function getCalculatedSeatCount(layoutJson) {
+  try {
+    const parsed = JSON.parse(layoutJson);
+    if (parsed && parsed.elements) {
+      return parsed.elements.filter(el => el.type === 'seat' || el.type === 'chair').length;
+    }
+  } catch (e) {}
+  return 0;
+}
+
 // Validation Schema
 const hallSchema = z.object({
   name: z.string().min(3, "Salon adı en az 3 karakter olmalıdır"),
@@ -20,12 +30,11 @@ const hallSchema = z.object({
 // Create Hall
 router.post('/', requireAuth, validate(hallSchema), async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
-    }
     if (req.body.isGlobal && req.user.role !== 'ADMIN') {
       req.body.isGlobal = false;
     }
+    req.body.organizerId = req.user.id;
+    req.body.calculatedSeatCount = getCalculatedSeatCount(req.body.layoutJson);
     const hall = await prisma.hall.create({ data: req.body });
     cache.del('halls');
     res.status(201).json(hall);
@@ -37,13 +46,14 @@ router.post('/', requireAuth, validate(hallSchema), async (req, res) => {
 // Clone Hall
 router.post('/:id/clone', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
-    }
     const original = await prisma.hall.findUnique({
       where: { id: req.params.id }
     });
     if (!original) return res.status(404).json({ error: "Salon bulunamadı" });
+
+    if (!original.isGlobal && original.organizerId !== req.user.id && req.user.role !== 'ADMIN') {
+       return res.status(403).json({ error: "Sadece size ait veya genel (global) salonları kopyalayabilirsiniz." });
+    }
 
     const clone = await prisma.hall.create({
       data: {
@@ -53,7 +63,9 @@ router.post('/:id/clone', requireAuth, async (req, res) => {
         layoutJson: original.layoutJson,
         backgroundImage: original.backgroundImage,
         address: original.address,
-        isGlobal: false
+        isGlobal: false,
+        organizerId: req.user.id,
+        calculatedSeatCount: getCalculatedSeatCount(original.layoutJson)
       }
     });
     cache.del('halls');
@@ -66,14 +78,12 @@ router.post('/:id/clone', requireAuth, async (req, res) => {
 // Get all Halls
 router.get('/', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
-    }
-
-    const cached = cache.get('halls');
-    if (cached) return res.json(cached);
+    const whereClause = req.user.role === 'ADMIN' 
+      ? {} 
+      : { OR: [{ isGlobal: true }, { organizerId: req.user.id }] };
 
     const halls = await prisma.hall.findMany({
+      where: whereClause,
       select: {
         id: true,
         name: true,
@@ -85,7 +95,6 @@ router.get('/', requireAuth, async (req, res) => {
       },
       orderBy: { createdAt: 'desc' }
     });
-    cache.set('halls', halls, 5 * 60 * 1000);
     res.json(halls);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -95,19 +104,15 @@ router.get('/', requireAuth, async (req, res) => {
 // Get Hall by ID
 router.get('/:id', requireAuth, async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
-    }
-
-    const cacheKey = `hall_${req.params.id}`;
-    const cached = cache.get(cacheKey);
-    if (cached) return res.json(cached);
-
     const hall = await prisma.hall.findUnique({
       where: { id: req.params.id }
     });
     if (!hall) return res.status(404).json({ error: "Salon bulunamadı" });
-    cache.set(cacheKey, hall, 5 * 60 * 1000);
+
+    if (!hall.isGlobal && hall.organizerId !== req.user.id && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: "Bu salona erişim yetkiniz yok." });
+    }
+
     res.json(hall);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -117,9 +122,6 @@ router.get('/:id', requireAuth, async (req, res) => {
 // Update Hall
 router.put('/:id', requireAuth, validate(hallSchema), async (req, res) => {
   try {
-    if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
-      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
-    }
     if (req.body.isGlobal !== undefined && req.user.role !== 'ADMIN') {
       delete req.body.isGlobal;
     }
@@ -127,6 +129,10 @@ router.put('/:id', requireAuth, validate(hallSchema), async (req, res) => {
     const existingHall = await prisma.hall.findUnique({ where: { id: req.params.id } });
     if (!existingHall) {
       return res.status(404).json({ error: "Salon bulunamadı." });
+    }
+
+    if (existingHall.organizerId !== req.user.id && req.user.role !== 'ADMIN') {
+       return res.status(403).json({ error: "Sadece size ait salonları düzenleyebilirsiniz." });
     }
 
     if (existingHall.isGlobal && req.user.role !== 'ADMIN') {
@@ -141,6 +147,10 @@ router.put('/:id', requireAuth, validate(hallSchema), async (req, res) => {
       if (req.body.seatCount !== existingHall.seatCount || req.body.layoutJson !== existingHall.layoutJson) {
          return res.status(400).json({ error: "Aktif etkinliği olan bir salonun koltuk sayısı veya krokisi değiştirilemez." });
       }
+    }
+
+    if (req.body.layoutJson) {
+      req.body.calculatedSeatCount = getCalculatedSeatCount(req.body.layoutJson);
     }
 
     const hall = await prisma.hall.update({

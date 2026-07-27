@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
+const { generateToken } = require('../services/authService');
 const prisma = require('../prisma');
 
 // Bot token from env
@@ -76,11 +76,7 @@ router.post('/auth', async (req, res) => {
     }
 
     // Generate JWT
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, name: user.name, telegramId: tgId },
-      process.env.JWT_SECRET || 'supersecret_bilet_key',
-      { expiresIn: '30d' }
-    );
+    const token = generateToken(user, { name: user.name, telegramId: tgId }, { expiresIn: '30d' });
 
     res.json({ success: true, token, user: { id: user.id, name: user.name, role: user.role } });
 

@@ -31,39 +31,53 @@ model User {
 
   coupons               Coupon[]  @relation("OrganizerCoupons")
   events                Event[]   @relation("OrganizerEvents")
+  halls                 Hall[]    @relation("OrganizerHalls")
 
   @@index([role])
   @@index([createdAt])
 }
 
 model Hall {
-  id              String   @id @default(uuid())
-  name            String
-  description     String?
-  seatCount       Int
-  layoutJson      String
-  backgroundImage String?
-  address         String?
-  isGlobal        Boolean  @default(false)
-  events          Event[]
-  createdAt       DateTime @default(now())
+  id                  String   @id @default(uuid())
+  name                String
+  description         String?
+  seatCount           Int
+  calculatedSeatCount Int      @default(0)
+  layoutJson          String
+  backgroundImage     String?
+  address             String?
+  isGlobal            Boolean  @default(false)
+  organizerId         String?
+  organizer           User?    @relation("OrganizerHalls", fields: [organizerId], references: [id])
+  events              Event[]
+  createdAt           DateTime @default(now())
 
   @@index([createdAt])
+  @@index([organizerId])
 }
 
 model Event {
-  id           String        @id @default(uuid())
-  name         String
-  date         DateTime
-  price        Float
-  status       String        @default("Taslak")
-  visibility   String        @default("PUBLIC")
-  privateSlug  String?       @unique
-  isSeated     Boolean       @default(true)
-  capacity     Int?
-  hallId       String?
-  hall         Hall?         @relation(fields: [hallId], references: [id])
-  paymentType  String        @default("free")
+  id                     String         @id @default(uuid())
+  name                   String
+  description            String?
+  date                   DateTime
+  price                  Float
+  status                 String         @default("Aktif")
+  visibility             String         @default("PUBLIC")
+  privateSlug            String?        @unique
+  isSeated               Boolean        @default(true)
+  capacity               Int?
+  effectiveCapacity      Int            @default(0)
+  approvalStatus         String         @default("NOT_REQUIRED")
+  approvalReason         String?
+  approvedAt             DateTime?
+  approvedById           String?
+  submittedForApprovalAt DateTime?
+  publishedAt            DateTime?
+  location               String?
+  hallId                 String?
+  hall                   Hall?          @relation(fields: [hallId], references: [id])
+  paymentType            String         @default("free")
 
   isPubliclyListed        Boolean   @default(false)
   doorSalesEndTime        DateTime?
