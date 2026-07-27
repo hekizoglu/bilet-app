@@ -17,7 +17,7 @@ export default function OfflineScannerPage() {
   const [selectedEventId, setSelectedEventId] = useState('');
   
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [pendingSync, setPendingSync] = useState<string[]>([]);
+  const [pendingSync, setPendingSync] = useState<{ticketCode: string, usedAt: string}[]>([]);
   
   const [scanResult, setScanResult] = useState<{status: 'success'|'error'|'warning', message: string, detail?: string} | null>(null);
   const [isScanning, setIsScanning] = useState(false);
@@ -61,15 +61,15 @@ export default function OfflineScannerPage() {
     if (!selectedEventId) return alert("Lütfen bir etkinlik seçin");
     
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/scanner/${selectedEventId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/events/${selectedEventId}/attendees`, {
         headers: { 'Authorization': `Bearer ${getCookie('token')}` }
       });
       if (res.ok) {
         const data = await res.json();
-        setTickets(data);
-        localStorage.setItem('offline_tickets', JSON.stringify(data));
+        setTickets(data.attendees || []);
+        localStorage.setItem('offline_tickets', JSON.stringify(data.attendees || []));
         localStorage.setItem('offline_event_id', selectedEventId);
-        alert(`${data.length} adet bilet cihazınıza başarıyla indirildi. İnterneti kapatabilirsiniz.`);
+        alert(`${(data.attendees || []).length} adet bilet cihazınıza başarıyla indirildi. İnterneti kapatabilirsiniz.`);
       } else {
         alert("Biletler indirilemedi.");
       }
@@ -82,20 +82,20 @@ export default function OfflineScannerPage() {
     if (pendingSync.length === 0) return alert("Senkronize edilecek yeni veri yok.");
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/bulk-checkin`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/sync`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getCookie('token')}` 
         },
-        body: JSON.stringify({ ticketCodes: pendingSync })
+        body: JSON.stringify({ checkIns: pendingSync })
       });
 
       if (res.ok) {
         const data = await res.json();
         setPendingSync([]);
         localStorage.removeItem('pending_sync');
-        alert(`${data.count} adet bilet başarıyla sunucuya eşitlendi.`);
+        alert(`${data.results.success} bilet başarıyla sunucuya eşitlendi. (Çakışma: ${data.results.conflicts}, Hata: ${data.results.failed})`);
       } else {
         alert("Senkronizasyon başarısız oldu.");
       }
@@ -171,7 +171,7 @@ export default function OfflineScannerPage() {
     localStorage.setItem('offline_tickets', JSON.stringify(newTickets));
 
     // Add to pending sync
-    const newPending = [...pendingSync, code];
+    const newPending = [...pendingSync, { ticketCode: code, usedAt: new Date().toISOString() }];
     setPendingSync(newPending);
     localStorage.setItem('pending_sync', JSON.stringify(newPending));
 

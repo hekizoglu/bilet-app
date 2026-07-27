@@ -1461,4 +1461,99 @@ router.post('/rsvp', async (req, res) => {
   }
 });
 
+
+router.post('/check-in', requireAuth, async (req, res) => {
+  try {
+    const { ticketCode } = req.body;
+    if (!ticketCode) return res.status(400).json({ error: "Bilet kodu gerekli." });
+
+    const reservation = await prisma.reservation.findUnique({
+      where: { ticketCode },
+      include: { event: { include: { staff: true } } }
+    });
+
+    if (!reservation) return res.status(404).json({ error: "Bilet bulunamadý." });
+    if (reservation.status !== 'Onaylandý') return res.status(400).json({ error: "Bilet durumu geçersiz." });
+
+    const event = reservation.event;
+    const isStaff = event.staff.some(s => s.userId === req.user.id);
+    if (event.organizerId !== req.user.id && !isStaff && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: "Yetkisiz iþlem." });
+    }
+
+    if (reservation.isUsed) {
+      await prisma.auditLog.create({
+        data: {
+          eventId: event.id,
+          action: 'DUPLICATE_CHECKIN_ATTEMPT',
+          details: "Kullanýlmýþ bilet kodu tekrar okutulmak istendi: " + ticketCode
+        }
+      });
+      return res.status(400).json({ error: "Bu bilet daha önce kullanýlmýþ." });
+    }
+
+    const updated = await prisma.reservation.updateMany({
+      where: { ticketCode, isUsed: false },
+      data: { isUsed: true, usedAt: new Date() }
+    });
+
+    if (updated.count === 0) {
+      return res.status(400).json({ error: "Eþzamanlý iþlem hatasý veya bilet kullanýlmýþ." });
+    }
+
+    res.json({ success: true, reservation });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatasý." });
+  }
+});
+
+router.post('/sync', requireAuth, async (req, res) => {
+  try {
+    const { checkIns } = req.body;
+    if (!Array.isArray(checkIns)) return res.status(400).json({ error: "Geçersiz veri." });
+
+    const results = { success: 0, conflicts: 0, failed: 0 };
+
+    for (const checkIn of checkIns) {
+      const reservation = await prisma.reservation.findUnique({
+        where: { ticketCode: checkIn.ticketCode },
+        include: { event: { include: { staff: true } } }
+      });
+      
+      if (!reservation) {
+        results.failed++;
+        continue;
+      }
+
+      const event = reservation.event;
+      const isStaff = event.staff.some(s => s.userId === req.user.id);
+      if (event.organizerId !== req.user.id && !isStaff && req.user.role !== 'ADMIN') {
+        results.failed++;
+        continue;
+      }
+
+      if (reservation.isUsed) {
+        await prisma.auditLog.create({
+          data: {
+            eventId: event.id,
+            action: 'OFFLINE_SYNC_CONFLICT',
+            details: "Bilet offline iken tekrar kullanýlmýþ olarak iþaretlendi: " + checkIn.ticketCode
+          }
+        });
+        results.conflicts++;
+      } else {
+        const updated = await prisma.reservation.updateMany({
+          where: { ticketCode: checkIn.ticketCode, isUsed: false },
+          data: { isUsed: true, usedAt: new Date(checkIn.usedAt || Date.now()) }
+        });
+        if (updated.count > 0) results.success++;
+        else results.failed++;
+      }
+    }
+    res.json({ success: true, results });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatasý." });
+  }
+});
+
 module.exports = router;

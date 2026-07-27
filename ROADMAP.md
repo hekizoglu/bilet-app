@@ -81,7 +81,11 @@ Her kayıtlı kullanıcıdır.
 - Kendi etkinliğinin organizatörüdür.
 - Kendi salonunu ve sandalye düzenini oluşturabilir.
 - Kendi katılımcılarını görebilir.
-- Kendi QR giriş ekranını kullanabilir.
+- [x] **Faz 6: QR Giriş ve Kapı Kontrolü (Offline Destek)**
+  - Backend: `reservation.isUsed` alanı.
+  - Backend: Eşzamanlı okutma hatalarını önleme (atomik güncellemeler).
+  - Frontend: PWA özellikli tarayıcı üzerinden offline çalışan QR okuyucu. (Check-in'leri locale kaydet, internet gelince sunucuya yolla)
+  - Backend: Kapı görevlisi yetkilendirmesi (Sadece yetkili kişiler okuma yapabilir).
 - Kendi etkinliğini iptal edebilir.
 - Kendi etkinliğini düzenleyebilir.
 - Başkasının verisini göremez.

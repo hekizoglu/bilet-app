@@ -290,7 +290,6 @@ router.put('/:id', requireAuth, validate(eventSchema), async (req, res) => {
   }
 });
 
-module.exports = router;
 
 // --- Faz 1: Admin Onay Ä°ÅŸlemleri ---
 router.post('/:id/approve', requireAuth, async (req, res) => {
@@ -356,3 +355,86 @@ router.post('/:id/suspend', requireAuth, async (req, res) => {
     res.status(500).json({ error: "Sunucu hatasÄ±" });
   }
 });
+
+router.post('/:id/staff', requireAuth, async (req, res) => {
+  try {
+    const { email, role } = req.body;
+    const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+    if (!event || event.organizerId !== req.user.id) {
+      return res.status(403).json({ error: "Yetkisiz iþlem." });
+    }
+    const staffUser = await prisma.user.findUnique({ where: { email } });
+    if (!staffUser) {
+      return res.status(404).json({ error: "Kullanýcý bulunamadý." });
+    }
+    const staff = await prisma.eventStaff.create({
+      data: {
+        eventId: req.params.id,
+        userId: staffUser.id,
+        role: role || 'SCANNER'
+      },
+      include: { user: true }
+    });
+    res.json({ success: true, staff });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatasý veya kullanýcý zaten ekli." });
+  }
+});
+
+router.delete('/:id/staff/:userId', requireAuth, async (req, res) => {
+  try {
+    const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+    if (!event || event.organizerId !== req.user.id) {
+      return res.status(403).json({ error: "Yetkisiz iþlem." });
+    }
+    await prisma.eventStaff.deleteMany({
+      where: {
+        eventId: req.params.id,
+        userId: req.params.userId
+      }
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatasý." });
+  }
+});
+
+router.get('/:id/staff', requireAuth, async (req, res) => {
+  try {
+    const event = await prisma.event.findUnique({ where: { id: req.params.id } });
+    if (!event || event.organizerId !== req.user.id) {
+      return res.status(403).json({ error: "Yetkisiz iþlem." });
+    }
+    const staff = await prisma.eventStaff.findMany({
+      where: { eventId: req.params.id },
+      include: { user: { select: { id: true, name: true, email: true } } }
+    });
+    res.json({ success: true, staff });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatasý." });
+  }
+});
+
+router.get('/:id/attendees', requireAuth, async (req, res) => {
+  try {
+    const event = await prisma.event.findUnique({
+      where: { id: req.params.id },
+      include: { staff: true }
+    });
+    if (!event) return res.status(404).json({ error: "Etkinlik bulunamadý." });
+
+    const isStaff = event.staff.some(s => s.userId === req.user.id);
+    if (event.organizerId !== req.user.id && !isStaff && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: "Yetkisiz iþlem." });
+    }
+
+    const attendees = await prisma.reservation.findMany({
+      where: { eventId: req.params.id, status: 'Onaylandý' }
+    });
+    res.json({ success: true, attendees });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatasý." });
+  }
+});
+
+module.exports = router;

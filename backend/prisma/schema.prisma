@@ -32,6 +32,7 @@ model User {
   coupons               Coupon[]  @relation("OrganizerCoupons")
   events                Event[]   @relation("OrganizerEvents")
   halls                 Hall[]    @relation("OrganizerHalls")
+  staffRoles            EventStaff[] @relation("UserStaff")
 
   @@index([role])
   @@index([createdAt])
@@ -90,6 +91,8 @@ model Event {
 
   reservations Reservation[]
   waitlists    Waitlist[]
+  staff        EventStaff[]
+  auditLogs    AuditLog[]
   createdAt    DateTime      @default(now())
 
   @@index([hallId])
@@ -185,4 +188,31 @@ model Feedback {
 
   @@index([type])
   @@index([status])
+}
+
+model EventStaff {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id])
+  userId    String
+  user      User     @relation("UserStaff", fields: [userId], references: [id])
+  role      String   @default("SCANNER") // e.g., SCANNER, MANAGER
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+  @@index([eventId])
+  @@index([userId])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id])
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+  @@index([action])
+  @@index([createdAt])
 }
