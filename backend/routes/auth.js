@@ -18,7 +18,7 @@ const ADMIN_EMAIL = process.env.ADMIN_EMAIL?.trim().toLowerCase() || null;
 
 const authLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: process.env.NODE_ENV === 'production' ? 5 : 1000,
   message: { error: 'Çok fazla giriş denemesi, lütfen 15 dakika sonra tekrar deneyin.' },
 });
 
