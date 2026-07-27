@@ -373,14 +373,14 @@ Bu panel “admin paneli” olarak adlandırılmamalıdır. Kullanıcının kend
 
 **Öncelik:** P1
 
-- [ ] Her katılımcıya benzersiz QR kod üret.
-- [ ] QR kodu yalnızca etkinlik sahibi veya onun yetkilendirdiği görevli okutabilsin.
-- [ ] Görevli yetkilendirme modeli ekle.
-- [ ] Aynı QR kodun ikinci kullanımını atomik olarak engelle.
-- [ ] Yanlış etkinliğe ait QR kodu reddet.
-- [ ] Manuel isim arama ve giriş desteği ekle.
-- [ ] Offline giriş listesi ve sonradan eşitleme ekle.
-- [ ] Eşitleme çakışmalarını denetim kaydına yaz.
+- [x] Her katılımcıya benzersiz QR kod üret.
+- [x] QR kodu yalnızca etkinlik sahibi veya onun yetkilendirdiği görevli okutabilsin.
+- [x] Görevli yetkilendirme modeli ekle.
+- [x] Aynı QR kodun ikinci kullanımını atomik olarak engelle.
+- [x] Yanlış etkinliğe ait QR kodu reddet.
+- [x] Manuel isim arama ve giriş desteği ekle.
+- [x] Offline giriş listesi ve sonradan eşitleme ekle.
+- [x] Eşitleme çakışmalarını denetim kaydına yaz.
 
 **Tamamlanma kriteri:** Etkinlik sahibi telefonuyla kendi etkinliğinin girişini güvenilir şekilde yönetebilir.
 
@@ -390,14 +390,14 @@ Bu panel “admin paneli” olarak adlandırılmamalıdır. Kullanıcının kend
 
 **Öncelik:** P1
 
-- [ ] Davet gönderildi bildirimi
-- [ ] Katılım cevabı değişti bildirimi
-- [ ] Etkinliğe 24 saat kaldı bildirimi
-- [ ] Etkinliğe 2 saat kaldı bildirimi
-- [ ] Etkinlik bilgileri değişti bildirimi
-- [ ] Etkinlik iptal edildi bildirimi
-- [ ] 50 kişi sınırına yaklaşıldı uyarısı
-- [ ] 50 kişi aşıldı ve onay gerekiyor bildirimi
+- [x] Davet gönderildi bildirimi
+- [x] Katılım cevabı değişti bildirimi
+- [x] Etkinliğe 24 saat kaldı bildirimi
+- [x] Etkinliğe 2 saat kaldı bildirimi
+- [x] Etkinlik bilgileri değişti bildirimi
+- [x] Etkinlik iptal edildi bildirimi
+- [x] 50 kişi sınırına yaklaşıldı uyarısı
+- [x] 50 kişi aşıldı ve onay gerekiyor bildirimi
 - [ ] Onaylandı bildirimi
 - [ ] Reddedildi ve gerekçe bildirimi
 
