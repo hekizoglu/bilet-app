@@ -33,7 +33,7 @@ export default function ProfileLayout({ children }: { children: ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         document.cookie = `token=${data.token}; path=/; max-age=43200; SameSite=Strict`;
-        router.push('/admin');
+        router.push('/dashboard');
       } else {
         const err = await res.json();
         alert(err.error || "Geçiş yapılamadı.");

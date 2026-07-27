@@ -43,7 +43,7 @@ export default function LoginPage() {
       if (res.ok) {
         storeToken(data.token);
         if (data.user?.role === 'ADMIN' || data.user?.role === 'ORGANIZER') {
-          router.push('/admin');
+          router.push('/dashboard');
         } else {
           router.push('/');
         }

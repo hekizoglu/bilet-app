@@ -3,7 +3,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, Calendar, Map as MapIcon, Users, LogOut, Settings, User } from 'lucide-react';
+import { LayoutDashboard, Calendar, Map as MapIcon, Users, LogOut, Settings, User, Bell } from 'lucide-react';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -81,20 +81,21 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   };
 
   const navItems = [
-    { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-    { name: 'Canlı Analitik', href: '/admin/analytics', icon: LayoutDashboard },
-    { name: 'Etkinlikler', href: '/admin/events', icon: Calendar },
-    { name: 'Salonlar', href: '/admin/halls', icon: MapIcon },
-    { name: 'Rezervasyonlar', href: '/admin/reservations', icon: Users },
-    { name: 'Kuponlar', href: '/admin/coupons', icon: Users }, // Replace icon later if needed
-    { name: 'Ayarlar', href: '/admin/settings', icon: Settings },
+    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Canlı Analitik', href: '/dashboard/analytics', icon: LayoutDashboard },
+    { name: 'Etkinlikler', href: '/dashboard/events', icon: Calendar },
+    { name: 'Salonlar', href: '/dashboard/halls', icon: MapIcon },
+    { name: 'Rezervasyonlar', href: '/dashboard/reservations', icon: Users },
+    { name: 'Duyurular', href: '/dashboard/announcements', icon: Bell },
+    { name: 'Kuponlar', href: '/dashboard/coupons', icon: Users }, // Replace icon later if needed
+    { name: 'Ayarlar', href: '/dashboard/settings', icon: Settings },
   ];
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gray-50">
       {/* Mobile Top Header */}
       <header className="flex md:hidden items-center justify-between px-6 py-4 bg-white border-b border-gray-100 sticky top-0 z-50">
-        <h2 className="text-xl font-bold text-gray-800">Bilet Yönetimi</h2>
+        <h2 className="text-xl font-bold text-gray-800">Organizasyon Paneli</h2>
         <button
           onClick={handleLogout}
           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -107,7 +108,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-gray-200">
         <div className="p-6 border-b border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-800">Bilet Yönetimi</h2>
+          <h2 className="text-2xl font-bold text-gray-800">Organizasyon Paneli</h2>
         </div>
         
         <nav className="flex-1 p-4 space-y-1">

@@ -30,12 +30,12 @@ export default function GeneratePage() {
 
   useEffect(() => {
     const stored = localStorage.getItem('autoGenerateConfig');
-    if (!stored) { router.push('/admin/designer'); return; }
+    if (!stored) { router.push('/dashboard/designer'); return; }
     try {
       const parsed = JSON.parse(stored) as AutoGenerateConfig;
       setConfig(parsed);
     } catch {
-      router.push('/admin/designer');
+      router.push('/dashboard/designer');
     }
   }, [router]);
 
@@ -60,7 +60,7 @@ export default function GeneratePage() {
       <div className="flex items-center justify-between px-6 py-3 bg-gray-800 border-b border-gray-700">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => router.push('/admin/designer')}
+            onClick={() => router.push('/dashboard/designer')}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-white text-sm font-medium transition"
           >
             <ArrowLeft size={16} /> Geri Dön

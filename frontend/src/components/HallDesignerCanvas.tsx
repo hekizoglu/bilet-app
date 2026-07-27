@@ -717,7 +717,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
       
       if (res.ok) {
         alert("Kayıt Başarılı!");
-        router.push('/admin/halls');
+        router.push('/dashboard/halls');
       } else {
         const errData = await res.json();
         alert(`Hata: ${errData.error || errData.details}`);

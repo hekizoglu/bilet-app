@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   // Yalnızca /admin ile başlayan rotaları koru
-  if (request.nextUrl.pathname.startsWith('/admin')) {
+  if (request.nextUrl.pathname.startsWith('/dashboard')) {
     // Çerezlerden veya Header'dan token kontrolü
     const token = request.cookies.get('token')?.value;
 
@@ -21,5 +21,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/dashboard/:path*'],
 };

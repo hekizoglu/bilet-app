@@ -346,18 +346,18 @@ COMPLETED
 
 Her kullanıcının panelinde şunlar bulunmalıdır:
 
-- Etkinliklerim
-- Yeni etkinlik oluştur
-- Taslaklar
-- Onay bekleyenler
-- Yayındaki etkinlikler
-- Geçmiş etkinlikler
-- Katılımcılar
-- Davet bağlantıları
-- QR giriş
-- Duyurular
-- Salonlarım
-- İstatistikler
+- [x] Etkinliklerim
+- [x] Yeni etkinlik oluştur
+- [x] Taslaklar
+- [x] Onay bekleyenler
+- [x] Yayındaki etkinlikler
+- [x] Geçmiş etkinlikler
+- [x] Katılımcılar
+- [x] Davet bağlantıları
+- [x] QR giriş
+- [x] Duyurular
+- [x] Salonlarım
+- [x] İstatistikler
 
 Bu panel “admin paneli” olarak adlandırılmamalıdır. Kullanıcının kendi organizasyon alanı olmalıdır.
 

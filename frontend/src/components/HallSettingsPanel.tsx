@@ -39,7 +39,7 @@ export function HallSettingsPanel({ onAutoGenerate }: HallSettingsPanelProps) {
         </ul>
       </div>
       <button
-        onClick={() => router.push('/admin/designer/wizard')}
+        onClick={() => router.push('/dashboard/designer/wizard')}
         className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-4 rounded-xl font-bold hover:shadow-lg transition flex items-center justify-center gap-2 text-base"
       >
         <Zap size={20} /> Salon Tasarım Sihirbazı

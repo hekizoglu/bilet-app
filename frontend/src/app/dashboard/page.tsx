@@ -121,7 +121,7 @@ export default function AdminDashboard() {
           whileHover={{ y: -5, scale: 1.02 }}
           className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg transition-all relative overflow-hidden group"
         >
-          <Link href="/admin/reservations" className="block h-full w-full">
+          <Link href="/dashboard/reservations" className="block h-full w-full">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-300">
               <Users size={90} className="text-orange-500" />
             </div>
@@ -142,7 +142,7 @@ export default function AdminDashboard() {
           whileHover={{ y: -5, scale: 1.02 }}
           className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg transition-all relative overflow-hidden group"
         >
-          <Link href="/admin/events" className="block h-full w-full">
+          <Link href="/dashboard/events" className="block h-full w-full">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-300">
               <Calendar size={90} className="text-blue-600" />
             </div>
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
           whileHover={{ y: -5, scale: 1.02 }}
           className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-lg transition-all relative overflow-hidden group"
         >
-          <Link href="/admin/halls" className="block h-full w-full">
+          <Link href="/dashboard/halls" className="block h-full w-full">
             <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 group-hover:scale-110 transition-all duration-300">
               <MapIcon size={90} className="text-indigo-600" />
             </div>

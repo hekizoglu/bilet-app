@@ -62,7 +62,7 @@ export default function HallsPage() {
           Salonlar
         </h1>
         <Link 
-          href="/admin/designer"
+          href="/dashboard/designer"
           className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition"
         >
           Yeni Salon Tasarla
@@ -101,7 +101,7 @@ export default function HallsPage() {
                 </td>
                 <td className="p-4">
                   <div className="flex items-center gap-4">
-                    <Link href={`/admin/designer?id=${hall.id}`} className="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                    <Link href={`/dashboard/designer?id=${hall.id}`} className="text-blue-600 hover:text-blue-800 font-medium text-sm">
                       Görüntüle / Düzenle
                     </Link>
                     <button 

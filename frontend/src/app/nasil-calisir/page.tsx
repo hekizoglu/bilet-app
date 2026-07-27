@@ -98,7 +98,7 @@ export default function HowItWorksPage() {
             <h4 className="text-2xl font-bold text-slate-800 mb-4">Hemen Başlayın!</h4>
             <p className="text-slate-600 mb-8 max-w-lg mx-auto">Sistem hakkında yeterli bilgiye sahipsiniz. Artık ilk etkinliğinizi oluşturup satışa çıkmaya hazırsınız.</p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/admin/events" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-600/30 hover:-translate-y-1">
+              <Link href="/dashboard/events" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-blue-600/30 hover:-translate-y-1">
                 <Ticket size={20} /> Etkinlik Oluştur
               </Link>
               <Link href="/aggregator" className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold transition-all border border-slate-200 hover:-translate-y-1">

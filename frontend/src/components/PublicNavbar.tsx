@@ -16,7 +16,7 @@ export default function PublicNavbar() {
   }, []);
 
   // Admin sayfalarinda veya gizli sayfalarda navbar'i gosterme
-  if (pathname?.startsWith('/admin') || pathname?.startsWith('/login') || pathname?.startsWith('/payment')) {
+  if (pathname?.startsWith('/dashboard') || pathname?.startsWith('/login') || pathname?.startsWith('/payment')) {
     return null;
   }
 

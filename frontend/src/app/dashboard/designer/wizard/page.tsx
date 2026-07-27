@@ -744,7 +744,7 @@ export default function WizardPage() {
   function handleGenerate() {
     const config = buildConfig();
     localStorage.setItem('autoGenerateConfig', JSON.stringify(config));
-    router.push('/admin/designer/generate');
+    router.push('/dashboard/designer/generate');
   }
 
   const isLast = step === STEPS.length - 1;
@@ -753,7 +753,7 @@ export default function WizardPage() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shadow-sm">
-        <button onClick={() => router.push('/admin/designer')}
+        <button onClick={() => router.push('/dashboard/designer')}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 text-sm font-medium">
           <ArrowLeft size={16} /> Geri
         </button>
