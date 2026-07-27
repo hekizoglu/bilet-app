@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Calendar, Plus, X } from 'lucide-react';
+import { Calendar, Plus, X, AlertTriangle } from 'lucide-react';
+import AdminEventApprovalModal from '@/components/AdminEventApprovalModal';
 
 interface Event {
   id: string | number;
@@ -16,6 +17,9 @@ interface Event {
   visibility?: string;
   privateSlug?: string;
   hall?: { name: string; seatCount?: number };
+  organizer?: { name: string; email: string };
+  effectiveCapacity?: number;
+  approvalStatus?: string;
 }
 
 interface Hall {
@@ -28,6 +32,7 @@ export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [halls, setHalls] = useState<Hall[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [approvalModalEvent, setApprovalModalEvent] = useState<any>(null);
   
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
@@ -162,7 +167,13 @@ export default function EventsPage() {
 
   const filteredEvents = events.filter(event => {
     const matchesSearch = event.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'All' || event.status === statusFilter;
+    
+    let matchesStatus = true;
+    if (statusFilter === 'Onay Bekliyor') {
+      matchesStatus = event.approvalStatus === 'PENDING_APPROVAL';
+    } else if (statusFilter !== 'All') {
+      matchesStatus = event.status === statusFilter && event.approvalStatus !== 'PENDING_APPROVAL';
+    }
     
     let matchesPrice = true;
     if (priceFilter === 'Free') matchesPrice = Number(event.price) === 0;
@@ -220,7 +231,8 @@ export default function EventsPage() {
                 className="w-full p-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="All">Tüm Durumlar</option>
-                <option value="Aktif">Aktif</option>
+                <option value="Onay Bekliyor">Onay Bekleyenler</option>
+                <option value="Aktif">Aktif (Yayında)</option>
                 <option value="Taslak">Taslak</option>
                 <option value="Pasif">Pasif</option>
               </select>
@@ -324,16 +336,35 @@ export default function EventsPage() {
                   )}
                 </td>
                 <td className="p-4">
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    event.status === 'Aktif' ? 'bg-blue-100 text-blue-800' :
-                    event.status === 'Pasif' ? 'bg-red-100 text-red-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {event.status}
-                  </span>
+                  {event.approvalStatus === 'PENDING_APPROVAL' ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                      <AlertTriangle size={12} /> Onay Bekliyor
+                    </span>
+                  ) : event.approvalStatus === 'REJECTED' ? (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                      Reddedildi
+                    </span>
+                  ) : (
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      event.status === 'Aktif' ? 'bg-blue-100 text-blue-800' :
+                      event.status === 'Pasif' ? 'bg-red-100 text-red-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {event.status}
+                    </span>
+                  )}
                 </td>
                 <td className="p-4 text-right">
                   <div className="flex justify-end gap-2">
+                    {event.approvalStatus === 'PENDING_APPROVAL' && (
+                      <button 
+                        onClick={() => setApprovalModalEvent(event)}
+                        className="text-sm px-3 py-1.5 bg-orange-600 text-white hover:bg-orange-700 font-medium rounded transition"
+                        title="İncele ve Onayla"
+                      >
+                        İncele
+                      </button>
+                    )}
                     {event.visibility === 'PRIVATE' && (
                       <button 
                         onClick={() => handleRegenerateSlug(String(event.id))} 
@@ -519,6 +550,15 @@ export default function EventsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Approval Modal */}
+      {approvalModalEvent && (
+        <AdminEventApprovalModal 
+          event={approvalModalEvent} 
+          onClose={() => setApprovalModalEvent(null)}
+          onRefresh={fetchEvents}
+        />
       )}
     </div>
   );

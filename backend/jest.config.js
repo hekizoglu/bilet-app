@@ -22,5 +22,6 @@ module.exports = {
   // Testler arası Prisma bağlantı çakışmalarını önle
   maxWorkers: 1,
   // Timeout: integration testler için yeterli süre
-  testTimeout: 15000
+  testTimeout: 15000,
+  setupFiles: ['<rootDir>/jest.setup.js']
 };

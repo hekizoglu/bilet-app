@@ -1,7 +1,7 @@
 const request = require('supertest');
 const { app } = require('../../index');
 const { PrismaClient } = require('@prisma/client');
-const jwt = require('jsonwebtoken');
+const { generateToken } = require('../../services/authService');
 
 const prisma = new PrismaClient();
 const JWT_SECRET = process.env.JWT_SECRET || 'super-secret-key';
@@ -14,23 +14,27 @@ describe('Halls API Endpoints', () => {
   beforeAll(async () => {
     process.env.JWT_SECRET = JWT_SECRET;
 
-    adminToken = jwt.sign(
-      { email: 'admin@test.com', role: 'ADMIN' },
-      JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    // Create test users in DB
+    await prisma.user.upsert({
+      where: { email: 'admin@test.com' },
+      update: { id: 'admin-1', role: 'ADMIN' },
+      create: { id: 'admin-1', email: 'admin@test.com', role: 'ADMIN', name: 'Admin Test' }
+    });
+    await prisma.user.upsert({
+      where: { email: 'customer@test.com' },
+      update: { id: 'customer-1', role: 'CUSTOMER' },
+      create: { id: 'customer-1', email: 'customer@test.com', role: 'CUSTOMER', name: 'Customer Test' }
+    });
 
-    customerToken = jwt.sign(
-      { email: 'customer@test.com', role: 'CUSTOMER' },
-      JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    adminToken = generateToken({ id: 'admin-1', email: 'admin@test.com', role: 'ADMIN' });
+    customerToken = generateToken({ id: 'customer-1', email: 'customer@test.com', role: 'CUSTOMER' });
   });
 
   afterAll(async () => {
     if (testHallId) {
       await prisma.hall.delete({ where: { id: testHallId } }).catch(() => {});
     }
+    await prisma.user.deleteMany({ where: { email: { in: ['admin@test.com', 'customer@test.com'] } } }).catch(() => {});
     await prisma.$disconnect();
   });
 

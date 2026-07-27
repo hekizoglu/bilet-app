@@ -1,24 +1,28 @@
 const jwt = require('jsonwebtoken');
 
+const { JWT_ISSUER, JWT_AUDIENCE, JWT_ALGORITHM, getJwtSecret } = require('../utils/securityConfig');
+
 const generateToken = (user, extraPayload = {}, options = { expiresIn: '12h' }) => {
   const payload = {
-    userId: user.id,
+    id: user.id,
     email: user.email,
     role: user.role,
     tokenVersion: 1,
     ...extraPayload
   };
 
-  const secret = process.env.JWT_SECRET;
-  if (!secret && process.env.NODE_ENV === 'production') {
-    console.error("CRITICAL: JWT_SECRET ortam değişkeni ayarlanmamış!");
-    throw new Error('Sunucu yapılandırma hatası.');
-  }
+  const secret = getJwtSecret();
 
   return jwt.sign(
     payload,
-    secret || 'super-secret-key',
-    options
+    secret,
+    {
+      ...options,
+      algorithm: JWT_ALGORITHM,
+      issuer: JWT_ISSUER,
+      audience: JWT_AUDIENCE,
+      subject: String(user.id)
+    }
   );
 };
 
