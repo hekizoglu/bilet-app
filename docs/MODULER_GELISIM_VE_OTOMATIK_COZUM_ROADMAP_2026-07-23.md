@@ -58,23 +58,23 @@ Bir görev `TAMAMLANDI` yapılırken şu kanıtlar zorunludur:
 - Salon planı isteğe bağlıdır.
 
 **Roadmap:**
-- [ ] **M0-001 / P0:** Kod ile ürün kurallarının uyum denetimi.
-- [ ] **M0-002 / P1:** Kullanılmayan, yarım veya yinelenen özellik envanteri.
-- [ ] **M0-003 / P1:** Dinamik fiyat, kupon, puan, Telegram, aggregator ve simüle ödeme özelliklerini çekirdek beta dışına taşı.
-- [ ] **M0-004 / P2:** Her ana akış için başarı metriği tanımla.
+- [x] **M0-001 / P0:** Kod ile ürün kurallarının uyum denetimi.
+- [x] **M0-002 / P1:** Kullanılmayan, yarım veya yinelenen özellik envanteri.
+- [x] **M0-003 / P1:** Dinamik fiyat, kupon, puan, Telegram, aggregator ve simüle ödeme özelliklerini çekirdek beta dışına taşı.
+- [x] **M0-004 / P2:** Her ana akış için başarı metriği tanımla.
 
 **Kapanış ölçütü:** Beta kapsamı tek sayfada anlatılabilir ve kullanıcı ilk etkinliğini yardım almadan oluşturabilir.
 
 ---
 
-## M1 — Kimlik, oturum ve yetkilendirme
+## M1 — Sahip ve Yetki Güvenliği (P0)
 
 **Amaç:** Kullanıcı kimliğinin güvenilir olması ve herkesin yalnız kendi verisine erişmesi.
 
 **Roadmap:**
-- [ ] **M1-001 / P0 / TESTTE:** LOCAL test tokenlarını varsayılan kapalı yap; production'da kesin engelle.
-- [ ] **M1-002 / P0 / TESTTE:** JWT içine kullanıcı `id` ekle; issuer, audience ve algoritma doğrulaması uygula.
-- [ ] **M1-003 / P0 / TESTTE:** Güvensiz sabit JWT fallback secret kullanımını kaldır.
+- [x] **M1-001 / P0 / TESTTE:** LOCAL test tokenlarını varsayılan kapalı yap; production'da kesin engelle.
+- [x] **M1-002 / P0 / TESTTE:** JWT içine kullanıcı `id` ekle; issuer, audience ve algoritma doğrulaması uygula.
+- [x] **M1-003 / P0 / TESTTE:** Güvensiz sabit JWT fallback secret kullanımını kaldır.
 - [ ] **M1-004 / P0:** Tokenı JavaScript cookie yerine HttpOnly + Secure + SameSite cookie ile yönet.
 - [ ] **M1-005 / P0:** Etkinlik, salon, rezervasyon, kupon, QR ve rapor endpointlerinde owner kontrol matrisi.
 - [ ] **M1-006 / P1:** Rol değiştirme endpointini kaldır; organizatörlüğü etkinlik sahipliği ile belirle.
