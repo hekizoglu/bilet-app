@@ -22,6 +22,7 @@ const hallRoutes = require('./routes/halls');
 const reservationRoutes = require('./routes/reservations');
 const { requireAuth } = require('./middlewares/auth');
 const { createRateLimiter } = require('./utils/rateLimiter');
+const { metricsMiddleware, getMetricsSummary } = require('./utils/metrics');
 const http = require('http');
 const { Server } = require('socket.io');
 const xss = require('xss-clean');
@@ -161,6 +162,7 @@ app.use(express.json({ limit: '10mb' }));
 // app.use(xss()); // Add XSS protection (Disabled due to req.query read-only error)
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use('/api', limiter); // Sadece API rotalarına uygula
+app.use('/api', metricsMiddleware); // p95 latency ve hata oranı ölçümü
 
 // Health check routes
 app.get(['/health', '/api/health'], (req, res) => {
@@ -229,6 +231,15 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
     console.error("Dashboard istatistik hatası:", err);
     res.status(500).json({ error: 'İstatistikler hesaplanamadı.' });
   }
+});
+
+// GET /api/admin/metrics — p95 gecikme, hata oranı ve finansal alarmları getir
+app.get('/api/admin/metrics', requireAuth, (req, res) => {
+  if (req.user.role !== 'ADMIN' && req.user.role !== 'ORGANIZER') {
+    return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
+  }
+  const summary = getMetricsSummary();
+  res.json({ success: true, metrics: summary });
 });
 
 // GET /api/admin/reports

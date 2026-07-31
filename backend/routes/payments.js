@@ -9,6 +9,7 @@ const { validate } = require('../middlewares/validate');
 const { CircuitBreaker, retryWithBackoff } = require('../utils/circuitBreaker');
 const taskQueue = require('../utils/queue');
 const Sentry = require('@sentry/node');
+const { checkFinancialConsistency } = require('../utils/metrics');
 
 // Dış SMTP servisi için Circuit Breaker tanımı (Hata eşiği: 3, soğuma süresi: 20 saniye)
 const emailCircuit = new CircuitBreaker(
@@ -118,6 +119,9 @@ router.post('/:reservationId/manual-verify', paymentVerifyLimiter, requireAuth, 
         status: 'Onaylı'
       }
     });
+
+    // Finansal tutarsızlık alarm kontrolü (E0-009)
+    checkFinancialConsistency(updated, reservation.event?.price || 0);
 
     // Fikir #6: QR Kodu Base64 formatında oluştur ve E-posta Gönder
     const QRCode = require('qrcode');

@@ -5,27 +5,9 @@ import { Stage, Layer, Rect, Text, Group, Circle, Image as KonvaImage, Line } fr
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Trash2, Save, Plus, Settings, Copy, MousePointer2, Image as ImageIcon } from 'lucide-react';
 
-type ElementType = "round_table" | "rect_table" | "bistro" | "chair" | "stage" | "dance_floor" | "emergency_exit" | "entrance";
-type NumberingType = "table_only" | "table_and_seats" | "seats_only" | "none";
+import { ElementType, NumberingType, DesignerElement, HallLayout } from '../types/layout';
 
-interface DesignerElement {
-  id: string;
-  type: ElementType;
-  label: string;
-  x: number;
-  y: number;
-  width?: number; 
-  height?: number; 
-  radius?: number; 
-  rotation?: number; 
-  seatCount?: number; 
-  numberingType?: NumberingType;
-}
-
-interface HallLayout {
-  canvas: { width: number; height: number };
-  elements: DesignerElement[];
-}
+import { ValidationEngine, ValidationIssue } from './designer/ValidationEngine';
 
 export interface AutoGenerateConfig {
   hallLengthM: number;
@@ -77,6 +59,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   
   const [canvasWidth, setCanvasWidth] = useState(1000);
   const [canvasHeight, setCanvasHeight] = useState(800);
+  const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
 
   // Arka plan görseli
   const [bgImageObj, setBgImageObj] = useState<HTMLImageElement | null>(null);
@@ -179,14 +162,14 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     const deltaX = e.target.x() - origin.x;
     const deltaY = e.target.y() - origin.y;
 
-    setElements((prev) =>
-      prev.map((el) => {
-        if (!targetIds.includes(el.id)) return el;
-        const base = dragSelectionOriginRef.current[el.id];
-        if (!base) return el;
-        return { ...el, x: base.x + deltaX, y: base.y + deltaY };
-      })
-    );
+    const newElements = elements.map((el) => {
+      if (!targetIds.includes(el.id)) return el;
+      const base = dragSelectionOriginRef.current[el.id];
+      if (!base) return el;
+      return { ...el, x: base.x + deltaX, y: base.y + deltaY };
+    });
+    setElements(newElements);
+    setValidationIssues(ValidationEngine.validate({ canvas: { width: canvasWidth, height: canvasHeight }, elements: newElements as any }));
   };
 
   const handleDragEnd = (id: string) => {
@@ -498,7 +481,17 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   };
 
   // 🎭 Otomatik Sahne Oluştur - Sihirbazdan gelen tam config
-  const autoGenerateLayout = useCallback((config: AutoGenerateConfig) => {
+  const autoGenerateLayout = useCallback((config: AutoGenerateConfig, skipConfirm = false) => {
+    // ─── ONAY UYARISI ─────────────────────────────────────────────────
+    if (!skipConfirm && elements.length > 0) {
+      const confirmed = window.confirm(
+        '⚠️ Dikkat! Mevcut salon düzeniniz silinecek.\n\n' +
+        'Tüm masa, sandalye ve özel yerleşimleriniz kaybolacaktır.\n' +
+        'Devam etmek istiyor musunuz?'
+      );
+      if (!confirmed) return;
+    }
+
     const PIXEL_PER_METER = 80;
     const newCanvasWidth = config.hallLengthM * PIXEL_PER_METER;
     const newCanvasHeight = config.hallWidthM * PIXEL_PER_METER;
@@ -519,9 +512,24 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     const newElements: DesignerElement[] = [];
     let nextId = Date.now();
 
+    // ─── Çakışma Önleme: Meşgul Alanlar ──────────────────────────────
+    type OccupiedZone = { x: number; y: number; w: number; h: number };
+    const occupiedZones: OccupiedZone[] = [];
+
+    const addOccupied = (x: number, y: number, w: number, h: number, padding = 10) => {
+      occupiedZones.push({ x: x - padding, y: y - padding, w: w + padding * 2, h: h + padding * 2 });
+    };
+
+    const isOverlapping = (x: number, y: number, w: number, h: number): boolean => {
+      return occupiedZones.some(zone =>
+        x < zone.x + zone.w && x + w > zone.x &&
+        y < zone.y + zone.h && y + h > zone.y
+      );
+    };
+
     // ─── 1. SAHNE ────────────────────────────────────────────────────────
-    let stageTopBoundary = 0;    // sahne alanının alt sınırı (masalar buradan başlar)
-    let stageBotBoundary = newCanvasHeight; // alt sahne için üst sınır
+    let stageTopBoundary = 0;
+    let stageBotBoundary = newCanvasHeight;
     let stageLeftBound  = 0;
     let stageRightBound = newCanvasWidth;
 
@@ -543,7 +551,6 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
       } else if (stagePosition === 'center') {
         sx = (newCanvasWidth - STAGE_W) / 2;
         sy = (newCanvasHeight - STAGE_H) / 2;
-        // Merkez sahne: masalar etrafa yerleştirilir — alt+üst boşluk azalt
         stageTopBoundary = sy - TABLE_RADIUS * 2 - MIN_SPACING;
       }
       newElements.push({
@@ -554,6 +561,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
         width: STAGE_W, height: STAGE_H,
         rotation: 0, seatCount: 0, numberingType: 'none'
       });
+      addOccupied(sx, sy, STAGE_W, STAGE_H, MIN_SPACING / 2);
     }
 
     // ─── 2. DANS PİSTİ ────────────────────────────────────────────────────
@@ -571,62 +579,193 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
         width: DW, height: DH,
         rotation: 0, seatCount: 0, numberingType: 'none'
       });
+      addOccupied(dx, dy, DW, DH, 20);
       stageTopBoundary = dy + DH + 30;
     }
 
-    // ─── 3. MASALAR ───────────────────────────────────────────────────────
-    const TABLE_DIAMETER = TABLE_RADIUS * 2;
+    // ─── 3. OTURMA DÜZENİ (seatingStyle'a Göre) ─────────────────────
+    const seatingStyle = (config.seatingStyle as string) || 'banquet';
     const areaLeft   = stageLeftBound + 30;
     const areaTop    = stageTopBoundary + 20;
     const areaRight  = stageRightBound - 30;
     const areaBottom = stageBotBoundary - 20;
-    const areaW = areaRight - areaLeft;
-    const areaH = areaBottom - areaTop;
-
-    const COLS = Math.max(1, Math.floor(areaW / (TABLE_DIAMETER + MIN_SPACING)));
-    const maxRows = Math.max(1, Math.floor(areaH / (TABLE_DIAMETER + MIN_SPACING)));
-    const maxTables = Math.floor(MAX_CAPACITY / Math.max(1, TABLE_SEATS));
 
     let tableCount = 0;
     let totalSeats = 0;
-    outer:
-    for (let row = 0; row < maxRows; row++) {
-      for (let col = 0; col < COLS; col++) {
-        if (tableCount >= maxTables) break outer;
-        const tx = areaLeft + col * (TABLE_DIAMETER + MIN_SPACING) + TABLE_RADIUS;
-        const ty = areaTop  + row * (TABLE_DIAMETER + MIN_SPACING) + TABLE_RADIUS;
-        if (tx + TABLE_RADIUS > areaRight || ty + TABLE_RADIUS > areaBottom) continue;
-        tableCount++;
-        totalSeats += TABLE_SEATS;
-        newElements.push({
-          id: `round_table-${nextId++}`,
-          type: 'round_table',
-          label: `T${tableCount}`,
-          x: tx - TABLE_RADIUS, y: ty - TABLE_RADIUS,
-          radius: TABLE_RADIUS,
-          rotation: 0, seatCount: TABLE_SEATS,
-          numberingType: config.numberingType
-        });
+
+    if (seatingStyle === 'theater') {
+      // ─── TİYATRO DÜZENİ: Sıralı koltuklar ─────────────────────────
+      const CHAIR_W = 30;
+      const CHAIR_H = 30;
+      const COL_GAP = 8;
+      const ROW_GAP = 12;
+      const COLS = Math.max(1, Math.floor((areaRight - areaLeft) / (CHAIR_W + COL_GAP)));
+      const maxChairs = Math.min(MAX_CAPACITY, 2000);
+      let seatNum = 0;
+
+      for (let row = 0; seatNum < maxChairs; row++) {
+        const ry = areaTop + row * (CHAIR_H + ROW_GAP);
+        if (ry + CHAIR_H > areaBottom) break;
+        for (let col = 0; col < COLS && seatNum < maxChairs; col++) {
+          const cx = areaLeft + col * (CHAIR_W + COL_GAP);
+          if (cx + CHAIR_W > areaRight) break;
+          if (isOverlapping(cx, ry, CHAIR_W, CHAIR_H)) continue;
+          seatNum++;
+          totalSeats++;
+          newElements.push({
+            id: `chair-${nextId++}`,
+            type: 'chair',
+            label: `${seatNum}`,
+            x: cx, y: ry,
+            width: CHAIR_W, height: CHAIR_H,
+            rotation: 0, seatCount: 1,
+            numberingType: config.numberingType
+          });
+          addOccupied(cx, ry, CHAIR_W, CHAIR_H, 2);
+        }
+      }
+      tableCount = 0; // Tiyatroda masa yok
+
+    } else if (seatingStyle === 'classroom') {
+      // ─── SINIF DÜZENİ: Dikdörtgen masalar + önde koltuklar ─────────
+      const DESK_W = 120;
+      const DESK_H = 40;
+      const DESK_GAP_X = 30;
+      const DESK_GAP_Y = 60;
+      const SEATS_PER_DESK = TABLE_SEATS;
+      const COLS = Math.max(1, Math.floor((areaRight - areaLeft) / (DESK_W + DESK_GAP_X)));
+      const maxDesks = Math.floor(MAX_CAPACITY / Math.max(1, SEATS_PER_DESK));
+
+      for (let row = 0; tableCount < maxDesks; row++) {
+        const dy = areaTop + row * (DESK_H + DESK_GAP_Y);
+        if (dy + DESK_H > areaBottom) break;
+        for (let col = 0; col < COLS && tableCount < maxDesks; col++) {
+          const dx = areaLeft + col * (DESK_W + DESK_GAP_X);
+          if (dx + DESK_W > areaRight) break;
+          if (isOverlapping(dx, dy, DESK_W, DESK_H)) continue;
+          tableCount++;
+          totalSeats += SEATS_PER_DESK;
+          newElements.push({
+            id: `rect_table-${nextId++}`,
+            type: 'rect_table',
+            label: `M${tableCount}`,
+            x: dx, y: dy,
+            width: DESK_W, height: DESK_H,
+            rotation: 0, seatCount: SEATS_PER_DESK,
+            numberingType: config.numberingType
+          });
+          addOccupied(dx, dy, DESK_W, DESK_H + 30, 5); // +30 sandalyeler için
+        }
+      }
+
+    } else if (seatingStyle === 'cocktail') {
+      // ─── KOKTEYl DÜZENİ: Küçük bistro masaları ─────────────────────
+      const BISTRO_R = 20;
+      const BISTRO_D = BISTRO_R * 2;
+      const BISTRO_GAP = 60;
+      const COLS = Math.max(1, Math.floor((areaRight - areaLeft) / (BISTRO_D + BISTRO_GAP)));
+      const maxBistros = Math.floor(MAX_CAPACITY / 4);
+
+      for (let row = 0; tableCount < maxBistros; row++) {
+        const by = areaTop + row * (BISTRO_D + BISTRO_GAP) + BISTRO_R;
+        if (by + BISTRO_R > areaBottom) break;
+        for (let col = 0; col < COLS && tableCount < maxBistros; col++) {
+          const bx = areaLeft + col * (BISTRO_D + BISTRO_GAP) + BISTRO_R;
+          if (bx + BISTRO_R > areaRight) break;
+          if (isOverlapping(bx - BISTRO_R, by - BISTRO_R, BISTRO_D, BISTRO_D)) continue;
+          tableCount++;
+          totalSeats += 4;
+          newElements.push({
+            id: `bistro-${nextId++}`,
+            type: 'bistro',
+            label: `C${tableCount}`,
+            x: bx - BISTRO_R, y: by - BISTRO_R,
+            radius: BISTRO_R,
+            rotation: 0, seatCount: 4,
+            numberingType: config.numberingType
+          });
+          addOccupied(bx - BISTRO_R, by - BISTRO_R, BISTRO_D, BISTRO_D, 10);
+        }
+      }
+
+    } else {
+      // ─── BANKET / MIXED DÜZENİ: Yuvarlak masalar (varsayılan) ──────
+      const TABLE_RADIUS_SAFE = Math.max(20, (config.tableRadiusCm / 100) * PIXEL_PER_METER / 2);
+      const TABLE_DIAMETER = TABLE_RADIUS_SAFE * 2;
+      const areaW = areaRight - areaLeft;
+      const areaH = areaBottom - areaTop;
+      const COLS = Math.max(1, Math.floor(areaW / (TABLE_DIAMETER + MIN_SPACING)));
+      const maxRows = Math.max(1, Math.floor(areaH / (TABLE_DIAMETER + MIN_SPACING)));
+      const maxTables = Math.floor(MAX_CAPACITY / Math.max(1, TABLE_SEATS));
+
+      outer:
+      for (let row = 0; row < maxRows; row++) {
+        for (let col = 0; col < COLS; col++) {
+          if (tableCount >= maxTables) break outer;
+          const tx = areaLeft + col * (TABLE_DIAMETER + MIN_SPACING) + TABLE_RADIUS_SAFE;
+          const ty = areaTop  + row * (TABLE_DIAMETER + MIN_SPACING) + TABLE_RADIUS_SAFE;
+          if (tx + TABLE_RADIUS_SAFE > areaRight || ty + TABLE_RADIUS_SAFE > areaBottom) continue;
+
+          const tableX = tx - TABLE_RADIUS_SAFE;
+          const tableY = ty - TABLE_RADIUS_SAFE;
+          if (isOverlapping(tableX, tableY, TABLE_DIAMETER, TABLE_DIAMETER)) continue;
+
+          tableCount++;
+          totalSeats += TABLE_SEATS;
+          newElements.push({
+            id: `round_table-${nextId++}`,
+            type: 'round_table',
+            label: `T${tableCount}`,
+            x: tableX, y: tableY,
+            radius: TABLE_RADIUS_SAFE,
+            rotation: 0, seatCount: TABLE_SEATS,
+            numberingType: config.numberingType
+          });
+          addOccupied(tableX, tableY, TABLE_DIAMETER, TABLE_DIAMETER, 5);
+        }
       }
     }
 
-    // ─── 4. BİSTRO / BAR ─────────────────────────────────────────────────
+    // ─── 4. BİSTRO / BAR (Duvar Boyunca Dağıtım) ────────────────────
     const bistroCount = config.bistroCount ?? 0;
-    for (let i = 0; i < bistroCount; i++) {
-      const bx = 30 + i * 70;
-      const by = newCanvasHeight - 60;
-      newElements.push({
-        id: `bistro-${nextId++}`,
-        type: 'bistro',
-        label: `🍹 Bar ${i + 1}`,
-        x: bx, y: by,
-        radius: 25, rotation: 0, seatCount: 4, numberingType: 'none'
-      });
+    if (bistroCount > 0) {
+      // Bistroları salon duvarlarına eşit aralıklarla dağıt
+      const wallPositions: { x: number; y: number }[] = [];
+      const BISTRO_R = 25;
+      const wallPadding = 40;
+      // Sol duvar
+      wallPositions.push({ x: wallPadding, y: newCanvasHeight / 2 });
+      // Sağ duvar
+      wallPositions.push({ x: newCanvasWidth - wallPadding - BISTRO_R * 2, y: newCanvasHeight / 2 });
+      // Alt sol köşe
+      wallPositions.push({ x: wallPadding, y: newCanvasHeight - wallPadding - BISTRO_R * 2 });
+      // Alt sağ köşe
+      wallPositions.push({ x: newCanvasWidth - wallPadding - BISTRO_R * 2, y: newCanvasHeight - wallPadding - BISTRO_R * 2 });
+      // Üst sol (sahne yoksa)
+      wallPositions.push({ x: wallPadding, y: stageTopBoundary + 20 });
+      // Üst sağ
+      wallPositions.push({ x: newCanvasWidth - wallPadding - BISTRO_R * 2, y: stageTopBoundary + 20 });
+
+      for (let i = 0; i < bistroCount && i < wallPositions.length; i++) {
+        let pos = wallPositions[i];
+        // Çakışma kontrolü — çakışıyorsa atla (yerleştirme yapma)
+        if (!isOverlapping(pos.x, pos.y, BISTRO_R * 2, BISTRO_R * 2)) {
+          newElements.push({
+            id: `bistro-${nextId++}`,
+            type: 'bistro',
+            label: `🍹 Bar ${i + 1}`,
+            x: pos.x, y: pos.y,
+            radius: BISTRO_R, rotation: 0, seatCount: 4, numberingType: 'none'
+          });
+          addOccupied(pos.x, pos.y, BISTRO_R * 2, BISTRO_R * 2, 10);
+        }
+      }
     }
 
-    // ─── 5. ACİL ÇIKIŞLAR ─────────────────────────────────────────────────
+    // ─── 5. ACİL ÇIKIŞLAR & GİRİŞLER ─────────────────────────────────
     const exitCount = (config.emergencyExitCount as number | undefined) ?? 0;
-    const exits = exitCount + ((config.mainEntranceCount as number | undefined) ?? 0);
+    const mainEntranceCount = (config.mainEntranceCount as number | undefined) ?? 0;
+    const totalExits = exitCount + mainEntranceCount;
     const allExitPositions = [
       { x: 0,             y: newCanvasHeight / 2 - 20 },
       { x: newCanvasWidth - 50, y: newCanvasHeight / 2 - 20 },
@@ -634,14 +773,16 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
       { x: newCanvasWidth / 2 - 25, y: newCanvasHeight - 30 },
       { x: 0,             y: 40 },
       { x: newCanvasWidth - 50, y: newCanvasHeight - 60 },
+      { x: 0,             y: newCanvasHeight - 60 },
+      { x: newCanvasWidth - 50, y: 40 },
     ];
-    for (let i = 0; i < Math.min(exits, allExitPositions.length); i++) {
+    for (let i = 0; i < Math.min(totalExits, allExitPositions.length); i++) {
       const pos = allExitPositions[i];
-      const isMain = i < ((config.mainEntranceCount as number | undefined) ?? 0);
+      const isMain = i < mainEntranceCount;
       newElements.push({
         id: `${isMain ? 'entrance' : 'emergency_exit'}-${nextId++}`,
         type: isMain ? 'entrance' : 'emergency_exit',
-        label: isMain ? `🚪 Giriş ${i + 1}` : `🆘 Çıkış ${i + 1}`,
+        label: isMain ? `🚪 Giriş ${i + 1}` : `🆘 Çıkış ${i + 1 - mainEntranceCount}`,
         x: pos.x, y: pos.y,
         width: 50, height: 30,
         rotation: 0, seatCount: 0, numberingType: 'none'
@@ -654,17 +795,19 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     setStageScale(Math.min(900 / newCanvasWidth, 750 / newCanvasHeight, 1));
     setStagePos({ x: 20, y: 20 });
 
+    const bistrosPlaced = newElements.filter(e => e.type === 'bistro').length;
+    const tableWord = seatingStyle === 'theater' ? 'Koltuk' : (seatingStyle === 'cocktail' ? 'Bistro' : 'Masa');
     const summary = [
       `✅ Salon Oluşturuldu!`,
       `• Alan: ${config.hallLengthM}m × ${config.hallWidthM}m`,
-      `• Masa: ${tableCount} adet | Kapasite: ${totalSeats} kişi`,
+      seatingStyle === 'theater' ? `• Koltuk: ${totalSeats} adet` : `• ${tableWord}: ${tableCount} adet | Kapasite: ${totalSeats} kişi`,
       stageCount > 0 ? `• Sahne: ${stageCount} adet (${config.stageLengthM}×${config.stageWidthM}m)` : '',
-      bistroCount > 0 ? `• Bar/Bistro: ${bistroCount} adet` : '',
-      exits > 0 ? `• Çıkış/Giriş: ${exits} adet` : '',
+      bistrosPlaced > 0 ? `• Bar/Bistro: ${bistrosPlaced} adet` : '',
+      totalExits > 0 ? `• Çıkış/Giriş: ${totalExits} adet` : '',
     ].filter(Boolean).join('\n');
     alert(summary);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [elements.length]);
 
   // 📊 İstatistik Hesaplayıcı
   const getStatistics = () => {
@@ -1111,7 +1254,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
                 stageWidthM: 2,
                 stageCapacity: 150,
                 numberingType: 'table_and_seats'
-              })}
+              }, false)}
               className="w-full bg-purple-600 text-white hover:bg-purple-700 font-bold py-2 px-2 rounded text-xs transition"
             >
               ✨ Yerleştir

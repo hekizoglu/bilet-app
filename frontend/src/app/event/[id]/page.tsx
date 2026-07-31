@@ -593,7 +593,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form id="reservation-checkout-form" onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Ad Soyad</label>
               <input required type="text" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm" 
@@ -751,6 +751,46 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
           )}
         </div>
       </div>
+
+      {/* UX-SEAT-002: Mobil Sabit Özet Barı (Sticky Checkout Bar) */}
+      {selectedSeats.length > 0 && (
+        <div 
+          aria-label="Seçilen Koltuk Özeti" 
+          className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-2xl z-40 flex items-center justify-between md:hidden"
+        >
+          <div>
+            <div className="text-xs text-gray-500 font-medium">
+              Seçilen: <span className="font-bold text-gray-800">{selectedSeats.length} Koltuk</span>
+            </div>
+            <div className="text-lg font-bold text-blue-700">
+              {(() => {
+                let baseTotal = data.price * Math.max(1, selectedSeats.length);
+                if (discount) {
+                  const discAmount = discount.type === 'PERCENTAGE' ? (baseTotal * discount.value / 100) : discount.value;
+                  baseTotal = Math.max(0, baseTotal - discAmount);
+                }
+                if (form.usePoints) {
+                  baseTotal = Math.max(0, baseTotal - userPoints);
+                }
+                return baseTotal.toFixed(2);
+              })()} ₺
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              const formEl = document.getElementById('reservation-checkout-form');
+              if (formEl) {
+                formEl.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
+            className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-xl shadow-md text-sm transition focus:outline-none focus:ring-2 focus:ring-green-500 cursor-pointer"
+          >
+            Ödemeye Geç
+          </button>
+        </div>
+      )}
     </div>
   );
 }

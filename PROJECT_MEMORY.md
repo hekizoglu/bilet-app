@@ -64,6 +64,11 @@ Developing a ticket reservation system that supports modern Node.js + Next.js + 
 * Updated `schema.prisma` SQLite local database synchronization (`prisma db push --accept-data-loss`), fixing missing `organizerId` column error on local dev database.
 * Executed full backend test suite: 49/49 unit & integration tests passed cleanly (6/6 test suites passed).
 * Cleaned up and updated all system metadata documentation files with current timestamp (`2026-07-23`).
+* **FAZ 5.1 & FAZ 5.3 (Tasarım Token Sistemi & Çekirdek UI Kütüphanesi):** `frontend/src/styles/tokens.css` ile semantik tokenlar ve `src/components/ui/` altında erişilebilir `Button`, `Input`, `StatusBadge`, `Card`, `Modal`, `Alert`, `EmptyState`, `ResponsiveTable` bileşenleri oluşturuldu; `globals.css` entegre edildi.
+* **FAZ 5.2 (Mobil Bilgi Mimarisi):** `dashboard/layout.tsx` üzerinde 4 ana sekme + Daha Fazla (Bottom Sheet Drawer) navigasyonu; `profile/layout.tsx` üzerinde mobilde masaüstü sidebar gizleme (`hidden md:flex`) ve mobil alt tab bar sağlandı.
+* **FAZ 5.7 (Koltuk Seçimi Sabit Özeti):** `event/[id]/page.tsx` üzerine koltuk seçimine duyarlı mobil Sabit Özet Barı (`Sticky Checkout Bar`) eklendi.
+* **FAZ 5.8 (Erişilebilirlik WCAG 2.2 AA):** `Modal`, `Button` ve `Input` bileşenlerinde WAI-ARIA semantikleri (`role="dialog"`, `aria-modal`, `aria-labelledby`, `aria-describedby`, `aria-busy`, `aria-invalid`) ile klavye gezinme tuşları (`Esc`, `Enter`, `Space`) uyumlu kılındı.
+* **E0-009 (Gözlemlenebilirlik ve Alarmlar):** `backend/utils/metrics.js` ve `/api/admin/metrics` rotası ile p95 gecikme hesabı, %5 hata oranı eşiği ve ödeme-bilet tutar tutarsızlığı alarmı eklendi. Tüm birim ve entegrasyon testleri (8/8 suite, 64/64 test) ile Next.js production derlemesi başarıyla geçti.
 
 ### Active Priorities
 1. Test production deployment (Cloud Run / Railway).
@@ -72,5 +77,5 @@ Developing a ticket reservation system that supports modern Node.js + Next.js + 
 ### Do-Not-Change List
 * Do not replace JWT authentication middleware with insecure alternatives.
 
-Last updated: 2026-07-23
+Last updated: 2026-07-30
 Related files: [ROADMAP.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet-app-new/bilet-app/ROADMAP.md), [DECISIONS.md](file:///c:/Users/huseyinekizoglu/Documents/Bilet-app-new/bilet-app/DECISIONS.md)

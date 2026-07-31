@@ -1,4 +1,4 @@
-# 📦 Arşiv - Tamamlanan Faze ve Fikirler
+﻿# 📦 Arşiv - Tamamlanan Faze ve Fikirler
 
 **Son Güncelleme:** 2026-07-01  
 **Durum:** Tüm FAZ 1-13 ve geçmiş döngü fikirleri arşivlendi  
@@ -179,3 +179,132 @@ Aşağıdaki fikirler AIE sistemi tarafından otomatik olarak tespit edilip çö
 
 *Arşiv oluşturulma tarihi: 2026-07-01*  
 *Amacı: ROADMAP.md sadeliği ve odak mantığı için*
+
+
+## 📝 ROADMAP.md'den Taşınan Fazlar
+
+# ARŞİVLENMİŞ ROADMAP MADDELERİ (Tamamlananlar)
+
+# FAZ 0 — KRİTİK GÜVENLİK VE VERİ İZOLASYONU
+
+**Öncelik:** P0  
+**Amaç:** Yeni özellik eklemeden önce mevcut güvenlik açıklarını kapatmak.
+
+- [x] Production ortamında bütün `LOCAL_*` test tokenlarını devre dışı bırak.
+- [x] Kullanıcının kendisini genel `ORGANIZER` rolüne yükselttiği endpointi kaldır veya yeni sahiplik modeline göre değiştir.
+- [x] JWT içine `userId`, `email`, `role` ve `tokenVersion` ekle.
+- [x] JWT üretimini tek bir auth servisinde birleştir.
+- [x] Bütün etkinlik sorgularına `ownerId` filtresi ekle.
+- [x] Bütün salon sorgularına sahiplik kontrolü ekle.
+- [x] Bütün rezervasyon ve rapor sorgularını etkinlik sahibi ile sınırla.
+- [x] Organizatörün başka kullanıcıların rezervasyonlarını onaylamasını engelle.
+- [x] Organizatörün başka etkinliğe ait QR bileti okutmasını engelle.
+- [x] Production ortamında sahte kredi kartı ödeme endpointini kapat.
+- [x] İmzasız banka webhook endpointini kapat.
+- [x] Kod içine gömülmüş SMTP bilgilerini kaldır ve secretları yenile.
+- [x] Ortak Prisma istemcisini istek içinde kapatan `$disconnect()` çağrılarını kaldır.
+- [x] Prisma production şemasını PostgreSQL üzerinde doğrula.
+- [x] Frontend API URL yapısını tek standarda geçir.
+- [x] Production ortamında debug endpointlerini kapat.
+
+**Tamamlanma kriteri:** Bir kullanıcı başka kullanıcıya ait hiçbir etkinlik, salon, rezervasyon veya rapora erişemez.
+
+---
+
+# FAZ 4 — DAVET VE KATILIM YÖNETİMİ
+
+**Öncelik:** P0
+
+- [x] Özel davet bağlantısı oluştur.
+- [x] QR davetiye oluştur.
+- [x] WhatsApp paylaşım metni oluştur.
+- [x] `Katılıyorum`, `Katılamıyorum`, `Kararsızım` cevaplarını ekle.
+- [x] Yanında getirilecek kişi sayısını destekle.
+- [x] Çocuk katılım sayısını destekle.
+- [x] Katılımcı notes destekle.
+- [x] Organizatöre toplam katılımcı sayısını göster.
+- [x] Onaylanan kişi sayısının kapasiteyi geçmesini engelle.
+- [x] Kapasite dolunca bekleme listesi aç.
+- [x] Davet bağlantısını yenileme özelliği ekle.
+- [x] Adresi yalnızca katılımı kabul edenlere gösterme seçeneği ekle.
+
+**Tamamlanma kriteri:** Kullanıcı doğum gününü WhatsApp yerine App Bilet üzerinden düzenli biçimde yönetebilir.
+
+---
+
+# FAZ 5 — KULLANICI ETKİNLİK PANELİ
+
+**Öncelik:** P1
+
+Her kullanıcının panelinde şunlar bulunmalıdır:
+
+- [x] Etkinliklerim
+- [x] Yeni etkinlik oluştur
+- [x] Taslaklar
+- [x] Onay bekleyenler
+- [x] Yayındaki etkinlikler
+- [x] Geçmiş etkinlikler
+- [x] Katılımcılar
+- [x] Davet bağlantıları
+- [x] QR giriş
+- [x] Duyurular
+- [x] Salonlarım
+- [x] İstatistikler
+
+Bu panel “admin paneli” olarak adlandırılmamalıdır. Kullanıcının kendi organizasyon alanı olmalıdır.
+
+**Tamamlanma kriteri:** Kullanıcı yalnızca kendi etkinliklerini tek panelden yönetebilir.
+
+---
+
+# FAZ 6 — QR GİRİŞ VE KAPI KONTROLÜ
+
+**Öncelik:** P1
+
+- [x] Her katılımcıya benzersiz QR kod üret.
+- [x] QR kodu yalnızca etkinlik sahibi veya onun yetkilendirdiği görevli okutabilsin.
+- [x] Görevli yetkilendirme modeli ekle.
+- [x] Aynı QR kodun ikinci kullanımını atomik olarak engelle.
+- [x] Yanlış etkinliğe ait QR kodu reddet.
+- [x] Manuel isim arama ve giriş desteği ekle.
+- [x] Offline giriş listesi ve sonradan eşitleme ekle.
+- [x] Eşitleme çakışmalarını denetim kaydına yaz.
+
+**Tamamlanma kriteri:** Etkinlik sahibi telefonuyla kendi etkinliğinin girişini güvenilir şekilde yönetebilir.
+
+---
+
+# FAZ 7 — BİLDİRİM VE HATIRLATMA
+
+**Öncelik:** P1
+
+- [x] Davet gönderildi bildirimi
+- [x] Katılım cevabı değişti bildirimi
+- [x] Etkinliğe 24 saat kaldı bildirimi
+- [x] Etkinliğe 2 saat kaldı bildirimi
+- [x] Etkinlik bilgileri değişti bildirimi
+- [x] Etkinlik iptal edildi bildirimi
+- [x] 50 kişi sınırına yaklaşıldı uyarısı
+- [x] 50 kişi aşıldı ve onay gerekiyor bildirimi
+- [x] Onaylandı bildirimi
+- [x] Reddedildi ve gerekçe bildirimi
+
+Bildirimler uygulama içi ve e-posta ile başlamalı; SMS daha sonra ücretli özellik olabilir.
+
+---
+
+# FAZ 8 — ŞİKÂYET, DENETİM VE GÜVEN
+
+**Öncelik:** P1
+
+50 kişi altındaki etkinlikler onaysız olsa da platform denetimsiz değildir.
+
+- [x] Etkinliği şikâyet et butonu ekle.
+- [x] Şikâyet kategorileri ekle.
+- [x] Etkinliği askıya alma özelliği ekle.
+- [x] Kullanıcıya itiraz hakkı ekle.
+- [x] Yasaklı içerik ve bağlantı kontrolü ekle.
+- [x] Seri etkinlik ve spam sınırları ekle.
+- [x] Bütün admin müdahalelerini audit loga yaz.
+- [x] Özel etkinlikleri arama motorlarından gizle.
+- [x] Davet bağlantısı tahmin edilemez ve yenilenebilir olsun.

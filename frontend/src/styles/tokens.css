@@ -1,0 +1,120 @@
+/* ==========================================================================
+   APP BİLET — TASARIM TOKEN SİSTEMİ (FAZ 5.1 / UX-DS-001)
+   Semantik renkler, koltuk haritası renkleri, hiyerarşik tipografi,
+   gölgeler, köşe yuvarlamaları (radius) ve Dark/Light mode değişkenleri.
+   ========================================================================== */
+
+:root {
+  /* --- 1. Temel Semantik Renk Tokenları (Light Mode Varsayılan) --- */
+  --color-primary: #2563eb;          /* Mavi - Birincil aksiyon / Ana marka */
+  --color-primary-hover: #1d4ed8;
+  --color-primary-light: #eff6ff;
+  
+  --color-success: #16a34a;          /* Yeşil - Başarı, boş koltuk, aktif */
+  --color-success-light: #f0fdf4;
+  
+  --color-warning: #d97706;          /* Amber - Bekleme, kilitli koltuk, taslak */
+  --color-warning-light: #fffbeb;
+  
+  --color-danger: #dc2626;           /* Kırmızı - Hata, iptal, ret */
+  --color-danger-light: #fef2f2;
+  
+  --color-info: #0284c7;             /* Bilgi - Duyuru, genel mesaj */
+  --color-info-light: #f0f9ff;
+
+  --color-surface: #ffffff;          /* Yüzey / Kart arka planı */
+  --color-surface-hover: #f8fafc;
+  --color-surface-elevated: #ffffff;
+  
+  --color-border: #e2e8f0;           /* Genel sınır çizgisi / Border */
+  --color-border-strong: #cbd5e1;
+  
+  --color-muted: #64748b;            /* Yardımcı metin / Pasif alanlar */
+  --color-muted-light: #f1f5f9;
+
+  --color-text-main: #0f172a;        /* Ana metin rengi */
+  --color-text-secondary: #475569;   /* İkincil metin rengi */
+
+  /* --- 2. Koltuk Haritası Özelleştirilmiş Tokenları (UX-DS-001) --- */
+  --color-seat-available: #16a34a;   /* Boş koltuk (Yeşil) */
+  --color-seat-selected: #2563eb;    /* Seçili koltuk (Mavi) */
+  --color-seat-locked: #d97706;      /* Kilitli / Geçici rezerve koltuk (Amber) */
+  --color-seat-occupied: #64748b;    /* Dolu / Satılmış koltuk (Gri) */
+  --color-seat-vip: #7c3aed;         /* VIP koltuk (Mor) */
+  --color-seat-accessible: #0284c7;  /* Erişilebilir koltuk (Mavi-İnfo) */
+
+  /* --- 3. Köşe Yuvarlamaları (Radius Tokens) --- */
+  --radius-sm: 0.375rem;             /* 6px */
+  --radius-md: 0.5rem;               /* 8px */
+  --radius-lg: 0.75rem;              /* 12px */
+  --radius-xl: 1rem;                 /* 16px */
+  --radius-full: 9999px;
+
+  /* --- 4. Gölgeler (Elevation / Shadows) --- */
+  --shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.07), 0 2px 4px -2px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+
+  /* --- 5. Z-Index Katman Hiyerarşisi --- */
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal-backdrop: 300;
+  --z-modal: 400;
+  --z-toast: 500;
+
+  /* --- 6. Hareket Süreleri (Transitions) --- */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================================================
+   DARK MODE TOKEN ADAPTASYONU
+   Tek token yapısı üzerinden Koyu Tema kontrast ayarları (UX-DS-001)
+   ========================================================================== */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-primary: #3b82f6;
+    --color-primary-hover: #60a5fa;
+    --color-primary-light: rgba(59, 130, 246, 0.15);
+
+    --color-success: #22c55e;
+    --color-success-light: rgba(34, 197, 94, 0.15);
+
+    --color-warning: #f59e0b;
+    --color-warning-light: rgba(245, 158, 11, 0.15);
+
+    --color-danger: #ef4444;
+    --color-danger-light: rgba(239, 68, 68, 0.15);
+
+    --color-info: #38bdf8;
+    --color-info-light: rgba(56, 189, 248, 0.15);
+
+    --color-surface: #0f172a;
+    --color-surface-hover: #1e293b;
+    --color-surface-elevated: #1e293b;
+
+    --color-border: #334155;
+    --color-border-strong: #475569;
+
+    --color-muted: #94a3b8;
+    --color-muted-light: #1e293b;
+
+    --color-text-main: #f8fafc;
+    --color-text-secondary: #cbd5e1;
+
+    --color-seat-available: #22c55e;
+    --color-seat-selected: #3b82f6;
+    --color-seat-locked: #f59e0b;
+    --color-seat-occupied: #475569;
+    --color-seat-vip: #a855f7;
+    --color-seat-accessible: #38bdf8;
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  }
+}
