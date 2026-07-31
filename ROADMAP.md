@@ -217,6 +217,7 @@ Kullanıcı iki seçenekten birini seçer:
 - Kendi salon planını oluşturabilir.
 - Masa ve sandalye ekleyebilir.
 - Sistem gerçek sandalye sayısını otomatik hesaplar.
+- Sihirbaz aracılığıyla bir sırada kaç adet sandalye veya masa olacağı gibi ince ayarlar sorulabilir.
 
 ### Genel giriş
 
@@ -295,6 +296,18 @@ COMPLETED
 
 **Tamamlanma kriteri:** 51 kişilik etkinlik onaysız yayınlanamaz; 50 kişilik etkinlik onaya düşmez.
 
+---
+
+# FAZ 8 — KULLANICI DAVRANIŞ TAKİBİ VE GERİ BİLDİRİM
+
+**Öncelik:** P1
+**Amaç:** Kullanıcının sistemdeki yolculuğunu anlamak ve takıldıkları noktalarda proaktif destek sunmak.
+
+- **Gerçek Zamanlı Takip:** Sistem, kullanıcının anlık olarak hangi sayfada olduğunu ve hangi işlemleri yaptığını arka planda izler (analytics/telemetry).
+- **Hareketsizlik (Inactivity) Tespiti:** Kullanıcı belirli bir süre (örneğin 2-3 dakika) aynı sayfada işlem yapmadan beklerse, sistem kullanıcının yardıma ihtiyacı olduğunu varsayar.
+- **Otomatik Destek Paneli:** Hareketsizlik tespit edildiğinde, sağ taraftaki mevcut soru, görüş ve öneri (Feedback) paneli otomatik olarak açılır ve kullanıcıya yardımcı olmaya çalışır.
+
+---
 
 
 # FAZ 9 — BETA TESTİ

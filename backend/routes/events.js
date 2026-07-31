@@ -1,4 +1,4 @@
-﻿const { createNotification } = require('../services/notificationService');
+const { createNotification } = require('../services/notificationService');
 const express = require('express');
 const router = express.Router();
 const prisma = require('../prisma');
@@ -430,11 +430,81 @@ router.get('/:id/attendees', requireAuth, async (req, res) => {
     }
 
     const attendees = await prisma.reservation.findMany({
-      where: { eventId: req.params.id, status: 'Onayland�' }
+      where: { eventId: req.params.id, status: 'Onayland' }
     });
     res.json({ success: true, attendees });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatas�." });
+    res.status(500).json({ error: "Sunucu hatas." });
+  }
+});
+
+// Admin Event Approval Endpoints
+router.post('/:id/approve', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: "Yetkisiz işlem. Sadece yöneticiler onay verebilir." });
+    }
+    const event = await prisma.event.update({
+      where: { id: req.params.id },
+      data: {
+        approvalStatus: 'APPROVED',
+        status: 'Aktif',
+        approvedAt: new Date(),
+        approvedById: req.user.id
+      }
+    });
+    cache.del('events');
+    cache.del('events_admin');
+    cache.del(`events_user_${event.organizerId}`);
+    res.json({ success: true, event });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası." });
+  }
+});
+
+router.post('/:id/reject', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: "Yetkisiz işlem." });
+    }
+    const { reason } = req.body;
+    const event = await prisma.event.update({
+      where: { id: req.params.id },
+      data: {
+        approvalStatus: 'REJECTED',
+        status: 'Taslak',
+        approvalReason: reason
+      }
+    });
+    cache.del('events');
+    cache.del('events_admin');
+    cache.del(`events_user_${event.organizerId}`);
+    res.json({ success: true, event });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası." });
+  }
+});
+
+router.post('/:id/suspend', requireAuth, async (req, res) => {
+  try {
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: "Yetkisiz işlem." });
+    }
+    const { reason } = req.body;
+    const event = await prisma.event.update({
+      where: { id: req.params.id },
+      data: {
+        approvalStatus: 'SUSPENDED',
+        status: 'Taslak',
+        approvalReason: reason
+      }
+    });
+    cache.del('events');
+    cache.del('events_admin');
+    cache.del(`events_user_${event.organizerId}`);
+    res.json({ success: true, event });
+  } catch (error) {
+    res.status(500).json({ error: "Sunucu hatası." });
   }
 });
 

@@ -136,12 +136,6 @@ export default function DesignerPage() {
               <p className="text-gray-500 text-lg mb-6">
                 {isCanvasModalOpen ? 'Tasarımcı penceresi açılıyor...' : 'Sol panelden ayarları yapıp oluştur butonuna tıklayın.'}
               </p>
-              <button
-                onClick={() => setIsCanvasModalOpen(true)}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition"
-              >
-                🎯 Sonucu Görüntüle / Düzenle
-              </button>
             </div>
           </div>
         </div>

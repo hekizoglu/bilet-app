@@ -32,7 +32,8 @@ interface HallDesignerCanvasProps {
 }
 
 interface HallDesignerCanvasHandle {
-  autoGenerateLayout: (config: AutoGenerateConfig) => void;
+  autoGenerateLayout: (config: AutoGenerateConfig, skipConfirm?: boolean) => void;
+  saveLayout?: () => void;
 }
 
 type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
@@ -72,6 +73,11 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const lastPointerPos = useRef<{ x: number; y: number } | null>(null);
   const dragSelectionOriginRef = useRef<Record<string, { x: number; y: number }>>({});
+
+  useImperativeHandle(ref, () => ({
+    autoGenerateLayout,
+    saveLayout,
+  }));
 
   const SNAP_GRID = 10;
 
@@ -338,13 +344,13 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
     }));
   };
 
-  const resizeElement = (id: string, handle: ResizeHandle, deltaX: number, deltaY: number) => {
+  const resizeElement = (id: string, handle: ResizeHandle, handleLocalX: number, handleLocalY: number) => {
     setElements((prev) =>
       prev.map((el) => {
         if (el.id !== id) return el;
 
         if (el.radius) {
-          const radiusDelta = Math.max(deltaX, deltaY) / 2;
+          const radiusDelta = Math.max(handleLocalX - (el.radius + 18), handleLocalY - (el.radius + 18)) / 2;
           const nextRadius = Math.max(MIN_RADIUS, Math.round((el.radius + radiusDelta) / 5) * 5);
           return { ...el, radius: nextRadius };
         }
@@ -357,21 +363,21 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
         let nextHeight = height;
 
         if (handle === 'top-left') {
-          nextX += deltaX;
-          nextY += deltaY;
-          nextWidth -= deltaX;
-          nextHeight -= deltaY;
+          nextX += handleLocalX;
+          nextY += handleLocalY;
+          nextWidth -= handleLocalX;
+          nextHeight -= handleLocalY;
         } else if (handle === 'top-right') {
-          nextY += deltaY;
-          nextWidth += deltaX;
-          nextHeight -= deltaY;
+          nextY += handleLocalY;
+          nextWidth = handleLocalX;
+          nextHeight -= handleLocalY;
         } else if (handle === 'bottom-left') {
-          nextX += deltaX;
-          nextWidth -= deltaX;
-          nextHeight += deltaY;
+          nextX += handleLocalX;
+          nextWidth -= handleLocalX;
+          nextHeight = handleLocalY;
         } else {
-          nextWidth += deltaX;
-          nextHeight += deltaY;
+          nextWidth = handleLocalX;
+          nextHeight = handleLocalY;
         }
 
         if (nextWidth < MIN_ELEMENT_SIZE) {
@@ -1055,7 +1061,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
               setSelectedIds([el.id]);
               setIsResizing(true);
             }}
-            onDragMove={(e) => resizeElement(el.id, 'bottom-right', e.target.x() - (radius + 18), e.target.y() - (radius + 18))}
+            onDragMove={(e) => resizeElement(el.id, 'bottom-right', e.target.x(), e.target.y())}
             onDragEnd={(e) => {
               setIsResizing(false);
               e.target.position({ x: radius + 18, y: radius + 18 });
@@ -1100,7 +1106,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
           setSelectedIds([el.id]);
           setIsResizing(true);
         }}
-        onDragMove={(e) => resizeElement(el.id, handle.key, e.target.x() - (handle.x - 6), e.target.y() - (handle.y - 6))}
+        onDragMove={(e) => resizeElement(el.id, handle.key, e.target.x(), e.target.y())}
         onDragEnd={(e) => {
           setIsResizing(false);
           e.target.position({ x: handle.x - 6, y: handle.y - 6 });

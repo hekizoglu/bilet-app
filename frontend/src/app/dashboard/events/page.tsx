@@ -33,6 +33,7 @@ export default function EventsPage() {
   const [halls, setHalls] = useState<Hall[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [approvalModalEvent, setApprovalModalEvent] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,17 +83,32 @@ export default function EventsPage() {
     }
   };
 
-  useEffect(() => {
-    fetchEvents();
-    fetchHalls();
-  }, []);
-
   const getCookie = (name: string) => {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop()?.split(';').shift();
     return null;
   };
+
+  useEffect(() => {
+    fetchEvents();
+    fetchHalls();
+    
+    const token = getCookie('token');
+    if (token) {
+      try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        const payload = JSON.parse(jsonPayload);
+        setIsAdmin(payload.role === 'ADMIN');
+      } catch (e) {
+        console.error("Token parse hatası", e);
+      }
+    }
+  }, []);
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -356,7 +372,7 @@ export default function EventsPage() {
                 </td>
                 <td className="p-4 text-right">
                   <div className="flex justify-end gap-2">
-                    {event.approvalStatus === 'PENDING_APPROVAL' && (
+                    {event.approvalStatus === 'PENDING_APPROVAL' && isAdmin && (
                       <button 
                         onClick={() => setApprovalModalEvent(event)}
                         className="text-sm px-3 py-1.5 bg-orange-600 text-white hover:bg-orange-700 font-medium rounded transition"

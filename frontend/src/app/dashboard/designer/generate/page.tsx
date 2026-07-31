@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Save, Plus, Minus, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Minus, RefreshCw, ChevronRight, ChevronLeft } from 'lucide-react';
 import { type AutoGenerateConfig } from '../../../../components/HallDesignerCanvas';
 
 interface CanvasRef {
@@ -63,6 +63,8 @@ export default function GeneratePage() {
   const canvasRef = useRef<CanvasRef | null>(null);
   const [config, setConfig] = useState<AutoGenerateConfig | null>(null);
   const [generated, setGenerated] = useState(false);
+
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
 
   // Sağ panel kontrolleri için editable config state
   const [chairsPerTable, setChairsPerTable] = useState(8);
@@ -175,13 +177,15 @@ export default function GeneratePage() {
         </div>
 
         {/* Sağ Panel — +/- Kontrolleri */}
-        <div className="w-72 bg-white border-l border-gray-200 flex flex-col overflow-hidden shadow-lg">
-          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-            <h2 className="text-sm font-bold text-gray-800">🎛️ Düzen Kontrolleri</h2>
-            <p className="text-[10px] text-gray-500 mt-0.5">Elemanları artırıp azaltın, sonra Yeniden Yerleştir&apos;e tıklayın</p>
+        <div className={`bg-white border-l border-gray-200 flex flex-col overflow-hidden shadow-lg transition-all duration-300 ${isPanelOpen ? 'w-72' : 'w-0'}`}>
+          <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex justify-between items-center whitespace-nowrap w-72">
+            <div>
+              <h2 className="text-sm font-bold text-gray-800">🎛️ Düzen Kontrolleri</h2>
+              <p className="text-[10px] text-gray-500 mt-0.5">Elemanları artırıp azaltın, sonra Yeniden Yerleştir&apos;e tıklayın</p>
+            </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 w-72">
             {/* Oturma */}
             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Oturma Düzeni</p>
             <Counter
@@ -260,7 +264,7 @@ export default function GeneratePage() {
           </div>
 
           {/* Yeniden Yerleştir Butonu */}
-          <div className="p-3 border-t border-gray-100 bg-gray-50 space-y-2">
+          <div className="p-3 border-t border-gray-100 bg-gray-50 space-y-2 w-72">
             <div className="bg-blue-50 rounded-lg p-2 text-[10px] text-blue-700 text-center">
               ~{estimatedCapacity} kişilik kapasite
             </div>
@@ -272,6 +276,14 @@ export default function GeneratePage() {
             </button>
           </div>
         </div>
+
+        {/* Panel Toggle Butonu (Canvas'ın üzerinde absolut konumlandırma) */}
+        <button
+          onClick={() => setIsPanelOpen(!isPanelOpen)}
+          className={`absolute top-1/2 -translate-y-1/2 z-20 flex items-center justify-center w-6 h-12 bg-white border border-gray-200 shadow-md rounded-l-md transition-all duration-300 hover:bg-gray-50 ${isPanelOpen ? 'right-72' : 'right-0'}`}
+        >
+          {isPanelOpen ? <ChevronRight size={16} className="text-gray-500" /> : <ChevronLeft size={16} className="text-gray-500" />}
+        </button>
       </div>
     </div>
   );
