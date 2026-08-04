@@ -1472,13 +1472,13 @@ router.post('/check-in', requireAuth, async (req, res) => {
       include: { event: { include: { staff: true } } }
     });
 
-    if (!reservation) return res.status(404).json({ error: "Bilet bulunamadý." });
-    if (reservation.status !== 'Onaylandý') return res.status(400).json({ error: "Bilet durumu geçersiz." });
+    if (!reservation) return res.status(404).json({ error: "Bilet bulunamadï¿½." });
+    if (reservation.status !== 'Onaylandï¿½') return res.status(400).json({ error: "Bilet durumu geï¿½ersiz." });
 
     const event = reservation.event;
     const isStaff = event.staff.some(s => s.userId === req.user.id);
     if (event.organizerId !== req.user.id && !isStaff && req.user.role !== 'ADMIN') {
-      return res.status(403).json({ error: "Yetkisiz iþlem." });
+      return res.status(403).json({ error: "Yetkisiz iï¿½lem." });
     }
 
     if (reservation.isUsed) {
@@ -1486,10 +1486,10 @@ router.post('/check-in', requireAuth, async (req, res) => {
         data: {
           eventId: event.id,
           action: 'DUPLICATE_CHECKIN_ATTEMPT',
-          details: "Kullanýlmýþ bilet kodu tekrar okutulmak istendi: " + ticketCode
+          details: "Kullanï¿½lmï¿½ï¿½ bilet kodu tekrar okutulmak istendi: " + ticketCode
         }
       });
-      return res.status(400).json({ error: "Bu bilet daha önce kullanýlmýþ." });
+      return res.status(400).json({ error: "Bu bilet daha ï¿½nce kullanï¿½lmï¿½ï¿½." });
     }
 
     const updated = await prisma.reservation.updateMany({
@@ -1498,19 +1498,19 @@ router.post('/check-in', requireAuth, async (req, res) => {
     });
 
     if (updated.count === 0) {
-      return res.status(400).json({ error: "Eþzamanlý iþlem hatasý veya bilet kullanýlmýþ." });
+      return res.status(400).json({ error: "Eï¿½zamanlï¿½ iï¿½lem hatasï¿½ veya bilet kullanï¿½lmï¿½ï¿½." });
     }
 
     res.json({ success: true, reservation });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatasý." });
+    res.status(500).json({ error: "Sunucu hatasï¿½." });
   }
 });
 
 router.post('/sync', requireAuth, async (req, res) => {
   try {
     const { checkIns } = req.body;
-    if (!Array.isArray(checkIns)) return res.status(400).json({ error: "Geçersiz veri." });
+    if (!Array.isArray(checkIns)) return res.status(400).json({ error: "Geï¿½ersiz veri." });
 
     const results = { success: 0, conflicts: 0, failed: 0 };
 
@@ -1537,7 +1537,7 @@ router.post('/sync', requireAuth, async (req, res) => {
           data: {
             eventId: event.id,
             action: 'OFFLINE_SYNC_CONFLICT',
-            details: "Bilet offline iken tekrar kullanýlmýþ olarak iþaretlendi: " + checkIn.ticketCode
+            details: "Bilet offline iken tekrar kullanï¿½lmï¿½ï¿½ olarak iï¿½aretlendi: " + checkIn.ticketCode
           }
         });
         results.conflicts++;
@@ -1552,7 +1552,7 @@ router.post('/sync', requireAuth, async (req, res) => {
     }
     res.json({ success: true, results });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatasý." });
+    res.status(500).json({ error: "Sunucu hatasï¿½." });
   }
 });
 

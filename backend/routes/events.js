@@ -400,6 +400,29 @@ router.delete('/:id/staff/:userId', requireAuth, async (req, res) => {
   }
 });
 
+// GET single event for organizer
+router.get('/:id', requireAuth, async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: { hall: true }
+    });
+
+    if (!event) return res.status(404).json({ error: 'Etkinlik bulunamadı' });
+    
+    // Check permission (Admin or Owner)
+    if (req.user.role !== 'ADMIN' && event.organizerId !== req.user.id) {
+      return res.status(403).json({ error: 'Bu etkinliği görüntüleme yetkiniz yok' });
+    }
+
+    res.json(event);
+  } catch (error) {
+    console.error("Single event fetch error:", error);
+    res.status(500).json({ error: 'Sunucu hatası' });
+  }
+});
+
 router.get('/:id/staff', requireAuth, async (req, res) => {
   try {
     const event = await prisma.event.findUnique({ where: { id: req.params.id } });

@@ -5,6 +5,7 @@ import { Users, CheckCircle, Clock } from 'lucide-react';
 
 export default function ReservationsPage() {
   const [reservations, setReservations] = useState<any[]>([]);
+  const [filter, setFilter] = useState('ALL');
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 20 });
   const [refundReservation, setRefundReservation] = useState<any>(null);
   const [refundAmount, setRefundAmount] = useState<string>('');
@@ -162,6 +163,40 @@ export default function ReservationsPage() {
           <Users className="text-blue-600" />
           Rezervasyonlar
         </h1>
+        
+        {/* RSVP Filter */}
+        <select 
+          value={filter} 
+          onChange={(e) => setFilter(e.target.value)}
+          className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+        >
+          <option value="ALL">Tümü</option>
+          <option value="ATTENDING">Katılacaklar</option>
+          <option value="MAYBE">Kararsızlar</option>
+          <option value="NOT_ATTENDING">Katılmayacaklar</option>
+        </select>
+      </div>
+
+      {/* Summary Widgets */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-center">
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Katılan / Toplam Misafir</p>
+          <p className="text-2xl font-black text-gray-900">
+            {reservations.filter(r => r.rsvpStatus === 'ATTENDING').length} / {reservations.reduce((acc, r) => acc + (r.rsvpStatus === 'ATTENDING' ? (r.guestCount || 0) + (r.childCount || 0) + 1 : 0), 0)}
+          </p>
+        </div>
+        <div className="bg-green-50 p-4 rounded-xl border border-green-100 shadow-sm flex flex-col justify-center">
+          <p className="text-xs font-bold text-green-700 uppercase tracking-wider mb-1">Katılıyorum</p>
+          <p className="text-2xl font-black text-green-900">{reservations.filter(r => r.rsvpStatus === 'ATTENDING').length}</p>
+        </div>
+        <div className="bg-yellow-50 p-4 rounded-xl border border-yellow-100 shadow-sm flex flex-col justify-center">
+          <p className="text-xs font-bold text-yellow-700 uppercase tracking-wider mb-1">Kararsız</p>
+          <p className="text-2xl font-black text-yellow-900">{reservations.filter(r => r.rsvpStatus === 'MAYBE').length}</p>
+        </div>
+        <div className="bg-red-50 p-4 rounded-xl border border-red-100 shadow-sm flex flex-col justify-center">
+          <p className="text-xs font-bold text-red-700 uppercase tracking-wider mb-1">Katılamıyorum</p>
+          <p className="text-2xl font-black text-red-900">{reservations.filter(r => r.rsvpStatus === 'NOT_ATTENDING').length}</p>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
@@ -169,26 +204,59 @@ export default function ReservationsPage() {
           <thead>
             <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm">
               <th className="p-4 font-medium">Müşteri</th>
-              <th className="p-4 font-medium">İletişim</th>
               <th className="p-4 font-medium">Etkinlik</th>
               <th className="p-4 font-medium">Koltuk/Giriş</th>
+              <th className="p-4 font-medium">RSVP & Not</th>
+              <th className="p-4 font-medium">Misafir</th>
               <th className="p-4 font-medium">Ödeme</th>
               <th className="p-4 font-medium">Durum</th>
               <th className="p-4 font-medium text-right">İşlemler</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {reservations.map((res) => (
+            {reservations.filter(r => filter === 'ALL' || r.rsvpStatus === filter).map((res) => (
               <tr key={res.id} className="hover:bg-gray-50 transition">
-                <td className="p-4 font-medium text-gray-900">{res.customer}</td>
-                <td className="p-4 text-gray-600 text-sm">{res.email}</td>
-                <td className="p-4 text-gray-900">{res.event?.name || '-'}</td>
+                <td className="p-4 font-medium text-gray-900">
+                  {res.customer}
+                  <div className="text-xs text-gray-500 font-normal">{res.email}</div>
+                  {res.phone && <div className="text-xs text-gray-500 font-normal">{res.phone}</div>}
+                </td>
+                <td className="p-4 text-gray-900 text-sm">{res.event?.name || '-'}</td>
                 <td className="p-4 text-gray-600">
                   {res.seatName ? (
                     <span className="inline-flex items-center gap-1.5 py-1 px-2.5 rounded-md text-xs font-medium border border-gray-200 bg-gray-50">
                       {res.seatName}
                     </span>
                   ) : 'Genel Giriş'}
+                </td>
+                <td className="p-4">
+                  {res.rsvpStatus && (
+                    <div className="flex flex-col gap-1">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold w-fit ${
+                        res.rsvpStatus === 'ATTENDING' ? 'text-green-700 bg-green-100' :
+                        res.rsvpStatus === 'MAYBE' ? 'text-yellow-700 bg-yellow-100' :
+                        res.rsvpStatus === 'NOT_ATTENDING' ? 'text-red-700 bg-red-100' :
+                        'text-gray-600 bg-gray-100'
+                      }`}>
+                        {res.rsvpStatus === 'ATTENDING' ? 'Katılıyor' :
+                         res.rsvpStatus === 'MAYBE' ? 'Kararsız' :
+                         res.rsvpStatus === 'NOT_ATTENDING' ? 'Katılmıyor' : res.rsvpStatus}
+                      </span>
+                      {res.notes && (
+                        <span className="text-[11px] text-gray-600 italic bg-gray-50 p-1.5 rounded-md mt-1 border border-gray-200" title={res.notes}>
+                          📝 {res.notes.length > 30 ? res.notes.substring(0, 30) + '...' : res.notes}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </td>
+                <td className="p-4 text-sm text-gray-700">
+                  {res.rsvpStatus === 'ATTENDING' ? (
+                    <div>
+                      <div>Yetişkin: <strong>{res.guestCount || 0}</strong></div>
+                      <div>Çocuk: <strong>{res.childCount || 0}</strong></div>
+                    </div>
+                  ) : '-'}
                 </td>
                 <td className="p-4">
                   {res.paymentStatus && (

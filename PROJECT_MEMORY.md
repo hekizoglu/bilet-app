@@ -70,6 +70,7 @@ Developing a ticket reservation system that supports modern Node.js + Next.js + 
 * **FAZ 5.8 (Erişilebilirlik WCAG 2.2 AA):** `Modal`, `Button` ve `Input` bileşenlerinde WAI-ARIA semantikleri (`role="dialog"`, `aria-modal`, `aria-labelledby`, `aria-describedby`, `aria-busy`, `aria-invalid`) ile klavye gezinme tuşları (`Esc`, `Enter`, `Space`) uyumlu kılındı.
 * **E0-009 (Gözlemlenebilirlik ve Alarmlar):** `backend/utils/metrics.js` ve `/api/admin/metrics` rotası ile p95 gecikme hesabı, %5 hata oranı eşiği ve ödeme-bilet tutar tutarsızlığı alarmı eklendi. Tüm birim ve entegrasyon testleri (8/8 suite, 64/64 test) ile Next.js production derlemesi başarıyla geçti.
 * **FAZ 4 (50 Üzeri Onay Akışı):** Kapasitesi 50'yi aşan etkinlikler için ADMIN onay mekanizması tamamlandı. Backend tarafında `approve`, `reject` ve `suspend` API uç noktaları yazıldı. Frontend etkinlikler tablosundaki "İncele" butonu sadece ADMIN rolündeki kullanıcılara görünecek şekilde JWT decode edilerek korumaya alındı.
+* **FAZ 5 (Davet ve Katılım Yönetimi):** RSVP sistemi ön ve arka yüzde tamamlandı. Organizatörlerin davetlileri görebilmesi için `dashboard/reservations/page.tsx` sayfasına İstatistik Kartları, RSVP Filtresi ve yeni tablo sütunları (RSVP durumu, Notlar, Misafir sayısı) eklendi.
 
 ### Active Priorities
 1. Test production deployment (Cloud Run / Railway).

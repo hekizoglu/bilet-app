@@ -488,7 +488,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
         </div>
 
         {/* Sağ Sütun: Form */}
-        <div className="bg-white p-5 sm:p-6 lg:p-8 rounded-2xl border border-gray-200 shadow-xl shadow-gray-200/50 relative overflow-hidden">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-gray-200 shadow-xl shadow-gray-200/50 relative overflow-hidden lg:sticky lg:top-6">
           {(data.isSeated ? data.availableSeats?.length === 0 : data.available === 0) ? (
             <>
               <h2 className="text-xl font-bold text-gray-900">Etkinlik Dolu 🎫</h2>
@@ -616,27 +616,29 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
 
             {/* RSVP Alanları */}
             {data.paymentType === 'free' ? (
-              <div className="border-t border-gray-100 pt-4 mt-4 space-y-4">
+              <div className="border-t border-gray-100 pt-3 mt-3 space-y-3">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">Katılım Durumunuz</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1.5">Katılım Durumunuz</label>
                   <div className="grid grid-cols-3 gap-2">
-                    <button type="button" onClick={() => setRsvpData({...rsvpData, status: 'ATTENDING'})} className={`py-2 px-3 rounded-lg text-sm font-semibold border transition-all ${rsvpData.status === 'ATTENDING' ? 'bg-green-600 text-white border-green-700' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Katılıyorum</button>
-                    <button type="button" onClick={() => setRsvpData({...rsvpData, status: 'NOT_ATTENDING'})} className={`py-2 px-3 rounded-lg text-sm font-semibold border transition-all ${rsvpData.status === 'NOT_ATTENDING' ? 'bg-red-600 text-white border-red-700' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Katılamıyorum</button>
-                    <button type="button" onClick={() => setRsvpData({...rsvpData, status: 'MAYBE'})} className={`py-2 px-3 rounded-lg text-sm font-semibold border transition-all ${rsvpData.status === 'MAYBE' ? 'bg-yellow-500 text-white border-yellow-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Kararsızım</button>
+                    <button type="button" onClick={() => setRsvpData({...rsvpData, status: 'ATTENDING'})} className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${rsvpData.status === 'ATTENDING' ? 'bg-green-600 text-white border-green-700' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Katılıyorum</button>
+                    <button type="button" onClick={() => setRsvpData({...rsvpData, status: 'NOT_ATTENDING'})} className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${rsvpData.status === 'NOT_ATTENDING' ? 'bg-red-600 text-white border-red-700' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Katılamıyorum</button>
+                    <button type="button" onClick={() => setRsvpData({...rsvpData, status: 'MAYBE'})} className={`py-2 px-2.5 rounded-lg text-xs font-semibold border transition-all ${rsvpData.status === 'MAYBE' ? 'bg-yellow-500 text-white border-yellow-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Kararsızım</button>
                   </div>
                 </div>
 
                 {rsvpData.status === 'ATTENDING' && (
-                  <div className="flex gap-4">
-                    <div className="flex-1">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Yanınızda Getireceğiniz Yetişkin Sayısı</label>
-                      <input type="number" min="0" max="10" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-                             value={rsvpData.guestCount}
-                             onChange={e => setRsvpData({...rsvpData, guestCount: parseInt(e.target.value) || 0})} />
-                    </div>
-                    <div className="flex-1">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Çocuk Sayısı</label>
-                      <input type="number" min="0" max="10" className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                  <div className="grid grid-cols-2 gap-3 items-end">
+                    {!data.isSeated && (
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1 min-h-[32px] flex items-end">Ek Yetişkin</label>
+                        <input type="number" min="0" max="10" className="w-full border border-gray-200 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                               value={rsvpData.guestCount}
+                               onChange={e => setRsvpData({...rsvpData, guestCount: parseInt(e.target.value) || 0})} />
+                      </div>
+                    )}
+                    <div className={data.isSeated ? "col-span-2" : ""}>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1 min-h-[32px] flex items-end">Yanınızdaki Çocuk Sayısı</label>
+                      <input type="number" min="0" max="10" className="w-full border border-gray-200 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                              value={rsvpData.childCount}
                              onChange={e => setRsvpData({...rsvpData, childCount: parseInt(e.target.value) || 0})} />
                     </div>
@@ -645,7 +647,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                 
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Notunuz (İsteğe bağlı)</label>
-                  <textarea className="w-full border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm resize-none" rows={2}
+                  <textarea className="w-full border border-gray-200 p-2.5 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm resize-none" rows={2}
                             placeholder="Örn: Yemekte alerjim var..."
                             value={rsvpData.notes}
                             onChange={e => setRsvpData({...rsvpData, notes: e.target.value})}></textarea>

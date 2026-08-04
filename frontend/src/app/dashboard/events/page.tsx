@@ -414,6 +414,13 @@ export default function EventsPage() {
                       Kopyala
                     </button>
                     <a 
+                      href={`/dashboard/events/${event.id}`}
+                      className="text-sm px-3 py-1.5 bg-blue-600 text-white hover:bg-blue-700 font-bold rounded transition shadow-sm"
+                      title="Etkinliği Yönet"
+                    >
+                      Yönet
+                    </a>
+                    <a 
                       href={`/event/${event.visibility === 'PRIVATE' ? event.privateSlug : event.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
