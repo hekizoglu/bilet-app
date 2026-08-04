@@ -1472,13 +1472,13 @@ router.post('/check-in', requireAuth, async (req, res) => {
       include: { event: { include: { staff: true } } }
     });
 
-    if (!reservation) return res.status(404).json({ error: "Bilet bulunamad�." });
-    if (reservation.status !== 'Onayland�') return res.status(400).json({ error: "Bilet durumu ge�ersiz." });
+    if (!reservation) return res.status(404).json({ error: "Bilet bulunamadı." });
+    if (reservation.status !== 'Onaylı' && reservation.status !== 'Onaylandı') return res.status(400).json({ error: "Bilet durumu geçersiz." });
 
     const event = reservation.event;
     const isStaff = event.staff.some(s => s.userId === req.user.id);
     if (event.organizerId !== req.user.id && !isStaff && req.user.role !== 'ADMIN') {
-      return res.status(403).json({ error: "Yetkisiz i�lem." });
+      return res.status(403).json({ error: "Yetkisiz ilem." });
     }
 
     if (reservation.isUsed) {
