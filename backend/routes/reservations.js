@@ -9,7 +9,7 @@ const { createRateLimiter } = require('../utils/rateLimiter');
 
 const checkoutLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 dakika
-  max: 5, // 1 dakikada en fazla 5 bilet alma denemesi
+  max: 100, // 1 dakikada en fazla bilet alma denemesi
   message: { error: "Çok fazla bilet alma denemesi yaptınız, lütfen biraz bekleyin." }
 });
 
@@ -416,10 +416,20 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
         const status = event.paymentType === 'free' ? 'Onaylı' : 'Beklemede';
         const paymentStatus = event.paymentType === 'free' ? 'paid' : 'pending';
 
+        // Dinamik Fiyatlandırma Hesaplama
+        let currentDynamicPrice = event.price;
+        if (event.dynamicPricingThreshold && event.maxPrice) {
+          const soldCount = await tx.reservation.count({
+            where: { eventId: event.id, status: { in: ['Onaylı', 'Beklemede'] } }
+          });
+          const capacity = event.capacity || (event.hall ? extractSeatsFromLayout(event.hall.layoutJson).length : 0);
+          currentDynamicPrice = calculateDynamicPrice(event.price, event.maxPrice, event.dynamicPricingThreshold, soldCount, capacity);
+        }
+
         // Kupon İşlemi
         let paymentDetailsObj = {
-          basePrice: event.price,
-          finalPrice: event.price,
+          basePrice: currentDynamicPrice,
+          finalPrice: currentDynamicPrice,
           discountAmount: 0
         };
 
@@ -436,7 +446,7 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
           }
 
           // İndirim hesapla (Servis katmanı)
-          const { finalPrice, discountAmount } = calculateFinalPrice(event.price, coupon);
+          const { finalPrice, discountAmount } = calculateFinalPrice(currentDynamicPrice, coupon);
           
           paymentDetailsObj.finalPrice = finalPrice;
           paymentDetailsObj.discountAmount = discountAmount;

@@ -26,7 +26,9 @@ const eventSchema = z.object({
   hallId: z.string().uuid().optional(),
   paymentType: z.enum(["free", "creditcard", "cardless"]).default("free"),
   visibility: z.enum(["PUBLIC", "PRIVATE"]).default("PUBLIC"),
-  isPubliclyListed: z.boolean().default(false)
+  isPubliclyListed: z.boolean().default(false),
+  maxPrice: z.number().nonnegative().optional(),
+  dynamicPricingThreshold: z.number().int().min(1).max(100).optional()
 }).refine(data => {
   if (data.isSeated && !data.hallId) return false;
   if (!data.isSeated && !data.capacity) return false;
