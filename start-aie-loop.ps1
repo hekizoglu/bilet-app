@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$Mode = 'continuous',
     [int]$Interval = 300000
 )

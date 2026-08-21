@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Info, Ticket, Users, Globe, Lock, QrCode, CreditCard, Armchair, ChevronLeft } from 'lucide-react';
 
 export default function HowItWorksPage() {

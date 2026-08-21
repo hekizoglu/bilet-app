@@ -3,7 +3,7 @@ import { useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { HallSettingsPanel } from '../../../components/HallSettingsPanel';
 import { ChevronLeft, ChevronRight, X, Wand2, Palette, ArrowLeft } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
 interface AutoGenerateConfig {
   hallLengthM: number;

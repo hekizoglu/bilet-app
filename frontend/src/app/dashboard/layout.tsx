@@ -4,6 +4,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { LayoutDashboard, Calendar, Map as MapIcon, Users, LogOut, Settings, User, Bell, Menu, X, BarChart3, Tag } from 'lucide-react';
+import { Toaster } from 'sonner';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -121,6 +122,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gray-50">
+      <Toaster position="top-center" richColors />
       {/* Mobile Top Header */}
       <header className="flex md:hidden items-center justify-between px-6 py-4 bg-white border-b border-gray-100 sticky top-0 z-40">
         <h2 className="text-xl font-bold text-gray-800">Organizasyon Paneli</h2>

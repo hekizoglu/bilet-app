@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export default function AdminCouponsPage() {
   const router = useRouter();
@@ -57,15 +58,15 @@ export default function AdminCouponsPage() {
       });
       
       if (res.ok) {
-        alert("Kupon başarıyla oluşturuldu.");
+        toast.success("Kupon başarıyla oluşturuldu.");
         setForm({ code: '', discountType: 'PERCENTAGE', discountValue: '', maxUses: '', validUntil: '' });
         fetchCoupons();
       } else {
         const err = await res.json();
-        alert(`Hata: ${err.error}`);
+        toast.error(`Hata: ${err.error}`);
       }
     } catch (err) {
-      alert("Bir hata oluştu.");
+      toast.error("Bir hata oluştu.");
     }
   };
 
@@ -81,7 +82,7 @@ export default function AdminCouponsPage() {
         fetchCoupons();
       }
     } catch (err) {
-      alert("Hata oluştu.");
+      toast.error("Hata oluştu.");
     }
   };
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import io from 'socket.io-client';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
+import { apiFetch, API_ORIGIN } from '@/lib/api';
 
 // Konva hydration hatalarını önlemek için client-side import yapıyoruz
 const DynamicSeatMapViewer = dynamic(() => import('@/components/SeatMapViewer'), { ssr: false });
@@ -42,13 +43,14 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
   const [adminPaymentInfo, setAdminPaymentInfo] = useState<any>(null);
 
   const handleSeatToggle = (seat: any) => {
+    // Backend tek rezervasyonda tek koltuk destekler: çoklu seçim yerine tek seçim yapılır
     const isAlreadySelected = selectedSeats.some((s: any) => s.id === seat.id);
     let newSelected: any[];
     if (isAlreadySelected) {
-      newSelected = selectedSeats.filter((s: any) => s.id !== seat.id);
+      newSelected = [];
       toast.info(`Koltuk ${seat.name} seçimi kaldırıldı.`);
     } else {
-      newSelected = [...selectedSeats, seat];
+      newSelected = [seat];
       toast.success(`Koltuk ${seat.name} seçildi.`);
     }
     setSelectedSeats(newSelected);
@@ -58,38 +60,33 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
   };
 
   useEffect(() => {
+    let cancelled = false;
+
     // 1. Veriyi Getir
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/availability/${id}`)
-      .then(r => {
-        const contentType = r.headers.get('content-type');
-        if (r.ok && contentType && contentType.includes('application/json')) {
-          return r.json();
-        }
-        return { error: 'Etkinlik verisi yüklenemedi veya geçersiz ID.' };
-      })
-      .then(d => {
+    apiFetch(`/reservations/availability/${id}`)
+      .then((d: any) => {
+        if (cancelled) return;
         setData(d);
         setLoading(false);
         if (d && d.paymentType === 'cardless') {
-          fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/users/admin-payment-info`)
-            .then(r => r.ok && r.headers.get('content-type')?.includes('application/json') ? r.json() : null)
-            .then(p => p && setAdminPaymentInfo(p))
+          apiFetch('/users/admin-payment-info')
+            .then((p: any) => { if (!cancelled && p) setAdminPaymentInfo(p); })
             .catch(console.error);
         }
       })
-      .catch(err => {
+      .catch((err) => {
         console.error(err);
-        setData({ error: 'Bağlantı hatası.' });
+        if (cancelled) return;
+        setData({ error: err instanceof Error ? err.message : 'Etkinlik verisi yüklenemedi.' });
         setLoading(false);
       });
 
     // Get user points if logged in
     const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
     if (token) {
-      fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/users/me`, { headers: { 'Authorization': `Bearer ${token}` }})
-        .then(r => r.ok && r.headers.get('content-type')?.includes('application/json') ? r.json() : null)
-        .then(u => {
-           if (!u) return;
+      apiFetch('/users/me')
+        .then((u: any) => {
+           if (cancelled || !u) return;
            if (u.points) setUserPoints(u.points);
            if (u.email) setForm(prev => ({...prev, email: u.email}));
            if (u.name) setForm(prev => ({...prev, name: u.name}));
@@ -101,7 +98,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
 
     if (data?.eventId) {
       // 2. Gerçek Zamanlı Socket Bağlantısı
-      socket = io(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
+      socket = io(API_ORIGIN);
       socket.emit('join_event', data.eventId);
 
       socket.on('seat_booked', (payload: { seatId: string }) => {
@@ -118,6 +115,15 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
       
       socket.on('seat_locked', (payload: { seatId: string }) => {
         setLockedSeats(prev => [...prev, payload.seatId]);
+        // Seçili koltuk başkası tarafından kilitlendiyse seçimi temizle
+        setSelectedSeats(prev => {
+          if (prev.some(s => s.id === payload.seatId)) {
+            toast.warning(`${payload.seatId} az önce başka bir müşteri tarafından seçildi.`);
+            setForm(f => ({ ...f, seatId: '', seatName: '' }));
+            return [];
+          }
+          return prev;
+        });
       });
 
       socket.on('seat_released', (payload: { seatId: string }) => {
@@ -129,6 +135,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     }
 
     return () => {
+      cancelled = true;
       if (socket) socket.disconnect();
     };
   }, [id, data?.eventId]);
@@ -154,21 +161,17 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
           childCount: rsvpData.childCount,
           notes: rsvpData.notes
         };
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/rsvp`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (res.ok) {
-          const result = await res.json();
+        try {
+          const result = await apiFetch('/reservations/rsvp', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
           setReservationSuccess(result.reservation);
-        } else {
-          const err = await res.json();
-          if (err.requiresWaitlist) {
-            toast.error(err.error);
-            // Optionally redirect to waitlist or show waitlist button
+        } catch (err: any) {
+          if (err?.data?.requiresWaitlist) {
+            toast.error(err.message);
           } else {
-            toast.error(`Hata: ${err.error || 'Bilinmeyen hata'}`);
+            toast.error(`Hata: ${err?.message || 'Bilinmeyen hata'}`);
           }
         }
       } else {
@@ -184,22 +187,18 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
         if (data.isSeated) {
           payload.seatId = form.seatId;
         }
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (res.ok) {
-          const result = await res.json();
+        try {
+          const result = await apiFetch('/reservations', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
           if (data.paymentType && data.paymentType !== 'free') {
             router.push(`/payment/mobile?id=${result.reservation.id}`);
           } else {
             setReservationSuccess(result.reservation);
           }
-        }
-        else {
-          const err = await res.json();
-          toast.error(`Hata: ${err.error || 'Bilinmeyen hata'}`);
+        } catch (err: any) {
+          toast.error(`Hata: ${err?.message || 'Bilinmeyen hata'}`);
         }
       }
     } catch (err) {
@@ -213,24 +212,18 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/events/${id}/waitlist`, {
+      await apiFetch(`/events/${id}/waitlist`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           customerName: form.name,
           email: form.email,
           phone: form.phone
         })
       });
-      const result = await res.json();
-      if (res.ok) {
-        toast.success("Bekleme listesine başarıyla eklendiniz! Bilet iptali olursa anında haber vereceğiz.");
-        setTimeout(() => window.location.reload(), 2000);
-      } else {
-        toast.error(`Hata: ${result.error || 'Bilinmeyen hata'}`);
-      }
-    } catch (err) {
-      toast.error("Bağlantı hatası");
+      toast.success("Bekleme listesine başarıyla eklendiniz! Bilet iptali olursa anında haber vereceğiz.");
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (err: any) {
+      toast.error(`Hata: ${err?.message || 'Bilinmeyen hata'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -511,60 +504,6 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                          placeholder="05xxxxxxxxx (İsteğe bağlı)"
                          onChange={e => setForm({...form, phone: e.target.value})} />
                 </div>
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">İndirim Kuponu (Opsiyonel)</label>
-                  <div className="flex gap-2 items-center mb-3">
-                    <input type="text" className="flex-1 min-w-0 border border-gray-200 p-3 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm uppercase"
-                           placeholder="KOD"
-                           value={form.couponCode}
-                           onChange={e => setForm({...form, couponCode: e.target.value.toUpperCase()})} />
-                    <button type="button" 
-                            onClick={async () => {
-                              if (!form.couponCode) return;
-                              const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/coupons/validate`, {
-                                method: 'POST',
-                                headers: {'Content-Type': 'application/json'},
-                                body: JSON.stringify({ code: form.couponCode })
-                              });
-                              const result = await res.json();
-                              if (res.ok) {
-                                setDiscount({ type: result.discountType, value: result.discountValue });
-                                toast.success("Kupon başarıyla uygulandı!");
-                              } else {
-                                toast.error(result.error);
-                                setDiscount(null);
-                                setForm({...form, couponCode: ''});
-                              }
-                            }}
-                            className="shrink-0 h-[46px] bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-xl font-bold text-sm transition flex items-center justify-center cursor-pointer active:scale-95 shadow-sm">Uygula</button>
-                  </div>
-                  {discount && (
-                    <p className="text-green-600 text-xs mt-2 font-bold">Kupon aktif: {discount.type === 'PERCENTAGE' ? `%${discount.value} indirim` : `${discount.value} TL indirim`}</p>
-                  )}
-                </div>
-                
-                {/* Fiyat Özeti */}
-                <div className="border-t border-gray-100 pt-4 mt-4">
-                  <div className="flex justify-between items-center text-sm mb-1">
-                    <span className="text-gray-500">Bilet Fiyatı:</span>
-                    <span className="font-semibold">{data.price} ₺</span>
-                  </div>
-                  {discount && (
-                    <div className="flex justify-between items-center text-sm text-green-600 mb-1">
-                      <span>İndirim:</span>
-                      <span>-{discount.type === 'PERCENTAGE' ? (data.price * discount.value / 100).toFixed(2) : discount.value.toFixed(2)} ₺</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center text-lg font-bold text-gray-900 mt-2">
-                    <span>Toplam Ödenecek:</span>
-                    <span>
-                      {discount 
-                        ? Math.max(0, data.price - (discount.type === 'PERCENTAGE' ? (data.price * discount.value / 100) : discount.value)).toFixed(2)
-                        : data.price} ₺
-                    </span>
-                  </div>
-                </div>
-
                 <button 
                   type="submit" 
                   disabled={isSubmitting}
@@ -661,24 +600,22 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                        placeholder="KOD"
                        value={form.couponCode}
                        onChange={e => setForm({...form, couponCode: e.target.value.toUpperCase()})} />
-                <button type="button" 
-                        onClick={async () => {
-                          if (!form.couponCode) return;
-                          const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/coupons/validate`, {
-                            method: 'POST',
-                            headers: {'Content-Type': 'application/json'},
-                            body: JSON.stringify({ code: form.couponCode })
-                          });
-                          const result = await res.json();
-                          if (res.ok) {
-                            setDiscount({ type: result.discountType, value: result.discountValue });
-                            toast.success("Kupon başarıyla uygulandı!");
-                          } else {
-                            toast.error(result.error);
-                            setDiscount(null);
-                            setForm({...form, couponCode: ''});
-                          }
-                        }}
+                    <button type="button" 
+                            onClick={async () => {
+                              if (!form.couponCode) return;
+                              try {
+                                const result = await apiFetch('/coupons/validate', {
+                                  method: 'POST',
+                                  body: JSON.stringify({ code: form.couponCode })
+                                });
+                                setDiscount({ type: result.discountType, value: result.discountValue });
+                                toast.success("Kupon başarıyla uygulandı!");
+                              } catch (err: any) {
+                                toast.error(err?.message || 'Geçersiz kupon kodu.');
+                                setDiscount(null);
+                                setForm(f => ({ ...f, couponCode: '' }));
+                              }
+                            }}
                         className="shrink-0 h-[46px] bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-xl font-bold text-sm transition flex items-center justify-center cursor-pointer active:scale-95 shadow-sm">Uygula</button>
               </div>
 

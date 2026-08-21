@@ -1,116 +1,67 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Calendar, MapPin, Users, ArrowRight, Filter, Zap, Tag, LogIn, User, Globe, Info } from 'lucide-react';
+import { Calendar, MapPin, Tag, LogIn, User, Globe, Info, RefreshCw } from 'lucide-react';
 import SkeletonLoader from '@/components/SkeletonLoader';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
+import { apiFetch } from '@/lib/api';
 
 interface Event {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   date: string;
-  location: string;
-  capacity: number;
-  reserved: number;
-  category: string;
-  hasSeating: boolean;
-  price?: number;
+  price: number;
+  isSeated: boolean;
+  visibility: string;
+  status: string;
+  hall?: { id: string; name: string; address?: string } | null;
 }
+
+type FilterId = 'all' | 'free' | 'paid';
+
+const FILTERS: { id: FilterId; name: string; emoji: string }[] = [
+  { id: 'all', name: 'Tümü', emoji: '📋' },
+  { id: 'free', name: 'Ücretsiz', emoji: '🎁' },
+  { id: 'paid', name: 'Ücretli', emoji: '🎟️' },
+];
 
 export default function Home() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterId>('all');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  const fetchEvents = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const data = await apiFetch<Event[]>('/events/public');
+      setEvents(data);
+    } catch (e: any) {
+      // NOT: demo veri yüklenmiyor — demo etkinliklerin linkleri /event/1 gibi
+      // gerçekte var olmayan sayfalara gidip "Bilet Bulunamadı" hatası veriyordu.
+      setLoadError(e?.message || 'Etkinlikler yüklenemedi.');
+      setEvents([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchEvents();
     // Check login state
     const token = document.cookie.split('; ').find(row => row.startsWith('token='));
     setIsLoggedIn(!!token);
-  }, []);
+  }, [fetchEvents]);
 
-  async function fetchEvents() {
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/events/public`);
-      if (res.ok) {
-        const data = await res.json();
-        setEvents(data);
-      } else {
-        // Fallback demo events
-        setEvents(demoEvents);
-      }
-    } catch (e) {
-      console.log('API çalışmıyor, demo veriler yükleniyor');
-      setEvents(demoEvents);
-    }
-    setLoading(false);
-  }
-
-  const demoEvents: Event[] = [
-    {
-      id: '1',
-      name: 'Konser 2026 - Açılış Gecesi',
-      description: 'Yılın en büyük konser etkinliği!',
-      date: '2026-07-15T20:00:00Z',
-      location: 'İstanbul Konser Salonu',
-      capacity: 500,
-      reserved: 350,
-      category: 'konser',
-      hasSeating: true,
-      price: 150,
-    },
-    {
-      id: '2',
-      name: 'Tiyatro - Hamlet',
-      description: 'Klasik tiyatro oyunu',
-      date: '2026-07-20T19:30:00Z',
-      location: 'Devlet Tiyatrosu',
-      capacity: 300,
-      reserved: 180,
-      category: 'tiyatro',
-      hasSeating: true,
-      price: 100,
-    },
-    {
-      id: '3',
-      name: 'Üniversite Balosu',
-      description: 'Genel katılım açık etkinlik',
-      date: '2026-08-01T22:00:00Z',
-      location: 'Üniversite Spor Salonu',
-      capacity: 1000,
-      reserved: 520,
-      category: 'balon',
-      hasSeating: false,
-      price: 200,
-    },
-    {
-      id: '4',
-      name: 'Film Festivali - Açılış',
-      description: 'Uluslararası film festivali',
-      date: '2026-07-10T18:00:00Z',
-      location: 'Sinema Merkezi',
-      capacity: 400,
-      reserved: 290,
-      category: 'sinema',
-      hasSeating: true,
-      price: 75,
-    },
-  ];
-
-  const filteredEvents = filter === 'all' 
-    ? events 
-    : events.filter(e => e.category === filter);
-
-  const categories = [
-    { id: 'all', name: 'Tümü', emoji: '📋' },
-    { id: 'konser', name: 'Konser', emoji: '🎵' },
-    { id: 'tiyatro', name: 'Tiyatro', emoji: '🎭' },
-    { id: 'sinema', name: 'Sinema', emoji: '🎬' },
-    { id: 'balon', name: 'Balon', emoji: '🎉' },
-  ];
+  const filteredEvents = events.filter((e) => {
+    if (filter === 'free') return !e.price || e.price <= 0;
+    if (filter === 'paid') return e.price > 0;
+    return true;
+  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -129,9 +80,9 @@ export default function Home() {
             En sevdiğiniz konserler, tiyatrolar ve özel organizasyonlar için koltuğunuzu harita üzerinden anında seçin.
           </p>
 
-          {/* Category Filter Tabs */}
+          {/* Category Filter Tabs — gerçek veriye dayalı filtreler */}
           <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
-            {categories.map((cat) => (
+            {FILTERS.map((cat) => (
               <button
                 key={cat.id}
                 onClick={() => setFilter(cat.id)}
@@ -162,37 +113,57 @@ export default function Home() {
             <SkeletonLoader type="card" />
             <SkeletonLoader type="card" />
           </div>
-        ) : events.length === 0 ? (
+        ) : loadError ? (
+          <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-gray-100">
+            <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500">
+              <Info className="w-10 h-10" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Etkinlikler Yüklenemedi</h2>
+            <p className="text-gray-500 mb-6 max-w-md mx-auto">{loadError}</p>
+            <button
+              onClick={fetchEvents}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition"
+            >
+              <RefreshCw size={18} /> Tekrar Dene
+            </button>
+          </div>
+        ) : filteredEvents.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl shadow-sm border border-gray-100">
             <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-500">
               <Calendar className="w-10 h-10" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Henüz Etkinlik Yok</h2>
-            <p className="text-gray-500">Yakında yeni etkinliklerle karşınızda olacağız.</p>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              {filter === 'all' ? 'Henüz Etkinlik Yok' : 'Bu Filtrede Etkinlik Yok'}
+            </h2>
+            <p className="text-gray-500">
+              {filter === 'all'
+                ? 'Yakında yeni etkinliklerle karşınızda olacağız.'
+                : 'Filtreyi değiştirerek diğer etkinliklere göz atabilirsiniz.'}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredEvents.map((event: any, index: number) => (
+            {filteredEvents.map((event, index) => (
               <motion.div
                 key={event.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
+                transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.4) }}
               >
-                <Link 
-                  href={`/event/${event.id}`} 
+                <Link
+                  href={`/event/${event.id}`}
                   className="group bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(37,99,235,0.1)] transition-all duration-300 flex flex-col h-full transform hover:-translate-y-1"
                 >
                   <div className="h-48 bg-gradient-to-r from-blue-100 to-indigo-100 flex items-center justify-center relative">
                     <span className="text-4xl font-bold text-blue-900 opacity-20 uppercase px-4 text-center">{event.name}</span>
                     <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-sm font-bold text-blue-900 shadow-sm">
-                      {event.price && event.price > 0 ? `${event.price} ₺` : 'ÜCRETSİZ'}
+                      {event.price > 0 ? `${event.price} ₺` : 'ÜCRETSİZ'}
                     </div>
                   </div>
-                  
+
                   <div className="p-6 flex-1 flex flex-col">
                     <h3 className="text-xl font-bold text-gray-900 mb-3">{event.name}</h3>
-                    
+
                     <div className="space-y-2 mb-6">
                       <div className="flex items-center gap-2 text-gray-600 text-sm">
                         <Calendar size={16} className="text-blue-500" />
@@ -211,9 +182,7 @@ export default function Home() {
                       )}
                     </div>
 
-                    <div 
-                      className="mt-auto w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-center transition shadow hover:shadow-lg"
-                    >
+                    <div className="mt-auto w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-center transition shadow hover:shadow-lg">
                       Bilet Al
                     </div>
                   </div>

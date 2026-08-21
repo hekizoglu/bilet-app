@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useParams, useRouter } from 'next/navigation';
 import { Calendar, Users, Scan, Link as LinkIcon, Edit, ChevronLeft, Ticket, CheckCircle, Clock, Copy, Share2 } from 'lucide-react';
 
@@ -75,7 +76,7 @@ export default function EventDashboardPage() {
 
   const copyLink = () => {
     navigator.clipboard.writeText(eventUrl);
-    alert('Etkinlik linki kopyalandı!');
+    toast.success('Etkinlik linki kopyalandı!');
   };
 
   const shareWhatsApp = () => {

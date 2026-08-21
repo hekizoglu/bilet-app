@@ -14,6 +14,62 @@ const profileSchema = z.object({
   paymentMethod: z.string().optional().nullable()
 });
 
+// GET /api/users/me
+// Current user's full profile (points, name, payment info) — frontend bu endpoint'i çağırıyor
+router.get('/me', requireAuth, async (req, res) => {
+  try {
+    let user = await prisma.user.findUnique({ where: { email: req.user.email } });
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: { email: req.user.email, role: req.user.role || 'CUSTOMER' }
+      });
+    }
+
+    res.json({
+      ...user,
+      iban: decrypt(user.iban),
+      telegramUsername: decrypt(user.telegramUsername),
+      telegramBotToken: decrypt(user.telegramBotToken),
+      telegramChatId: decrypt(user.telegramChatId)
+    });
+  } catch (err) {
+    console.error("Error fetching /me:", err);
+    res.status(500).json({ error: 'Profil bilgileri getirilemedi.' });
+  }
+});
+
+// POST /api/users/switch-role
+// Dashboard'daki "rol değiştir" butonu için: CUSTOMER <-> ORGANIZER geçişi
+router.post('/switch-role', requireAuth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { email: req.user.email } });
+    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+
+    if (user.role === 'ADMIN') {
+      return res.status(400).json({ error: 'Admin rolü değiştirilemez.' });
+    }
+
+    const nextRole = user.role === 'ORGANIZER' ? 'CUSTOMER' : 'ORGANIZER';
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { role: nextRole }
+    });
+
+    const { generateToken } = require('../services/authService');
+    const token = generateToken(updated);
+
+    res.json({
+      success: true,
+      token,
+      user: { id: updated.id, email: updated.email, role: updated.role }
+    });
+  } catch (err) {
+    console.error("Error switching role:", err);
+    res.status(500).json({ error: 'Rol değiştirilemedi.' });
+  }
+});
+
 // GET /api/users/admin-payment-info
 // Public endpoint to get admin's payment details for checkout
 router.get('/admin-payment-info', async (req, res) => {

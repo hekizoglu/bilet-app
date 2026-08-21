@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Calendar, MapPin, Search, Ticket, ArrowRight, Zap, Loader2, Globe } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
 interface Event {
   id: string;

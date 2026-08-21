@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Calendar, Plus, X, AlertTriangle } from 'lucide-react';
 import AdminEventApprovalModal from '@/components/AdminEventApprovalModal';
 
@@ -147,11 +148,11 @@ export default function EventsPage() {
         if (errData.details && Array.isArray(errData.details)) {
           errMsg += ":\n" + errData.details.map((d: any) => `- ${d.message}`).join("\n");
         }
-        alert(`Hata: ${errMsg}`);
+        toast.error(`Hata: ${errMsg}`);
       }
     } catch (error) {
       console.error(error);
-      alert('Sunucuya bağlanılamadı');
+      toast.error('Sunucuya bağlanılamadı');
     }
   };
 
@@ -165,10 +166,10 @@ export default function EventsPage() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
-        alert("Link başarıyla yenilendi!");
+        toast.success("Özel link yenilendi!");
         fetchEvents();
       } else {
-        alert("Link yenilenirken hata oluştu.");
+        toast.error("Link yenilenirken hata oluştu.");
       }
     } catch (e) {
       alert("Sunucuya bağlanılamadı");
@@ -345,7 +346,7 @@ export default function EventsPage() {
                         <span className="text-gray-500 truncate w-24">...{event.privateSlug?.slice(-6)}</span>
                         <button onClick={() => {
                           navigator.clipboard.writeText(`${window.location.origin}/event/${event.privateSlug}`);
-                          alert("Link kopyalandı!");
+                          toast.success("Link kopyalandı!");
                         }} className="text-blue-600 font-bold hover:underline">Kopyala</button>
                       </div>
                     </div>
@@ -406,7 +407,7 @@ export default function EventsPage() {
                       onClick={() => {
                         const link = event.visibility === 'PRIVATE' ? event.privateSlug : event.id;
                         navigator.clipboard.writeText(`${window.location.origin}/event/${link}`);
-                        alert('Etkinlik linki kopyalandı! Müşterilerinize gönderebilirsiniz.');
+                        toast.success('Etkinlik linki kopyalandı! Müşterilerinize gönderebilirsiniz.');
                       }}
                       className="text-sm px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800 font-medium rounded transition"
                       title="Müşteri Linkini Kopyala"

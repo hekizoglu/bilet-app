@@ -20,6 +20,7 @@ interface Props {
 export default function StepLayout({ data, onChange, onNext, onBack, setEffectiveCapacity }: Props) {
   const [halls, setHalls] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [showDesigner, setShowDesigner] = useState(false);
 
   useEffect(() => {
@@ -27,6 +28,8 @@ export default function StepLayout({ data, onChange, onNext, onBack, setEffectiv
   }, []);
 
   const fetchHalls = async () => {
+    setLoading(true);
+    setLoadError(null);
     try {
       const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/halls`, {
@@ -35,9 +38,12 @@ export default function StepLayout({ data, onChange, onNext, onBack, setEffectiv
       if (res.ok) {
         const h = await res.json();
         setHalls(h);
+      } else {
+        setLoadError('Salonlar yüklenemedi. Lütfen tekrar deneyin.');
       }
     } catch (e) {
       console.error(e);
+      setLoadError('Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
     }
@@ -151,6 +157,13 @@ export default function StepLayout({ data, onChange, onNext, onBack, setEffectiv
             </div>
             {loading ? (
               <div className="flex items-center gap-2 text-gray-500"><Loader2 className="animate-spin" size={16} /> Yükleniyor...</div>
+            ) : loadError ? (
+              <div className="text-sm text-red-600 p-3 border rounded-lg bg-red-50 flex items-center justify-between gap-2">
+                <span>{loadError}</span>
+                <button onClick={fetchHalls} className="shrink-0 text-blue-600 hover:text-blue-800 font-semibold">
+                  Tekrar Dene
+                </button>
+              </div>
             ) : halls.length === 0 ? (
               <div className="text-sm text-gray-500 italic p-3 border rounded-lg bg-white">
                 Henüz kayıtlı bir salonunuz yok. Yeni tasarlayabilirsiniz.

@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { Calendar, Clock, MapPin, Users, Globe, Lock, Loader2 } from 'lucide-react';
+import { Calendar, Clock, Users, Globe, Lock, Loader2, CreditCard, Banknote, Gift } from 'lucide-react';
 import { BasicInfoData } from './StepBasicInfo';
 import { LayoutData } from './StepLayout';
 
@@ -13,18 +13,37 @@ interface Props {
   onBack: () => void;
   isSubmitting: boolean;
   effectiveCapacity: number;
+  error?: string | null;
 }
 
-export default function StepSummary({ 
-  eventType, 
-  basicInfo, 
-  layout, 
-  onSubmit, 
-  onBack, 
+const PAYMENT_LABELS: Record<string, { label: string; Icon: any }> = {
+  free: { label: 'Ücretsiz', Icon: Gift },
+  cardless: { label: 'Kartsız (Havale/EFT)', Icon: Banknote },
+  creditcard: { label: 'Kredi Kartı', Icon: CreditCard },
+};
+
+export default function StepSummary({
+  eventType,
+  basicInfo,
+  layout,
+  onSubmit,
+  onBack,
   isSubmitting,
-  effectiveCapacity
+  effectiveCapacity,
+  error,
 }: Props) {
   const isPendingApproval = effectiveCapacity > 50;
+  const priceNum = Number(basicInfo.price) || 0;
+  const { label: paymentLabel, Icon: PaymentIcon } = PAYMENT_LABELS[basicInfo.paymentType] || PAYMENT_LABELS.free;
+
+  const formatDate = (d: string) => {
+    if (!d) return '—';
+    try {
+      return new Date(`${d}T00:00:00`).toLocaleDateString('tr-TR', {
+        day: 'numeric', month: 'long', year: 'numeric',
+      });
+    } catch { return d; }
+  };
 
   return (
     <div className="space-y-6">
@@ -34,23 +53,14 @@ export default function StepSummary({
       </div>
 
       <div className="bg-white border rounded-xl overflow-hidden">
-        {basicInfo.coverImage ? (
-          <div className="h-48 w-full overflow-hidden bg-gray-100">
-            <img 
-              src={basicInfo.coverImage} 
-              alt="Kapak" 
-              className="w-full h-full object-cover"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-            />
-          </div>
-        ) : (
-          <div className="h-32 w-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center text-white/50">
-            Kapak Görseli Yok
-          </div>
-        )}
+        <div className="h-32 w-full bg-gradient-to-r from-blue-500 to-indigo-600 flex items-center justify-center">
+          <span className="text-white/60 font-black text-3xl uppercase tracking-wider px-4 text-center">
+            {basicInfo.name}
+          </span>
+        </div>
 
         <div className="p-6">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className="px-2.5 py-1 bg-blue-100 text-blue-800 text-xs font-semibold rounded-full uppercase">
               {eventType}
             </span>
@@ -58,24 +68,35 @@ export default function StepSummary({
               {basicInfo.visibility === 'PUBLIC' ? <Globe size={12}/> : <Lock size={12}/>}
               {basicInfo.visibility === 'PUBLIC' ? 'Herkese Açık' : 'Özel'}
             </span>
+            <span className="px-2.5 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full flex items-center gap-1">
+              <PaymentIcon size={12} />
+              {paymentLabel}
+            </span>
           </div>
 
           <h3 className="text-2xl font-bold text-gray-900 mb-4">{basicInfo.name}</h3>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-3">
               <Calendar size={18} className="text-gray-400" />
-              <span>{basicInfo.date}</span>
+              <span>{formatDate(basicInfo.date)} {basicInfo.startTime && `• ${basicInfo.startTime}`}</span>
             </div>
-            <div className="flex items-center gap-3">
-              <Clock size={18} className="text-gray-400" />
-              <span>{basicInfo.startTime} - {basicInfo.endTime || 'Belirtilmedi'}</span>
-            </div>
+            {basicInfo.endTime && (
+              <div className="flex items-center gap-3">
+                <Clock size={18} className="text-gray-400" />
+                <span>Bitiş: {basicInfo.endTime}</span>
+              </div>
+            )}
             <div className="flex items-center gap-3">
               <Users size={18} className="text-gray-400" />
               <span>
-                {layout.isSeated ? 'Koltuklu Düzen' : 'Genel Giriş'} 
+                {layout.isSeated ? 'Koltuklu Düzen' : 'Genel Giriş'}
                 <span className="font-semibold text-gray-900 ml-1">({effectiveCapacity} Kişi)</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="font-semibold text-gray-900">
+                {priceNum > 0 ? `${priceNum.toLocaleString('tr-TR')} ₺ / kişi` : 'Ücretsiz'}
               </span>
             </div>
           </div>
@@ -99,12 +120,18 @@ export default function StepSummary({
             {isPendingApproval ? 'Yönetici Onayı Beklenecek' : 'Doğrudan Yayınlanacak'}
           </h4>
           <p className="text-sm mt-1 opacity-90">
-            {isPendingApproval 
-              ? 'Etkinliğiniz 50 kişiden fazla kapasiteye sahip olduğu için güvenlik gereği oluşturulduktan sonra yönetici onayına gönderilecektir. Onaylanana kadar "Taslak" olarak kalır.' 
+            {isPendingApproval
+              ? 'Etkinliğiniz 50 kişiden fazla kapasiteye sahip olduğu için güvenlik gereği oluşturulduktan sonra yönetici onayına gönderilecektir. Onaylanana kadar "Taslak" olarak kalır.'
               : 'Etkinliğinizin kapasitesi limitler dahilinde olduğundan onay gerekmeksizin hemen aktif olacaktır.'}
           </p>
         </div>
       </div>
+
+      {error && (
+        <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm">
+          <strong className="font-semibold">Hata:</strong> {error}
+        </div>
+      )}
 
       <div className="flex justify-between pt-6 border-t mt-8">
         <button

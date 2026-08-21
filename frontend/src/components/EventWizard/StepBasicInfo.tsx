@@ -5,11 +5,12 @@ import React from 'react';
 export interface BasicInfoData {
   name: string;
   description: string;
-  coverImage: string;
   date: string;
   startTime: string;
   endTime: string;
   visibility: 'PUBLIC' | 'PRIVATE';
+  price: string; // string input olarak tutulur, submit'te sayıya çevrilir
+  paymentType: 'free' | 'creditcard' | 'cardless';
 }
 
 interface Props {
@@ -19,18 +20,48 @@ interface Props {
   onBack: () => void;
 }
 
+const inputCls =
+  "w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-colors";
+
 export default function StepBasicInfo({ data, onChange, onNext, onBack }: Props) {
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    onChange({ ...data, [e.target.name]: e.target.value });
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const name = e.target.name;
+    const value = e.target.value;
+    const next = { ...data, [name]: value };
+
+    // Ücret girildiğinde ödeme türü "ücretsiz" kalamaz — otomatik olarak kartsız ödemeye geçir
+    if (name === 'price' && Number(value) > 0 && next.paymentType === 'free') {
+      next.paymentType = 'cardless';
+    }
+    // Ücret 0/silindiğinde ödeme türünü ücretsize döndür
+    if (name === 'price' && (Number(value) <= 0 || value === '')) {
+      next.paymentType = 'free';
+    }
+
+    onChange(next);
   };
 
-  const isValid = data.name.trim() !== '' && data.date !== '' && data.startTime !== '';
+  const priceNum = Number(data.price);
+  const isValid =
+    data.name.trim() !== '' &&
+    data.date !== '' &&
+    data.startTime !== '' &&
+    !isNaN(priceNum) &&
+    priceNum >= 0;
+
+  // Bugünün tarihi (yerel) — geçmiş tarih seçimini engelle
+  const today = new Date();
+  const minDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(
+    today.getDate()
+  ).padStart(2, '0')}`;
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-900">Temel Bilgiler</h2>
-        <p className="text-gray-500 mt-1">Etkinliğinizin adını, zamanını ve detaylarını belirleyin.</p>
+        <p className="text-gray-500 mt-1">Etkinliğinizin adını, zamanını, fiyatını ve detaylarını belirleyin.</p>
       </div>
 
       <div className="space-y-4">
@@ -41,8 +72,9 @@ export default function StepBasicInfo({ data, onChange, onNext, onBack }: Props)
             name="name"
             value={data.name}
             onChange={handleChange}
-            placeholder="Örn: Ayşe'nin 30. Yaş Günü"
-            className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="Örn: Ayşe&apos;nin 30. Yaş Günü"
+            className={inputCls}
+            maxLength={120}
             required
           />
         </div>
@@ -54,8 +86,8 @@ export default function StepBasicInfo({ data, onChange, onNext, onBack }: Props)
             value={data.description}
             onChange={handleChange}
             rows={3}
-            placeholder="Etkinlik hakkında kısa bir bilgi..."
-            className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+            placeholder="Etkinlik hakkında kısa bir bilgi... (katılımcıların göreceği açıklama)"
+            className={`${inputCls} resize-none`}
           />
         </div>
 
@@ -66,8 +98,9 @@ export default function StepBasicInfo({ data, onChange, onNext, onBack }: Props)
               type="date"
               name="date"
               value={data.date}
+              min={minDate}
               onChange={handleChange}
-              className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className={inputCls}
               required
             />
           </div>
@@ -78,7 +111,7 @@ export default function StepBasicInfo({ data, onChange, onNext, onBack }: Props)
               name="startTime"
               value={data.startTime}
               onChange={handleChange}
-              className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className={inputCls}
               required
             />
           </div>
@@ -89,35 +122,66 @@ export default function StepBasicInfo({ data, onChange, onNext, onBack }: Props)
               name="endTime"
               value={data.endTime}
               onChange={handleChange}
-              className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              className={inputCls}
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Kapak Görseli URL (Opsiyonel)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Bilet Fiyatı (₺) *</label>
             <input
-              type="url"
-              name="coverImage"
-              value={data.coverImage}
+              type="number"
+              name="price"
+              value={data.price}
+              min="0"
+              step="0.01"
               onChange={handleChange}
-              placeholder="https://..."
-              className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="0 = Ücretsiz etkinlik"
+              className={inputCls}
+              required
             />
+            <p className="text-xs text-gray-400 mt-1">
+              {priceNum > 0
+                ? 'Ücretli etkinlik: ödeme yöntemi aşağıdan seçilir.'
+                : '0 bırakırsanız etkinlik ücretsiz olur.'}
+            </p>
           </div>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Görünürlük</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Ödeme Türü</label>
             <select
-              name="visibility"
-              value={data.visibility}
+              name="paymentType"
+              value={data.paymentType}
               onChange={handleChange}
-              className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              disabled={priceNum <= 0}
+              className={`${inputCls} disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              <option value="PUBLIC">Herkese Açık (Keşfet'te Görünür)</option>
-              <option value="PRIVATE">Özel (Sadece Davetiyeliler)</option>
+              <option value="free">Ücretsiz (Ödeme yok)</option>
+              <option value="cardless">Kartsız (Havale / EFT / Telegram)</option>
+              <option value="creditcard">Kredi Kartı</option>
             </select>
+            <p className="text-xs text-gray-400 mt-1">
+              {priceNum <= 0
+                ? 'Ücretli yapmak için fiyat girin.'
+                : data.paymentType === 'cardless'
+                  ? 'Müşteri banka havalesi ile öder, siz onaylarsınız.'
+                  : 'Müşteri kredi kartı ile öder (entegrasyon).'}
+            </p>
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Görünürlük</label>
+          <select
+            name="visibility"
+            value={data.visibility}
+            onChange={handleChange}
+            className={inputCls}
+          >
+            <option value="PUBLIC">Herkese Açık (Keşfet'te Görünür)</option>
+            <option value="PRIVATE">Özel (Sadece Davetiyeliler)</option>
+          </select>
         </div>
       </div>
 

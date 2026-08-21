@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Stage, Layer, Rect, Text, Group, Circle, Image as KonvaImage } from 'react-konva';
 
 interface Seat {
@@ -20,38 +20,60 @@ interface SeatMapViewerProps {
 }
 
 export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeatId, selectedSeatIds, onSeatSelect }: SeatMapViewerProps) {
-  const [elements, setElements] = useState<any[]>([]);
   const [bgImageObj, setBgImageObj] = useState<HTMLImageElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [stageWidth, setStageWidth] = useState(1000);
 
+  // Layout parse'ı render sırasında yapılır (state güncellemesi gerekmez → set-state-in-effect hatası yok)
+  const elements = useMemo<any[]>(() => {
+    if (!layoutJson) return [];
+    try {
+      const parsed = typeof layoutJson === 'string' ? JSON.parse(layoutJson) : layoutJson;
+      return parsed?.elements || [];
+    } catch {
+      return [];
+    }
+  }, [layoutJson]);
+
+  // Arka plan görseli (asenkron — yalnızca yükleme bitince state güncellenir)
   useEffect(() => {
     if (!layoutJson) return;
-    let parsed = typeof layoutJson === 'string' ? JSON.parse(layoutJson) : layoutJson;
-    setElements(parsed.elements || []);
-    
-    if (parsed.canvas?.backgroundImage) {
+    let parsed: any;
+    try {
+      parsed = typeof layoutJson === 'string' ? JSON.parse(layoutJson) : layoutJson;
+    } catch {
+      return;
+    }
+    if (parsed?.canvas?.backgroundImage) {
       const img = new window.Image();
       img.src = parsed.canvas.backgroundImage;
       img.onload = () => setBgImageObj(img);
     }
   }, [layoutJson]);
 
-  // Handle responsive scaling
+  // Responsive genişlik: ref'i render sırasında okumak yerine ResizeObserver ile state'e yaz
   useEffect(() => {
-    const checkSize = () => {
-      if (containerRef.current) {
-        const width = containerRef.current.offsetWidth;
-        // Default canvas width is usually 1000 in designer
-        const canvasWidth = 1000;
-        const newScale = Math.min(width / canvasWidth, 1);
-        setScale(newScale);
-      }
+    const el = containerRef.current;
+    if (!el) return;
+
+    const updateSize = () => {
+      setStageWidth(el.offsetWidth || 1000);
+      // Default canvas width is usually 1000 in designer
+      const newScale = Math.min(el.offsetWidth / 1000, 1);
+      setScale(newScale);
     };
-    
-    checkSize();
-    window.addEventListener('resize', checkSize);
-    return () => window.removeEventListener('resize', checkSize);
+
+    updateSize();
+
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(el);
+    window.addEventListener('resize', updateSize);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
   }, []);
 
   const availableSet = new Set(availableSeats.map(s => s.id));
@@ -274,7 +296,7 @@ export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeat
       </div>
 
       <Stage 
-        width={containerRef.current?.offsetWidth || 1000} 
+        width={stageWidth} 
         height={600}
         scaleX={scale}
         scaleY={scale}

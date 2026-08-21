@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { MapIcon, ArrowRight, Copy } from 'lucide-react';
 import Link from 'next/link';
 
@@ -43,14 +44,14 @@ export default function HallsPage() {
         }
       });
       if (res.ok) {
-        alert('Salon başarıyla kopyalandı! Kopyası üzerinde değişiklik yapabilirsiniz.');
+        toast.success('Salon kopyalandı! Kopyası üzerinde değişiklik yapabilirsiniz.');
         fetchHalls();
       } else {
         const data = await res.json();
-        alert(`Hata: ${data.error || 'Bilinmeyen hata'}`);
+        toast.error(`Hata: ${data.error || 'Bilinmeyen hata'}`);
       }
     } catch (err) {
-      alert('Sunucuya bağlanılamadı');
+      toast.error('Sunucuya bağlanılamadı');
     }
   };
 

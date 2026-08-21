@@ -18,6 +18,8 @@ const waitlistLimiter = createRateLimiter({
 
 const eventSchema = z.object({
   name: z.string().min(3),
+  description: z.string().optional().nullable(),
+  location: z.string().optional().nullable(),
   date: z.string().datetime().refine((val) => new Date(val) > new Date(), { message: "Geçmiş tarihe etkinlik eklenemez" }),
   price: z.number().nonnegative(),
   status: z.enum(["Taslak", "Aktif", "Pasif"]).default("Taslak"),
