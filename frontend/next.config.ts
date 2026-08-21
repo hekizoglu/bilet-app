@@ -13,6 +13,18 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname, '..'),
   },
+  // Geliştirme ortamında API isteklerini backend'e proxy'le (NEXT_PUBLIC_API_URL
+  // set edilmediğinde client relative /api kullanır — localhost/CORS sorunu olmaz)
+  ...(process.env.NODE_ENV === "development"
+    ? {
+        async rewrites() {
+          return [
+            { source: "/api/:path*", destination: "http://localhost:5000/api/:path*" },
+            { source: "/socket.io/:path*", destination: "http://localhost:5000/socket.io/:path*" },
+          ];
+        },
+      }
+    : {}),
 };
 
 export default withSentryConfig(withPWA(nextConfig), {

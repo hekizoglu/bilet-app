@@ -129,6 +129,7 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 // Get Public Events (Homepage)
+// Ana sayfa için zenginleştirilmiş liste: satış/kapasite bilgisi ile
 router.get('/public', async (req, res) => {
   try {
     const cached = cache.get('public_events');
@@ -142,13 +143,35 @@ router.get('/public', async (req, res) => {
       },
       include: { 
         hall: {
-          select: { id: true, name: true, seatCount: true, address: true, isGlobal: true }
+          select: { id: true, name: true, seatCount: true, calculatedSeatCount: true, address: true, isGlobal: true }
+        },
+        _count: {
+          select: {
+            // Yalnızca aktif satışları say (İptal/refund edilenler kapasiteyi işgal etmez)
+            reservations: { where: { status: { in: ['Onaylı', 'Beklemede'] } } }
+          }
         }
       },
       orderBy: { date: 'asc' }
     });
-    cache.set('public_events', events, 5 * 60 * 1000);
-    res.json(events);
+
+    // Kapasite + kalan bilet hesabı (koltuklu → salon planından, koltuksuz → capacity)
+    const enriched = events.map(ev => {
+      const capacity = ev.isSeated
+        ? (ev.hall?.calculatedSeatCount || ev.hall?.seatCount || 0)
+        : (ev.capacity || 0);
+      const soldCount = ev._count?.reservations || 0;
+      return {
+        ...ev,
+        _count: undefined,
+        capacity,
+        soldCount,
+        availableCount: Math.max(0, capacity - soldCount)
+      };
+    });
+
+    cache.set('public_events', enriched, 5 * 60 * 1000);
+    res.json(enriched);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
   }

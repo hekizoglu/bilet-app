@@ -164,3 +164,45 @@
 ---
 
 *Değişiklikler `git diff` ile incelenebilir; istenirse tek commit olarak paketlenip push edilebilir.*
+
+---
+
+## Bölüm 6 — Ana Sayfa Yeniden Tasarımı (Ek Tur)
+
+**Tarih:** 2026-08-21 · **Kapsam:** `frontend/src/app/page.tsx` sıfırdan yeniden yazıldı + `backend/routes/events.js` zenginleştirildi
+
+### Tasarım kararları (ürünün ne yaptığına dayalı)
+
+Ana sayfa iki kitleye hizmet eder: **etkinlik arayan müşteri** (keşfet → koltuk seç → QR ile gir) ve **etkinlik düzenleyen organizatör**. Yeni tasarım her iki yolculuğu da besler.
+
+| Bölüm | Karar | Neden |
+|---|---|---|
+| Hero | Koyu gradyan + grid deseni + glow; sol: başlık/arama/CTA, sağ: **gerçek veriden öne çıkan etkinlik kartı** + floating rozetler | Ürünün çekirdek vaadini (haritadan koltuk seç, QR ile gir) anında anlatır; sahte görsel yerine canlı veri güven verir |
+| Arama | Büyük arama kutusu (hero'da), isim/açıklama/mekânda anlık client-side filtre | Keşif birincil iş; backend'de arama endpoint'i olmadığından client-side (mevcut veri kümesi küçük) |
+| "Nasıl Çalışır" | 3 adım: Keşfet → Koltuğu Seç → QR ile Gir | Yeni kullanıcıyı ürünün gerçek akışına hazırlar |
+| İstatistik şeridi | Toplam etkinlik / ücretsiz / açık kontenjan (client-side) | Sosyal kanıt + aciliyet |
+| Filtreler | Tümü / Bu Hafta / Bu Ay / Ücretsiz / Koltuklu (gerçek veri alanlarına dayalı) | Önceki tasarımda "kategori" alanı backend'de olmadığı için filtreler hep boştu; artık gerçek alanlar kullanılıyor |
+| Kartlar | Tarih bloğu, durum rozetleri (DOLU / SON X BİLET / ÜCRETSİZ / fiyat), **kalan bilet progress bar'ı**, satıldı sayacı | `soldCount/capacity` verisi backend'e eklendi; "Son 2 bilet!" aciliyeti dönüşümü artırır, "DOLU" kartlarda "Bekleme Listesi" CTA'sı dönüşümü korur |
+| Organizatör CTA | "Kendi etkinliğini 5 dakikada oluştur" bandı + 4 özellik kartı | İkinci hedef kitle; `/event/create`'e net yönlendirme |
+| Footer | Mini footer (Nasıl Çalışır / Keşif / Gizlilik / Oluştur) | Önceki sayfada yoktu |
+
+### Backend değişikliği: zenginleştirilmiş public liste
+
+`GET /api/events/public` artık her etkinlik için **`capacity`, `soldCount`, `availableCount`** döner:
+- Koltuklu → kapasite salon planından (`calculatedSeatCount || seatCount`), koltuksuz → `capacity`
+- Satış sayısı yalnızca **aktif** rezervasyonlardan sayılır (`Onaylı` + `Beklemede`; iptal edilenler kapasiteyi işgal etmez) — Prisma filtered `_count`
+- Cache 5 dk korundu (enrich edilmiş veri cache'lenir)
+
+**Doğrulama (canlı):** 6 etkinlik, 480/500 satılmış fuar → `availableCount:20` (kırmızı "SON 20 BİLET" rozeti), 26/28 satılmış bağış gecesi → `availableCount:2`, 0/200 satılmış gala → `availableCount:200` ✅
+
+### Altyapı (önizleme/proxy)
+
+- `frontend/src/lib/api.ts`: `NEXT_PUBLIC_API_URL` boşsa **relative** `/api` kullanır (dev'de Next rewrites backend'e proxy'ler; production'da env zorunlu kalır)
+- `frontend/next.config.ts`: geliştirme modunda `/api/*` ve `/socket.io/*` → `localhost:5000` rewrite'ları (localstack/CORS sorunlarını kökten çözer)
+- `backend/seed-preview.js`: yalnızca geliştirme için örnek veri (1 salon + 6 çeşitli etkinlik + satışlar)
+
+### Sıradaki fikirler (istenirse)
+- Hero'ya "yaklaşan ilk etkinlik" otomatik dönen slayt
+- Kategori/etiket altyapısı backend'e eklenip gerçek kategori filtreleri
+- Etkinlik sayfasına geri sayım sayacı (hero kartında)
+- Organizatör CTA'sında canlı "son 7 günde X etkinlik oluşturuldu" istatistiği

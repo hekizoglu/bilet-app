@@ -8,12 +8,18 @@
  * - Zaman aşımı (timeout) ve tutarlı hata nesneleri sağlar
  */
 
-const RAW_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const RAW_BASE = process.env.NEXT_PUBLIC_API_URL?.trim() || '';
 
-/** Socket.io ve diğer origin-temelli kullanımlar için normalize edilmiş origin */
-export const API_ORIGIN = RAW_BASE.replace(/\/+$/, '').replace(/\/api$/i, '');
+/**
+ * Socket.io ve diğer origin-temelli kullanımlar için normalize edilmiş origin.
+ * Env boşsa boş string döner → istemci aynı origin'e (relative) bağlanır,
+ * dev'de Next.js rewrites `/api/*` ve `/socket.io/*` isteklerini backend'e proxy'ler.
+ */
+export const API_ORIGIN = RAW_BASE
+  ? RAW_BASE.replace(/\/+$/, '').replace(/\/api$/i, '')
+  : '';
 
-/** API uç noktası URL'si: apiFetch('/events') → {ORIGIN}/api/events */
+/** API uç noktası URL'si: apiFetch('/events') → {ORIGIN}/api/events (env yoksa relative /api/events) */
 export const apiUrl = (path: string) =>
   `${API_ORIGIN}/api${path.startsWith('/') ? path : `/${path}`}`;
 
