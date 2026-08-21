@@ -30,6 +30,14 @@ jobs:
         working-directory: backend
         run: npx prisma generate
 
+      # Integration testleri için boş bir SQLite şeması kur (önceden DATABASE_URL
+      # eksik olduğundan tüm integration testleri PrismaClientInitializationError ile çöküyordu)
+      - name: Prepare Test Database Schema
+        working-directory: backend
+        run: npx prisma db push --skip-generate
+        env:
+          DATABASE_URL: file:./prisma/ci.db
+
       - name: Run Unit Tests
         working-directory: backend
         run: npx jest --testPathPattern='__tests__/unit' --coverage --ci
@@ -43,6 +51,7 @@ jobs:
         env:
           JWT_SECRET: ci-test-secret
           NODE_ENV: test
+          DATABASE_URL: file:./prisma/ci.db
 
       - name: Upload Coverage Report
         if: always()
