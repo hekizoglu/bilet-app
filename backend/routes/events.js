@@ -128,6 +128,47 @@ router.get('/', requireAuth, async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────
+// Public etkinlikleri kapasite/satış bilgisiyle zenginleştirir
+// (/public ve /stats uç noktaları ortak kullanır)
+// ─────────────────────────────────────────────
+async function getPublicEventsEnriched() {
+  const events = await prisma.event.findMany({
+    where: { 
+      visibility: 'PUBLIC', 
+      status: 'Aktif',
+      date: { gte: new Date() }
+    },
+    include: { 
+      hall: {
+        select: { id: true, name: true, seatCount: true, calculatedSeatCount: true, address: true, isGlobal: true }
+      },
+      _count: {
+        select: {
+          // Yalnızca aktif satışları say (İptal/refund edilenler kapasiteyi işgal etmez)
+          reservations: { where: { status: { in: ['Onaylı', 'Beklemede'] } } }
+        }
+      }
+    },
+    orderBy: { date: 'asc' }
+  });
+
+  // Kapasite + kalan bilet hesabı (koltuklu → salon planından, koltuksuz → capacity)
+  return events.map(ev => {
+    const capacity = ev.isSeated
+      ? (ev.hall?.calculatedSeatCount || ev.hall?.seatCount || 0)
+      : (ev.capacity || 0);
+    const soldCount = ev._count?.reservations || 0;
+    return {
+      ...ev,
+      _count: undefined,
+      capacity,
+      soldCount,
+      availableCount: Math.max(0, capacity - soldCount)
+    };
+  });
+}
+
 // Get Public Events (Homepage)
 // Ana sayfa için zenginleştirilmiş liste: satış/kapasite bilgisi ile
 router.get('/public', async (req, res) => {
@@ -135,45 +176,41 @@ router.get('/public', async (req, res) => {
     const cached = cache.get('public_events');
     if (cached) return res.json(cached);
 
-    const events = await prisma.event.findMany({
-      where: { 
-        visibility: 'PUBLIC', 
-        status: 'Aktif',
-        date: { gte: new Date() }
-      },
-      include: { 
-        hall: {
-          select: { id: true, name: true, seatCount: true, calculatedSeatCount: true, address: true, isGlobal: true }
-        },
-        _count: {
-          select: {
-            // Yalnızca aktif satışları say (İptal/refund edilenler kapasiteyi işgal etmez)
-            reservations: { where: { status: { in: ['Onaylı', 'Beklemede'] } } }
-          }
-        }
-      },
-      orderBy: { date: 'asc' }
-    });
-
-    // Kapasite + kalan bilet hesabı (koltuklu → salon planından, koltuksuz → capacity)
-    const enriched = events.map(ev => {
-      const capacity = ev.isSeated
-        ? (ev.hall?.calculatedSeatCount || ev.hall?.seatCount || 0)
-        : (ev.capacity || 0);
-      const soldCount = ev._count?.reservations || 0;
-      return {
-        ...ev,
-        _count: undefined,
-        capacity,
-        soldCount,
-        availableCount: Math.max(0, capacity - soldCount)
-      };
-    });
-
+    const enriched = await getPublicEventsEnriched();
     cache.set('public_events', enriched, 5 * 60 * 1000);
     res.json(enriched);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
+  }
+});
+
+// Get Public Stats (Homepage sosyal kanıt / istatistik şeridi)
+router.get('/stats', async (req, res) => {
+  try {
+    const cached = cache.get('public_stats');
+    if (cached) return res.json(cached);
+
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [createdLast7Days, ticketsSold, enriched] = await Promise.all([
+      prisma.event.count({ where: { createdAt: { gte: weekAgo } } }),
+      prisma.reservation.count({ where: { status: 'Onaylı' } }),
+      getPublicEventsEnriched(),
+    ]);
+
+    const result = {
+      upcomingEvents: enriched.length,
+      freeEvents: enriched.filter(e => e.price <= 0).length,
+      availableSeats: enriched.reduce((s, e) => s + (e.availableCount || 0), 0),
+      eventsCreatedLast7Days: createdLast7Days,
+      ticketsSold,
+    };
+
+    cache.set('public_stats', result, 2 * 60 * 1000);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "İstatistikler alınamadı." });
   }
 });
 

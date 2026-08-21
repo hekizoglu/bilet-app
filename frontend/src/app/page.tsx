@@ -7,7 +7,7 @@ import {
   Armchair, QrCode, PlusCircle, RefreshCw, Zap, Users, Info,
 } from 'lucide-react';
 import SkeletonLoader from '@/components/SkeletonLoader';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { apiFetch } from '@/lib/api';
 
 // ─────────────────────────────────────────────────────────────
@@ -34,6 +34,14 @@ interface PublicEvent {
   capacity: number;
   soldCount: number;
   availableCount: number;
+}
+
+interface PublicStats {
+  upcomingEvents: number;
+  freeEvents: number;
+  availableSeats: number;
+  eventsCreatedLast7Days: number;
+  ticketsSold: number;
 }
 
 type FilterId = 'all' | 'week' | 'month' | 'free' | 'seated';
@@ -96,6 +104,64 @@ const isThisMonth = (iso: string) => {
   const now = new Date();
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
 };
+
+/** "Bugün", "Yarın", "3 gün sonra" gibi göreli gün etiketi */
+const relativeDay = (iso: string) => {
+  const d = new Date(iso);
+  const now = new Date();
+  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startTarget = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((startTarget - startToday) / 86400000);
+  if (diffDays === 0) return 'Bugün';
+  if (diffDays === 1) return 'Yarın';
+  if (diffDays > 1) return `${diffDays} gün sonra`;
+  return '';
+};
+
+/** Her saniye güncelleyen "şimdi" zamanı (geri sayım için) */
+function useNow(intervalMs = 1000) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(t);
+  }, [intervalMs]);
+  return now;
+}
+
+/** Canlı tıklayan geri sayım: 2 gün : 14 saat : 05 dk : 33 sn */
+function Countdown({ target }: { target: string }) {
+  const now = useNow();
+  const diff = Math.max(0, new Date(target).getTime() - now);
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+
+  if (diff <= 0) {
+    return <span className="text-sm font-bold text-white/80">Etkinlik başladı 🎉</span>;
+  }
+
+  const cells = [
+    { v: d, l: 'gün' },
+    { v: h, l: 'saat' },
+    { v: m, l: 'dk' },
+    { v: s, l: 'sn' },
+  ];
+
+  return (
+    <div className="flex items-center gap-2">
+      {cells.map((c, i) => (
+        <div key={c.l} className="flex items-center gap-2">
+          {i > 0 && <span className="text-white/40 font-black text-lg">:</span>}
+          <div className="bg-white/15 backdrop-blur border border-white/20 rounded-lg px-2.5 py-1.5 text-center min-w-[52px]">
+            <div className="text-xl font-black tabular-nums leading-none">{String(c.v).padStart(2, '0')}</div>
+            <div className="text-[9px] font-bold uppercase tracking-wider text-white/60 mt-0.5">{c.l}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 // ─────────────────────────────────────────────────────────────
 // Bileşenler
@@ -160,6 +226,9 @@ function EventCard({ event, index }: { event: PublicEvent; index: number }) {
         {/* Gövde */}
         <div className="p-5 flex-1 flex flex-col">
           <div className="flex items-center gap-2 text-xs text-gray-400 font-medium mb-1.5">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600 font-bold">
+              {relativeDay(event.date)}
+            </span>
             <span className="capitalize">{t.weekday}</span>
             <span>•</span>
             <span>{t.time}</span>
@@ -239,6 +308,69 @@ function EventCard({ event, index }: { event: PublicEvent; index: number }) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Hero: Öne Çıkan Etkinlik Kartı (slayt öğesi)
+// ─────────────────────────────────────────────────────────────
+
+function HeroFeatured({ event }: { event: PublicEvent }) {
+  const t = formatDate(event.date);
+  return (
+    <div className={`relative bg-gradient-to-br ${gradientFor(event.name)} rounded-3xl p-8 shadow-2xl shadow-black/40 overflow-hidden`}>
+      <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_80%_10%,white,transparent_55%)]" />
+      <div className="relative">
+        <div className="flex items-center justify-between mb-8">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur text-xs font-bold">
+            <Zap size={12} /> Öne Çıkan
+          </span>
+          <span className="bg-white/95 text-gray-900 text-sm font-black px-3 py-1.5 rounded-xl">
+            {event.price > 0 ? `${event.price.toLocaleString('tr-TR')} ₺` : 'ÜCRETSİZ'}
+          </span>
+        </div>
+
+        <div className="flex items-end justify-between gap-4 mb-6">
+          <div>
+            <div className="text-5xl font-black leading-none">{t.day}</div>
+            <div className="text-sm font-bold uppercase tracking-widest text-white/80 mt-1">
+              {t.month} • {t.weekday}
+            </div>
+          </div>
+          <div className="text-right text-xs font-semibold text-white/70">
+            Başlamasına kalan
+            <div className="mt-1.5">
+              <Countdown target={event.date} />
+            </div>
+          </div>
+        </div>
+
+        <h3 className="text-2xl font-black leading-snug mb-3">{event.name}</h3>
+        <p className="text-white/80 text-sm leading-relaxed mb-8 line-clamp-3">
+          {event.description || 'Detaylar için tıklayın.'}
+        </p>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-white/85">
+            {event.isSeated && event.hall ? (
+              <>
+                <MapPin size={15} /> {event.hall.name}
+              </>
+            ) : (
+              <>
+                <Tag size={15} /> Genel Giriş
+              </>
+            )}
+          </div>
+          <Link
+            href={`/event/${event.id}`}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-gray-900 font-bold text-sm hover:bg-gray-100 transition shadow-lg"
+          >
+            Bilet Al <ArrowRight size={15} />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
 // Ana Sayfa
 // ─────────────────────────────────────────────────────────────
 
@@ -249,6 +381,9 @@ export default function Home() {
   const [filter, setFilter] = useState<FilterId>('all');
   const [query, setQuery] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [platformStats, setPlatformStats] = useState<PublicStats | null>(null);
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [sliderPaused, setSliderPaused] = useState(false);
 
   const fetchEvents = useCallback(async () => {
     setLoading(true);
@@ -264,13 +399,33 @@ export default function Home() {
     }
   }, []);
 
+  const fetchStats = useCallback(async () => {
+    try {
+      const data = await apiFetch<PublicStats>('/events/stats');
+      setPlatformStats(data);
+    } catch {
+      // İstatistikler yüklenemezse sessizce geç — sayfa ana akışı etkilenmez
+    }
+  }, []);
+
   useEffect(() => {
     // async veri çekme + cookie okuma (mount anında) — set-state-in-effect yanlış pozitifi bilinçli olarak kapsam dışı
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchEvents();
+    fetchStats();
     const token = document.cookie.split('; ').find(row => row.startsWith('token='));
     setIsLoggedIn(!!token);
-  }, [fetchEvents]);
+  }, [fetchEvents, fetchStats]);
+
+  // Hero slaytı: öne çıkan ilk 5 etkinlik arasında otomatik dön
+  const featuredEvents = useMemo(() => events.slice(0, 5), [events]);
+  const safeFeaturedIndex = featuredEvents.length > 0 ? featuredIndex % featuredEvents.length : 0;
+
+  useEffect(() => {
+    if (sliderPaused || featuredEvents.length <= 1) return;
+    const t = setInterval(() => setFeaturedIndex(i => (i + 1) % featuredEvents.length), 6000);
+    return () => clearInterval(t);
+  }, [sliderPaused, featuredEvents.length]);
 
   // Arama + filtre
   const filteredEvents = useMemo(() => {
@@ -296,8 +451,6 @@ export default function Home() {
     const available = events.reduce((s, e) => s + (e.availableCount || 0), 0);
     return { total: events.length, free, seated, totalCapacity, available };
   }, [events]);
-
-  const featured = events[0]; // En yakın tarihli etkinlik hero'da öne çıkar
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -392,57 +545,47 @@ export default function Home() {
               )}
             </div>
 
-            {/* Sağ: öne çıkan etkinlik kartı (gerçek veri) */}
+            {/* Sağ: öne çıkan etkinlik slaytı (gerçek veri, otomatik döner) */}
             <div className="relative hidden lg:block">
-              {featured ? (
-                <div className="relative">
+              {featuredEvents.length > 0 ? (
+                <div
+                  className="relative"
+                  onMouseEnter={() => setSliderPaused(true)}
+                  onMouseLeave={() => setSliderPaused(false)}
+                >
                   {/* Arka plan kartı (dekor) */}
                   <div className="absolute inset-0 translate-x-4 translate-y-4 bg-white/5 border border-white/10 rounded-3xl" />
-                  <div className={`relative bg-gradient-to-br ${gradientFor(featured.name)} rounded-3xl p-8 shadow-2xl shadow-black/40 overflow-hidden`}>
-                    <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_80%_10%,white,transparent_55%)]" />
-                    <div className="relative">
-                      <div className="flex items-center justify-between mb-10">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur text-xs font-bold">
-                          <Zap size={12} /> Öne Çıkan
-                        </span>
-                        <span className="bg-white/95 text-gray-900 text-sm font-black px-3 py-1.5 rounded-xl">
-                          {featured.price > 0 ? `${featured.price.toLocaleString('tr-TR')} ₺` : 'ÜCRETSİZ'}
-                        </span>
-                      </div>
 
-                      <div className="mb-6">
-                        <div className="text-5xl font-black mb-2">{formatDate(featured.date).day}</div>
-                        <div className="text-sm font-bold uppercase tracking-widest text-white/80">
-                          {formatDate(featured.date).month} • {formatDate(featured.date).weekday}
-                        </div>
-                      </div>
+                  {/* Slayt geçişleri */}
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={featuredEvents[safeFeaturedIndex].id}
+                      initial={{ opacity: 0, x: 30 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -30 }}
+                      transition={{ duration: 0.45, ease: 'easeOut' }}
+                    >
+                      <HeroFeatured event={featuredEvents[safeFeaturedIndex]} />
+                    </motion.div>
+                  </AnimatePresence>
 
-                      <h3 className="text-2xl font-black leading-snug mb-3">{featured.name}</h3>
-                      <p className="text-white/80 text-sm leading-relaxed mb-8 line-clamp-3">
-                        {featured.description || 'Detaylar için tıklayın.'}
-                      </p>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 text-sm text-white/85">
-                          {featured.isSeated && featured.hall ? (
-                            <>
-                              <MapPin size={15} /> {featured.hall.name}
-                            </>
-                          ) : (
-                            <>
-                              <Tag size={15} /> Genel Giriş
-                            </>
-                          )}
-                        </div>
-                        <Link
-                          href={`/event/${featured.id}`}
-                          className="inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-white text-gray-900 font-bold text-sm hover:bg-gray-100 transition shadow-lg"
-                        >
-                          Bilet Al <ArrowRight size={15} />
-                        </Link>
-                      </div>
+                  {/* Slayt noktaları */}
+                  {featuredEvents.length > 1 && (
+                    <div className="flex items-center justify-center gap-2 mt-5">
+                      {featuredEvents.map((ev, i) => (
+                        <button
+                          key={ev.id}
+                          onClick={() => setFeaturedIndex(i)}
+                          aria-label={`${ev.name} etkinliğini göster`}
+                          className={`h-2 rounded-full transition-all duration-300 ${
+                            i === safeFeaturedIndex
+                              ? 'w-8 bg-white'
+                              : 'w-2 bg-white/30 hover:bg-white/60'
+                          }`}
+                        />
+                      ))}
                     </div>
-                  </div>
+                  )}
 
                   {/* Floating rozetler */}
                   <div className="absolute -top-5 -right-3 bg-emerald-500 text-white text-xs font-black px-4 py-2 rounded-2xl shadow-xl rotate-6">
@@ -614,6 +757,24 @@ export default function Home() {
                 Salonunu tasarla, fiyatını belirle, davet linkini paylaş. Satışlar canlı takip
                 edilsin, kapıda QR check-in ile her şey otomatik işlesin.
               </p>
+
+              {/* Sosyal kanıt — canlı istatistikler */}
+              {platformStats && (
+                <div className="flex flex-wrap gap-x-8 gap-y-3 mb-8">
+                  <div>
+                    <div className="text-2xl font-black">{platformStats.eventsCreatedLast7Days}</div>
+                    <div className="text-xs text-blue-100/70 font-medium">Son 7 günde oluşturulan etkinlik</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-black">{platformStats.ticketsSold.toLocaleString('tr-TR')}</div>
+                    <div className="text-xs text-blue-100/70 font-medium">Bugüne kadar satılan bilet</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-black">{platformStats.availableSeats.toLocaleString('tr-TR')}</div>
+                    <div className="text-xs text-blue-100/70 font-medium">Açık koltuk / kontenjan</div>
+                  </div>
+                </div>
+              )}
               <div className="flex flex-wrap gap-3">
                 <Link
                   href="/event/create"
