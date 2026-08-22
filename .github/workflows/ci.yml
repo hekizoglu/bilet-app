@@ -153,6 +153,9 @@ jobs:
           curl -sf http://localhost:3005
 
       # ── Playwright ──
+      - name: Root Install (playwright)
+        run: npm ci
+
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
 
