@@ -89,7 +89,7 @@ describe('Auth Middleware', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  test('geçerli ADMIN token ile güvenilir req.user oluşturmalı', () => {
+  test('geçerli ADMIN token ile güvenilir req.user oluşturmalı', async () => {
     const validToken = signValidToken({
       id: 'admin-user-id',
       email: 'admin@test.com',
@@ -97,7 +97,7 @@ describe('Auth Middleware', () => {
     });
     const { req, res, next } = createMockReqRes(`Bearer ${validToken}`);
 
-    requireAuth(req, res, next);
+    await requireAuth(req, res, next);
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(req.user).toEqual({
@@ -107,14 +107,14 @@ describe('Auth Middleware', () => {
     });
   });
 
-  test('geçerli CUSTOMER token ile next çağrılmalı', () => {
+  test('geçerli CUSTOMER token ile next çağrılmalı', async () => {
     const validToken = signValidToken({
       id: 'customer-user-id',
       email: 'customer@test.com',
       role: 'CUSTOMER',
     });
     const { req, res, next } = createMockReqRes(`Bearer ${validToken}`);
-    requireAuth(req, res, next);
+    await requireAuth(req, res, next);
     expect(next).toHaveBeenCalledTimes(1);
     expect(req.user.role).toBe('CUSTOMER');
   });

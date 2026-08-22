@@ -27,6 +27,7 @@ model User {
   isPaymentInfoVerified Boolean   @default(false)
   paymentInfoVerifiedAt DateTime?
   points                Float     @default(0)
+  tokenVersion          Int       @default(1)
   createdAt             DateTime  @default(now())
 
   coupons               Coupon[]  @relation("OrganizerCoupons")

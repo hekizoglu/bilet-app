@@ -7,7 +7,7 @@ const generateToken = (user, extraPayload = {}, options = { expiresIn: '12h' }) 
     id: user.id,
     email: user.email,
     role: user.role,
-    tokenVersion: 1,
+    tokenVersion: user.tokenVersion ?? 1,
     ...extraPayload
   };
 

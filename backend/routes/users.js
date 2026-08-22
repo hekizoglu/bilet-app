@@ -53,8 +53,12 @@ router.post('/switch-role', requireAuth, async (req, res) => {
     const nextRole = user.role === 'ORGANIZER' ? 'CUSTOMER' : 'ORGANIZER';
     const updated = await prisma.user.update({
       where: { id: user.id },
-      data: { role: nextRole }
+      data: { role: nextRole, tokenVersion: { increment: 1 } }
     });
+
+    // Revoke: eski token'lar anında ölsün (cache'i de temizle)
+    const { invalidateTokenVersionCache } = require('../middlewares/auth');
+    invalidateTokenVersionCache(user.id);
 
     const { generateToken } = require('../services/authService');
     const token = generateToken(updated);
