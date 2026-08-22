@@ -14,7 +14,7 @@ interface Ticket {
 }
 
 export default function OfflineScannerPage() {
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<{ id: string; name: string; status?: string }[]>([]);
   const [selectedEventId, setSelectedEventId] = useState('');
   
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -51,7 +51,7 @@ export default function OfflineScannerPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        setEvents(data.filter((e: any) => e.status === 'Aktif'));
+        setEvents(data.filter((e: { status?: string }) => e.status === 'Aktif'));
       }
     } catch (e) {
       console.error("Etkinlikler yüklenemedi", e);

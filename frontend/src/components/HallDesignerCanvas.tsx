@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { Stage, Layer, Rect, Text, Group, Circle, Image as KonvaImage, Line } from 'react-konva';
+import type { KonvaEventObject } from 'konva/lib/Node';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Save, Settings } from 'lucide-react';
 
@@ -173,7 +174,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, object>(fun
       return { ...el, x: base.x + deltaX, y: base.y + deltaY };
     });
     setElements(newElements);
-    setValidationIssues(ValidationEngine.validate({ canvas: { width: canvasWidth, height: canvasHeight }, elements: newElements as any }));
+    setValidationIssues(ValidationEngine.validate({ canvas: { width: canvasWidth, height: canvasHeight }, elements: newElements as unknown as DesignerElement[] }));
   };
 
   const handleDragEnd = (id: string) => {
@@ -232,7 +233,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, object>(fun
       Object.assign(baseElement, { width: localProps.size, height: localProps.height });
     }
     
-    setElements(prev => [...prev, baseElement as any]);
+    setElements(prev => [...prev, baseElement as unknown as DesignerElement]);
     setSelectedIds([id]);
   };
 
@@ -413,11 +414,12 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, object>(fun
     setStageScale(clampedScale);
   };
 
-  const handleStageMouseDown = (e: any) => {
+  const handleStageMouseDown = (e: KonvaEventObject<MouseEvent>) => {
     // Middle mouse or space+left for pan
     if (e.evt.button === 1 || (e.evt.button === 0 && e.evt.altKey)) {
       setIsPanning(true);
       const stage = e.target.getStage();
+      if (!stage) return;
       lastPointerPos.current = stage.getPointerPosition();
     } else {
       const isResizeHandle = typeof e.target.name === 'function' && String(e.target.name()).startsWith('resize-handle');
@@ -426,6 +428,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, object>(fun
       if (isBg) {
         if (!e.evt.shiftKey && !e.evt.ctrlKey) setSelectedIds([]);
         const stage = e.target.getStage();
+      if (!stage) return;
         const pos = stage.getPointerPosition();
         if (pos) {
           const scale = stage.scaleX();
@@ -438,8 +441,9 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, object>(fun
     }
   };
 
-  const handleStageMouseMove = (e: any) => {
+  const handleStageMouseMove = (e: KonvaEventObject<MouseEvent>) => {
     const stage = e.target.getStage();
+      if (!stage) return;
     const pos = stage.getPointerPosition();
     
     if (isPanning && lastPointerPos.current) {
@@ -459,7 +463,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, object>(fun
     }
   };
 
-  const handleStageMouseUp = (e: any) => {
+  const handleStageMouseUp = (e: KonvaEventObject<MouseEvent>) => {
     setIsPanning(false);
     if (selectionBox.visible) {
       setSelectionBox(prev => ({ ...prev, visible: false }));

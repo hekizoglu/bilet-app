@@ -10,8 +10,13 @@ export default function EventDashboardPage() {
   const router = useRouter();
   const id = params.id as string;
 
-  const [event, setEvent] = useState<any>(null);
-  const [attendees, setAttendees] = useState<any[]>([]);
+  const [event, setEvent] = useState<{
+    id: string; name: string; date: string; price: number; status: string;
+    visibility?: string; privateSlug?: string | null; isSeated?: boolean;
+    capacity?: number | null; paymentType?: string; description?: string | null;
+    hall?: { name?: string; address?: string | null } | null;
+  } | null>(null);
+  const [attendees, setAttendees] = useState<{ id: string; isUsed?: boolean; seatName?: string | null; customer?: string; email?: string; ticketCode?: string; status?: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

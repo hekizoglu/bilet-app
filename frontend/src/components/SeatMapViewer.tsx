@@ -11,8 +11,23 @@ interface Seat {
   y: number;
 }
 
+/** Tasarımcı elemanı (Konva çizimleri için gerekli alanlar) */
+export interface LayoutElement {
+  id: string;
+  type: string;
+  label?: string;
+  x: number;
+  y: number;
+  rotation?: number;
+  width?: number;
+  height?: number;
+  radius?: number;
+  seatCount?: number;
+  numberingType?: string;
+}
+
 interface SeatMapViewerProps {
-  layoutJson: any;
+  layoutJson: string | object;
   availableSeats: Seat[];
   selectedSeatId?: string | null;
   selectedSeatIds?: string[];
@@ -26,7 +41,7 @@ export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeat
   const [stageWidth, setStageWidth] = useState(1000);
 
   // Layout parse'ı render sırasında yapılır (state güncellemesi gerekmez → set-state-in-effect hatası yok)
-  const elements = useMemo<any[]>(() => {
+  const elements = useMemo<LayoutElement[]>(() => {
     if (!layoutJson) return [];
     try {
       const parsed = typeof layoutJson === 'string' ? JSON.parse(layoutJson) : layoutJson;
@@ -39,7 +54,7 @@ export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeat
   // Arka plan görseli (asenkron — yalnızca yükleme bitince state güncellenir)
   useEffect(() => {
     if (!layoutJson) return;
-    let parsed: any;
+    let parsed: { elements?: LayoutElement[]; canvas?: { backgroundImage?: string } };
     try {
       parsed = typeof layoutJson === 'string' ? JSON.parse(layoutJson) : layoutJson;
     } catch {
@@ -94,7 +109,7 @@ export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeat
     return '#9ca3af'; // Gray for taken/unavailable
   };
 
-  const renderRoundTable = (el: any) => {
+  const renderRoundTable = (el: LayoutElement) => {
     const r = el.radius || 40;
     const sCount = el.seatCount || 8;
     const showSeatNums = el.numberingType === 'table_and_seats' || el.numberingType === 'seats_only';
@@ -137,7 +152,7 @@ export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeat
     );
   };
 
-  const renderRectTable = (el: any) => {
+  const renderRectTable = (el: LayoutElement) => {
     const w = el.width || 120;
     const h = el.height || 60;
     const sCount = el.seatCount || 6;
@@ -200,7 +215,7 @@ export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeat
     );
   };
 
-  const renderBistro = (el: any) => {
+  const renderBistro = (el: LayoutElement) => {
     const r = el.radius || 25;
     const sCount = el.seatCount || 4;
     const seats = [];
@@ -237,7 +252,7 @@ export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeat
     );
   };
 
-  const renderChair = (el: any) => {
+  const renderChair = (el: LayoutElement) => {
     const seatId = el.id;
     const color = getSeatColor(seatId);
     const isAvailable = availableSet.has(seatId);
@@ -257,7 +272,7 @@ export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeat
     );
   };
 
-  const renderStage = (el: any) => {
+  const renderStage = (el: LayoutElement) => {
     const w = el.width || 200;
     const h = el.height || 80;
     return (
@@ -268,7 +283,7 @@ export default function SeatMapViewer({ layoutJson, availableSeats, selectedSeat
     );
   };
 
-  const renderElement = (el: any) => {
+  const renderElement = (el: LayoutElement) => {
     switch(el.type) {
       case 'round_table': return renderRoundTable(el);
       case 'rect_table': return renderRectTable(el);

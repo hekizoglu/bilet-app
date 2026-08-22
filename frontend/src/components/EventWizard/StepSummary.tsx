@@ -16,7 +16,7 @@ interface Props {
   error?: string | null;
 }
 
-const PAYMENT_LABELS: Record<string, { label: string; Icon: any }> = {
+const PAYMENT_LABELS: Record<string, { label: string; Icon: React.ComponentType<{ size?: number; className?: string }> }> = {
   free: { label: 'Ücretsiz', Icon: Gift },
   cardless: { label: 'Kartsız (Havale/EFT)', Icon: Banknote },
   creditcard: { label: 'Kredi Kartı', Icon: CreditCard },

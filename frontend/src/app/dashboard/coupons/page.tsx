@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 
 export default function AdminCouponsPage() {
 
-  const [coupons, setCoupons] = useState<any[]>([]);
+  interface Coupon { id: string; code: string; discountType: string; discountValue: number; maxUses?: number | null; usedCount: number; validUntil?: string | null; isActive: boolean; }
+const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
     code: '',
@@ -39,7 +40,7 @@ export default function AdminCouponsPage() {
     e.preventDefault();
     try {
       const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
-      const payload: any = {
+      const payload: Record<string, unknown> = {
         code: form.code.toUpperCase(),
         discountType: form.discountType,
         discountValue: parseFloat(form.discountValue),

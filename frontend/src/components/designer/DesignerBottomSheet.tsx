@@ -6,7 +6,7 @@ interface DesignerBottomSheetProps {
   isOpen: boolean;
   onClose: () => void;
   selectedElement: DesignerElement | null;
-  onUpdate: (key: keyof DesignerElement, value: any) => void;
+  onUpdate: (key: keyof DesignerElement, value: string | number | boolean) => void;
   onDelete: () => void;
   onDuplicate: () => void;
 }

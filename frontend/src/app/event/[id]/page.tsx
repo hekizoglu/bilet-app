@@ -5,17 +5,55 @@ import { useRouter } from 'next/navigation';
 import io from 'socket.io-client';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
-import { apiFetch, API_ORIGIN } from '@/lib/api';
+import { apiFetch, API_ORIGIN, ApiError } from '@/lib/api';
 import Countdown from '@/components/Countdown';
 
 // Konva hydration hatalarını önlemek için client-side import yapıyoruz
 const DynamicSeatMapViewer = dynamic(() => import('@/components/SeatMapViewer'), { ssr: false });
 
+
+// ── Tipler (availability API yanıtı) ──
+interface SeatInfo { id: string; name: string; displayName?: string; x: number; y: number; }
+interface EventAvailability {
+  error?: string;
+  isSeated?: boolean;
+  hallName?: string;
+  hallLayout?: string | object;
+  availableSeats?: SeatInfo[];
+  totalCapacity?: number;
+  capacity?: number;
+  sold?: number;
+  available?: number;
+  paymentType?: string;
+  eventId?: string;
+  eventDate?: string;
+  price?: number;
+  basePrice?: number;
+  address?: string;
+}
+interface ReservationResult {
+  id: string;
+  paymentReference?: string;
+  rsvpStatus?: string;
+  mailSent?: string | boolean;
+  status?: string;
+  customer?: string;
+  email?: string;
+  seatName?: string;
+  paymentStatus?: string;
+}
+interface AdminPaymentInfo {
+  iban?: string | null;
+  telegramUsername?: string | null;
+  paymentMethod?: string | null;
+  email?: string | null;
+}
+
 export default function CustomerEventPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
   
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<EventAvailability | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
@@ -37,16 +75,16 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
   const [userPoints, setUserPoints] = useState<number>(0);
   const [discount, setDiscount] = useState<{type: string, value: number} | null>(null);
   const [selectionMode, setSelectionMode] = useState<'list' | 'map'>('list');
-  const [socketInstance, setSocketInstance] = useState<any>(null);
-  const [selectedSeats, setSelectedSeats] = useState<any[]>([]);
+  const [socketInstance, setSocketInstance] = useState<ReturnType<typeof io> | null>(null);
+  const [selectedSeats, setSelectedSeats] = useState<SeatInfo[]>([]);
   const [lockedSeats, setLockedSeats] = useState<string[]>([]);
-  const [reservationSuccess, setReservationSuccess] = useState<any>(null);
-  const [adminPaymentInfo, setAdminPaymentInfo] = useState<any>(null);
+  const [reservationSuccess, setReservationSuccess] = useState<ReservationResult | null>(null);
+  const [adminPaymentInfo, setAdminPaymentInfo] = useState<AdminPaymentInfo | null>(null);
 
-  const handleSeatToggle = (seat: any) => {
+  const handleSeatToggle = (seat: SeatInfo) => {
     // Backend tek rezervasyonda tek koltuk destekler: çoklu seçim yerine tek seçim yapılır
-    const isAlreadySelected = selectedSeats.some((s: any) => s.id === seat.id);
-    let newSelected: any[];
+    const isAlreadySelected = selectedSeats.some((s) => s.id === seat.id);
+    let newSelected: SeatInfo[];
     if (isAlreadySelected) {
       newSelected = [];
       toast.info(`Koltuk ${seat.name} seçimi kaldırıldı.`);
@@ -55,7 +93,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
       toast.success(`Koltuk ${seat.name} seçildi.`);
     }
     setSelectedSeats(newSelected);
-    const names = newSelected.map(s => s.name).join(', ');
+    const names = newSelected.map((s) => s.name).join(', ');
     const lastId = newSelected.length > 0 ? newSelected[newSelected.length - 1].id : '';
     setForm(prev => ({ ...prev, seatId: lastId, seatName: names }));
   };
@@ -64,14 +102,14 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     let cancelled = false;
 
     // 1. Veriyi Getir
-    apiFetch(`/reservations/availability/${id}`)
-      .then((d: any) => {
+    apiFetch<EventAvailability>(`/reservations/availability/${id}`)
+      .then((d) => {
         if (cancelled) return;
         setData(d);
         setLoading(false);
         if (d && d.paymentType === 'cardless') {
-          apiFetch('/users/admin-payment-info')
-            .then((p: any) => { if (!cancelled && p) setAdminPaymentInfo(p); })
+          apiFetch<AdminPaymentInfo>('/users/admin-payment-info')
+            .then((p) => { if (!cancelled && p) setAdminPaymentInfo(p); })
             .catch(console.error);
         }
       })
@@ -85,17 +123,17 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     // Get user points if logged in
     const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
     if (token) {
-      apiFetch('/users/me')
-        .then((u: any) => {
+      apiFetch<{ points?: number; email?: string; name?: string }>('/users/me')
+        .then((u) => {
            if (cancelled || !u) return;
            if (u.points) setUserPoints(u.points);
-           if (u.email) setForm(prev => ({...prev, email: u.email}));
-           if (u.name) setForm(prev => ({...prev, name: u.name}));
+           if (u.email) setForm(prev => ({...prev, email: u.email || ''}));
+           if (u.name) setForm(prev => ({...prev, name: u.name || ''}));
         })
         .catch(console.error);
     }
 
-    let socket: any;
+    let socket: ReturnType<typeof io> | null = null;
 
     if (data?.eventId) {
       // 2. Gerçek Zamanlı Socket Bağlantısı
@@ -104,11 +142,11 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
 
       socket.on('seat_booked', (payload: { seatId: string }) => {
         // Bir başkası koltuk aldı, listeden anında sil
-        setData((prev: any) => {
+        setData((prev) => {
           if (!prev || !prev.isSeated) return prev;
           return {
             ...prev,
-            availableSeats: prev.availableSeats.filter((s: any) => s.id !== payload.seatId)
+            availableSeats: (prev.availableSeats || []).filter((s) => s.id !== payload.seatId)
           };
         });
         setLockedSeats(prev => prev.filter(id => id !== payload.seatId));
@@ -141,8 +179,9 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     };
   }, [id, data?.eventId]);
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!data) return;
     if (data.isSeated && !form.seatId && data.paymentType !== 'free') {
       toast.error("Lütfen bir koltuk seçin.");
       return;
@@ -152,7 +191,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     setIsSubmitting(true);
     try {
       if (data.paymentType === 'free') {
-        const payload: any = {
+        const payload: Record<string, unknown> = {
           eventId: data.eventId,
           customer: form.name,
           email: form.email,
@@ -163,20 +202,22 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
           notes: rsvpData.notes
         };
         try {
-          const result = await apiFetch('/reservations/rsvp', {
+          const result = await apiFetch<{ reservation: ReservationResult }>('/reservations/rsvp', {
             method: 'POST',
             body: JSON.stringify(payload)
           });
           setReservationSuccess(result.reservation);
-        } catch (err: any) {
-          if (err?.data?.requiresWaitlist) {
-            toast.error(err.message);
+        } catch (err: unknown) {
+          const apiErr = err instanceof ApiError ? err : null;
+          const body = (apiErr?.data && typeof apiErr.data === 'object' ? apiErr.data : {}) as { requiresWaitlist?: boolean };
+          if (body.requiresWaitlist) {
+            toast.error(apiErr ? apiErr.message : 'Kapasite dolu.');
           } else {
-            toast.error(`Hata: ${err?.message || 'Bilinmeyen hata'}`);
+            toast.error(`Hata: ${apiErr ? apiErr.message : 'Bilinmeyen hata'}`);
           }
         }
       } else {
-        const payload: any = {
+        const payload: Record<string, unknown> = {
           eventIdOrSlug: id,
           customer: form.name,
           email: form.email,
@@ -189,7 +230,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
           payload.seatId = form.seatId;
         }
         try {
-          const result = await apiFetch('/reservations', {
+          const result = await apiFetch<{ reservation: ReservationResult }>('/reservations', {
             method: 'POST',
             body: JSON.stringify(payload)
           });
@@ -198,8 +239,8 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
           } else {
             setReservationSuccess(result.reservation);
           }
-        } catch (err: any) {
-          toast.error(`Hata: ${err?.message || 'Bilinmeyen hata'}`);
+        } catch (err: unknown) {
+          toast.error(`Hata: ${err instanceof Error ? err.message : 'Bilinmeyen hata'}`);
         }
       }
     }catch {
@@ -213,7 +254,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      await apiFetch(`/events/${id}/waitlist`, {
+      await apiFetch<{ success: boolean }>(`/events/${id}/waitlist`, {
         method: 'POST',
         body: JSON.stringify({
           customerName: form.name,
@@ -223,8 +264,8 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
       });
       toast.success("Bekleme listesine başarıyla eklendiniz! Bilet iptali olursa anında haber vereceğiz.");
       setTimeout(() => window.location.reload(), 2000);
-    } catch (err: any) {
-      toast.error(`Hata: ${err?.message || 'Bilinmeyen hata'}`);
+    } catch (err: unknown) {
+      toast.error(`Hata: ${err instanceof Error ? err.message : 'Bilinmeyen hata'}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -245,14 +286,14 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     </div>
   );
 
-  if (data.error) return (
+  if (!data || data.error) return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="bg-white p-8 rounded-3xl shadow-sm text-center max-w-md w-full border border-gray-100">
         <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
         </div>
         <h2 className="text-xl font-bold text-gray-900 mb-2">Bilet Bulunamadı</h2>
-        <p className="text-gray-500 mb-6">{data.error}</p>
+        <p className="text-gray-500 mb-6">{data?.error}</p>
         <button onClick={() => router.push('/')} className="bg-gray-900 text-white px-6 py-2 rounded-xl font-semibold hover:bg-gray-800 transition w-full">
           Ana Sayfaya Dön
         </button>
@@ -260,7 +301,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
     </div>
   );
 
-  if (reservationSuccess) {
+  if (reservationSuccess && data) {
     return (
       <div className="max-w-2xl mx-auto p-8 text-center">
         <div className="bg-green-50 text-green-800 p-8 rounded-2xl border border-green-100 shadow-sm">
@@ -336,38 +377,40 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
   }
 
   // Koltukları Y-koordinatına göre 15px toleransla satırlara grupla ve sırala
-  const getGroupedSeats = (seats: any[]) => {
+  const getGroupedSeats = (seats: SeatInfo[]) => {
     if (!seats || seats.length === 0) return [];
     const tolerance = 15;
-    const rows: { y: number; seats: any[] }[] = [];
+    const rows: { y: number; seats: SeatInfo[] }[] = [];
     
     seats.forEach(seat => {
-      const existingRow = rows.find(r => Math.abs(r.y - seat.y) <= tolerance);
+      const sy = seat.y ?? 0;
+      const existingRow = rows.find(r => Math.abs(r.y - sy) <= tolerance);
       if (existingRow) {
         existingRow.seats.push(seat);
       } else {
-        rows.push({ y: seat.y, seats: [seat] });
+        rows.push({ y: sy, seats: [seat] });
       }
     });
-    
+
     rows.sort((a, b) => a.y - b.y);
     rows.forEach(r => {
-      r.seats.sort((a, b) => a.x - b.x);
+      r.seats.sort((a, b) => (a.x ?? 0) - (b.x ?? 0));
     });
     return rows;
   };
 
-  const groupedSeats = data.isSeated ? getGroupedSeats(data.availableSeats) : [];
+  const groupedSeats = data.isSeated ? getGroupedSeats(data.availableSeats || []) : [];
 
   // Kapasite doluluk oranı (animasyonlu çubuk için)
-  const totalCap = data.isSeated ? data.totalCapacity : data.capacity;
-  const availableCount = data.isSeated ? data.availableSeats?.length : data.available;
-  const soldCount = Math.max(0, (totalCap || 0) - (availableCount || 0));
+  const totalCap = data.isSeated ? (data.totalCapacity ?? 0) : (data.capacity ?? 0);
+  const availableCount = data.isSeated ? (data.availableSeats?.length ?? 0) : (data.available ?? 0);
+  const soldCount = Math.max(0, totalCap - availableCount);
   const soldRatio = totalCap > 0 ? soldCount / totalCap : 0;
   const almostFull = totalCap > 0 && availableCount > 0 && soldRatio >= 0.8;
   const isFull = totalCap > 0 && availableCount <= 0;
 
   const eventDate = data.eventDate;
+  const ticketPrice = Number(data.price ?? 0);
 
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-8 font-sans">
@@ -450,7 +493,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
           {data.isSeated && (
             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
-                <p className="text-lg font-bold text-gray-800">Boş Koltuk Seçimi ({data.availableSeats.length} adet)</p>
+                <p className="text-lg font-bold text-gray-800">Boş Koltuk Seçimi ({(data.availableSeats || []).length} adet)</p>
                 <div className="flex bg-white rounded-lg p-1 border border-gray-200 shadow-sm">
                   <button 
                     onClick={() => setSelectionMode('list')}
@@ -472,11 +515,11 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                   {data.hallLayout ? (
                     <DynamicSeatMapViewer 
                       layoutJson={data.hallLayout}
-                      availableSeats={data.availableSeats}
+                      availableSeats={data.availableSeats || []}
                       selectedSeatId={form.seatId}
-                      selectedSeatIds={selectedSeats.map((s: any) => s.id)}
+                      selectedSeatIds={selectedSeats.map((s) => s.id)}
                       onSeatSelect={(id) => {
-                        const seat = data.availableSeats.find((s: any) => s.id === id);
+                        const seat = (data.availableSeats || []).find((s) => s.id === id);
                         if (seat) {
                           handleSeatToggle(seat);
                         }
@@ -497,9 +540,9 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                           Sıra {index + 1}:
                         </span>
                         <div className="flex flex-wrap gap-2 py-1">
-                          {row.seats.map((seat: any) => {
+                          {row.seats.map((seat) => {
                             const isLocked = lockedSeats.includes(seat.id);
-                            const isSelected = selectedSeats.some((s: any) => s.id === seat.id);
+                            const isSelected = selectedSeats.some((s) => s.id === seat.id);
                             return (
                               <button 
                                 key={seat.id}
@@ -655,14 +698,14 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                             onClick={async () => {
                               if (!form.couponCode) return;
                               try {
-                                const result = await apiFetch('/coupons/validate', {
+                                const result = await apiFetch<{ discountType: string; discountValue: number }>('/coupons/validate', {
                                   method: 'POST',
                                   body: JSON.stringify({ code: form.couponCode })
                                 });
                                 setDiscount({ type: result.discountType, value: result.discountValue });
                                 toast.success("Kupon başarıyla uygulandı!");
-                              } catch (err: any) {
-                                toast.error(err?.message || 'Geçersiz kupon kodu.');
+                              } catch (err: unknown) {
+                                toast.error(err instanceof Error ? err.message : 'Geçersiz kupon kodu.');
                                 setDiscount(null);
                                 setForm(f => ({ ...f, couponCode: '' }));
                               }
@@ -670,7 +713,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                         className="shrink-0 h-[46px] bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-xl font-bold text-sm transition flex items-center justify-center cursor-pointer active:scale-95 shadow-sm">Uygula</button>
               </div>
 
-              {userPoints > 0 && data.price > 0 && (
+              {userPoints > 0 && ticketPrice > 0 && (
                 <div className="flex items-center gap-2 mb-4 p-3 bg-yellow-50 border border-yellow-100 rounded-xl">
                   <input 
                     type="checkbox" 
@@ -687,20 +730,20 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
 
               <div className="flex justify-between items-center text-sm mb-1 text-gray-600">
                 <span>Bilet Fiyatı {selectedSeats.length > 1 ? `(${selectedSeats.length} Koltuk)` : ''}:</span>
-                <span className="font-semibold">{(data.price * Math.max(1, selectedSeats.length)).toFixed(2)} ₺</span>
+                <span className="font-semibold">{(ticketPrice * Math.max(1, selectedSeats.length)).toFixed(2)} ₺</span>
               </div>
               
               {discount && (
                 <div className="flex justify-between items-center text-sm text-green-600 mb-1">
                   <span>Kupon İndirimi:</span>
-                  <span>-{discount.type === 'PERCENTAGE' ? ((data.price * Math.max(1, selectedSeats.length)) * discount.value / 100).toFixed(2) : discount.value.toFixed(2)} ₺</span>
+                  <span>-{discount.type === 'PERCENTAGE' ? ((ticketPrice * Math.max(1, selectedSeats.length)) * discount.value / 100).toFixed(2) : discount.value.toFixed(2)} ₺</span>
                 </div>
               )}
 
               {form.usePoints && (
                 <div className="flex justify-between items-center text-sm text-yellow-600 mb-1">
                   <span>Kullanılan Puan:</span>
-                  <span>-{Math.min(userPoints, Math.max(0, (data.price * Math.max(1, selectedSeats.length)) - (discount ? (discount.type === 'PERCENTAGE' ? ((data.price * Math.max(1, selectedSeats.length)) * discount.value / 100) : discount.value) : 0))).toFixed(2)} ₺</span>
+                  <span>-{Math.min(userPoints, Math.max(0, (ticketPrice * Math.max(1, selectedSeats.length)) - (discount ? (discount.type === 'PERCENTAGE' ? ((ticketPrice * Math.max(1, selectedSeats.length)) * discount.value / 100) : discount.value) : 0))).toFixed(2)} ₺</span>
                 </div>
               )}
 
@@ -708,7 +751,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
                 <span>Toplam Ödenecek:</span>
                 <span className="text-blue-700">
                   {(() => {
-                    let baseTotal = data.price * Math.max(1, selectedSeats.length);
+                    let baseTotal = ticketPrice * Math.max(1, selectedSeats.length);
                     if (discount) {
                       const discAmount = discount.type === 'PERCENTAGE' ? (baseTotal * discount.value / 100) : discount.value;
                       baseTotal = Math.max(0, baseTotal - discAmount);
@@ -754,7 +797,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
             </div>
             <div className="text-lg font-bold text-blue-700">
               {(() => {
-                let baseTotal = data.price * Math.max(1, selectedSeats.length);
+                let baseTotal = ticketPrice * Math.max(1, selectedSeats.length);
                 if (discount) {
                   const discAmount = discount.type === 'PERCENTAGE' ? (baseTotal * discount.value / 100) : discount.value;
                   baseTotal = Math.max(0, baseTotal - discAmount);

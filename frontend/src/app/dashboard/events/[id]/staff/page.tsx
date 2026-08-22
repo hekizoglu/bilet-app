@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 export default function EventStaffPage() {
   const { id } = useParams();
-  const [staff, setStaff] = useState<any[]>([]);
+  const [staff, setStaff] = useState<{ id: string; role?: string; userId?: string; user?: { id?: string; name?: string | null; email?: string } }[]>([]);
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -112,11 +112,11 @@ export default function EventStaffPage() {
             {staff.map((s, idx) => (
               <div key={idx} className="flex justify-between items-center p-4 bg-gray-50 rounded-xl">
                 <div>
-                  <p className="font-bold text-gray-900">{s.user.name || "İsimsiz Kullanıcı"}</p>
-                  <p className="text-gray-500 text-sm">{s.user.email}</p>
+                  <p className="font-bold text-gray-900">{s.user?.name || "İsimsiz Kullanıcı"}</p>
+                  <p className="text-gray-500 text-sm">{s.user?.email || '—'}</p>
                 </div>
                 <button
-                  onClick={() => handleRemove(s.userId)}
+                  onClick={() => handleRemove(s.userId || s.user?.id || '')}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-xl"
                 >
                   <Trash2 size={20} />

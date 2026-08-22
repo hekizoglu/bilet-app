@@ -49,7 +49,7 @@ interface ApiFetchOptions extends RequestInit {
  * JSON tabanlı API isteği.
  * Başarıda parse edilmiş veriyi döner, başarısızlıkta ApiError fırlatır.
  */
-export async function apiFetch<T = any>(
+export async function apiFetch<T = unknown>(
   path: string,
   options: ApiFetchOptions = {}
 ): Promise<T> {

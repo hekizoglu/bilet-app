@@ -8,10 +8,23 @@ import { toast } from 'sonner';
 import QRCode from "react-qr-code";
 
 export default function ProfilePage() {
-  const [reservations, setReservations] = useState<any[]>([]);
+  interface MyReservation {
+  id: string;
+  ticketCode?: string;
+  seatName?: string | null;
+  seatId?: string | null;
+  customer?: string;
+  status?: string;
+  paymentStatus?: string;
+  paymentReference?: string;
+  earnedPoints?: number;
+  isUsed?: boolean;
+  event?: { id?: string; name?: string; date?: string; isSeated?: boolean; hall?: { name?: string; address?: string | null } | null };
+}
+const [reservations, setReservations] = useState<MyReservation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedTicket, setSelectedTicket] = useState<any>(null);
-  const [userDetails, setUserDetails] = useState<any>(null);
+  const [selectedTicket, setSelectedTicket] = useState<MyReservation | null>(null);
+  const [userDetails, setUserDetails] = useState<{ email?: string; points?: number; name?: string; telegramUsername?: string | null; iban?: string | null } | null>(null);
 
   useEffect(() => {
     fetchReservations();
@@ -172,12 +185,12 @@ export default function ProfilePage() {
         </div>
       ) : (
         <div className="grid gap-4">
-          {reservations.map((res: any) => (
+          {reservations.map((res) => (
             <div key={res.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">{res.event?.name}</h3>
                 <div className="flex flex-col gap-1 text-sm text-gray-600">
-                  <span className="flex items-center gap-1.5"><Calendar size={16} /> {new Date(res.event?.date).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}</span>
+                  <span className="flex items-center gap-1.5"><Calendar size={16} /> {res.event?.date ? new Date(res.event.date).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }) : '—'}</span>
                   {res.event?.isSeated ? (
                     <span className="flex items-center gap-1.5"><MapPin size={16} /> Koltuk: {res.seatName || res.seatId}</span>
                   ) : (
@@ -264,19 +277,19 @@ export default function ProfilePage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full border border-gray-100 shadow-xl relative animate-in fade-in zoom-in duration-200">
             <h3 className="text-xl font-bold text-center text-gray-900 mb-1">🎫 Giriş Bileti</h3>
-            <p className="text-xs text-center text-gray-500 mb-6 font-mono">Bilet ID: {selectedTicket.ticketCode.slice(0, 8).toUpperCase()}</p>
+            <p className="text-xs text-center text-gray-500 mb-6 font-mono">Bilet ID: {selectedTicket.ticketCode?.slice(0, 8).toUpperCase() || '—'}</p>
             
             <div className="flex flex-col items-center border-t border-b border-dashed border-gray-200 py-6 my-4 bg-gray-50 rounded-xl overflow-y-auto max-h-[60vh]">
               <div className="bg-white p-2 rounded-xl shadow-sm border border-gray-100 mb-4">
                 <QRCodeCanvas 
-                  value={selectedTicket.ticketCode} 
+                  value={selectedTicket.ticketCode || ''} 
                   size={160}
                   level="M"
                   includeMargin={true}
                 />
               </div>
               <p className="text-center font-bold text-lg text-blue-900">{selectedTicket.event?.name}</p>
-              <p className="text-center text-xs text-gray-500 mt-1">{new Date(selectedTicket.event?.date).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}</p>
+              <p className="text-center text-xs text-gray-500 mt-1">{selectedTicket.event?.date ? new Date(selectedTicket.event.date).toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' }) : '—'}</p>
               
               <div className="mt-4 text-center">
                 <span className="text-xs font-semibold text-gray-500">Müşteri</span>

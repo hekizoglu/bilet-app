@@ -4,11 +4,18 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { Users, CheckCircle, Clock } from 'lucide-react';
 
+interface ReservationRow {
+  id: string; customer?: string; email?: string; seatName?: string | null;
+  status?: string; paymentStatus?: string; paymentReference?: string;
+  createdAt?: string; ticketCode?: string; rsvpStatus?: string | null; guestCount?: number; childCount?: number; phone?: string | null; notes?: string | null;
+  event?: { id?: string; name?: string; date?: string; isSeated?: boolean; price?: number } | null;
+}
+
 export default function ReservationsPage() {
-  const [reservations, setReservations] = useState<any[]>([]);
+  const [reservations, setReservations] = useState<ReservationRow[]>([]);
   const [filter, setFilter] = useState('ALL');
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 20 });
-  const [refundReservation, setRefundReservation] = useState<any>(null);
+  const [refundReservation, setRefundReservation] = useState<ReservationRow | null>(null);
   const [refundAmount, setRefundAmount] = useState<string>('');
   const [refundReason, setRefundReason] = useState<string>('Müşteri Talebi');
 

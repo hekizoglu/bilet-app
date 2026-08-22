@@ -3,8 +3,15 @@
 import { useState, useEffect } from 'react';
 import { TrendingUp, DollarSign, AlertCircle, Calendar, CreditCard, ArrowRight, Wallet } from 'lucide-react';
 
+interface ReportsData {
+  summary: { totalPaid: number; totalPending: number; totalRefunded: number };
+  methodDistribution: Record<string, number>;
+  ibanTotals: Record<string, number>;
+  monthlyReports: { month: string; paidCount: number; paidSum: number }[];
+}
+
 export default function ReportsPage() {
-  const [reports, setReports] = useState<any>(null);
+  const [reports, setReports] = useState<ReportsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchReports = async () => {
@@ -109,14 +116,14 @@ export default function ReportsPage() {
           </h2>
           
           <div className="space-y-4">
-            {Object.entries(methodDistribution).map(([method, count]: [string, any]) => {
-              const nameMap: any = {
+            {Object.entries(methodDistribution).map(([method, count]: [string, number]) => {
+              const nameMap: Record<string, string> = {
                 creditcard: 'Kredi Kartı',
                 bankTransfer: 'Banka Transferi (Havale)',
                 telegram: 'Kartsız (Telegram)',
                 free: 'Ücretsiz'
               };
-              const totalCount = Object.values(methodDistribution).reduce((a: any, b: any) => a + b, 0) as number;
+              const totalCount = Object.values(methodDistribution).reduce((a, b) => a + b, 0);
               const percent = totalCount ? Math.round((count / totalCount) * 100) : 0;
               
               return (
@@ -151,7 +158,7 @@ export default function ReportsPage() {
             {Object.keys(ibanTotals).length === 0 ? (
               <p className="text-sm text-gray-500 py-4 text-center">Banka transferi ile yapılmış henüz kayıt bulunmuyor.</p>
             ) : (
-              Object.entries(ibanTotals).map(([iban, sum]: [string, any]) => (
+              Object.entries(ibanTotals).map(([iban, sum]: [string, number]) => (
                 <div key={iban} className="py-3 flex justify-between items-center">
                   <div>
                     <p className="text-sm font-semibold text-gray-800 font-mono">{iban}</p>
@@ -188,7 +195,7 @@ export default function ReportsPage() {
                   </td>
                 </tr>
               ) : (
-                monthlyReports.map((item: any) => (
+                monthlyReports.map((item) => (
                   <tr key={item.month} className="hover:bg-gray-50 transition">
                     <td className="p-4 font-semibold text-gray-900">{item.month}</td>
                     <td className="p-4 text-gray-600 font-mono">{item.paidCount} Bilet</td>

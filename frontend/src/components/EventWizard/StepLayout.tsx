@@ -18,7 +18,7 @@ interface Props {
 }
 
 export default function StepLayout({ data, onChange, onNext, onBack, setEffectiveCapacity }: Props) {
-  const [halls, setHalls] = useState<any[]>([]);
+  const [halls, setHalls] = useState<{ id: string; name: string; seatCount?: number; calculatedSeatCount?: number; isGlobal?: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showDesigner, setShowDesigner] = useState(false);

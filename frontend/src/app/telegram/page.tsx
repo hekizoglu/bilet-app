@@ -5,7 +5,14 @@ import Head from 'next/head';
 
 declare global {
   interface Window {
-    Telegram: any;
+    Telegram?: {
+      WebApp?: {
+        initData?: string;
+        initDataUnsafe?: { user?: { id?: number; first_name?: string; last_name?: string; username?: string } };
+        ready?: () => void;
+        expand?: () => void;
+      };
+    };
   }
 }
 
@@ -37,7 +44,7 @@ export default function TelegramWebAppAuth() {
         return;
       }
 
-      tg.ready();
+      tg.ready?.();
       setStatus("Kimlik doğrulanıyor...");
 
       const initData = tg.initData;

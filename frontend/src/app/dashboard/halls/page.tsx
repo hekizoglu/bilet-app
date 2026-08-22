@@ -6,7 +6,7 @@ import { MapIcon, ArrowRight, Copy } from 'lucide-react';
 import Link from 'next/link';
 
 export default function HallsPage() {
-  const [halls, setHalls] = useState<any[]>([]);
+  const [halls, setHalls] = useState<{ id: string; name: string; seatCount?: number; calculatedSeatCount?: number; address?: string | null; isGlobal?: boolean; description?: string | null }[]>([]);
 
   const fetchHalls = async () => {
     const token = getCookie('token');

@@ -19,9 +19,19 @@ function MobilePaymentContent() {
   const [copied, setCopied] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"iban" | "qr" | "creditcard">("iban");
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
-  const deferredPromptRef = useRef<any>(null);
+  const deferredPromptRef = useRef<{ prompt?: () => void; userChoice?: Promise<{ outcome: string }> } | null>(null);
 
-  const [reservation, setReservation] = useState<any>(null);
+  const [reservation, setReservation] = useState<{
+    id?: string;
+    customer?: string;
+    email?: string;
+    paymentReference?: string;
+    paymentStatus?: string;
+    status?: string;
+    seatName?: string;
+    event?: { name?: string; date?: string; price?: number; isSeated?: boolean; paymentType?: string };
+    adminPayment?: { iban?: string | null; telegramUsername?: string | null; email?: string | null };
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paySuccess, setPaySuccess] = useState(false);
@@ -38,7 +48,7 @@ function MobilePaymentContent() {
   useEffect(() => {
     if (paySuccess || reservation?.paymentStatus === 'paid') return; // Stop timer if paid
     
-    let timer: any;
+    let timer: ReturnType<typeof setInterval> | null = null;
     if (timeLeft !== null && timeLeft > 0) {
       timer = setInterval(() => {
         setTimeLeft(prev => prev! - 1);
@@ -47,13 +57,13 @@ function MobilePaymentContent() {
       setIsTimeUp(true);
       setTimeLeft(null);
     }
-    return () => clearInterval(timer);
+    return () => { if (timer) clearInterval(timer); };
   }, [timeLeft, paySuccess, reservation]);
 
 
   // PWA: Ana ekrana ekle butonu için install prompt yönetimi
   useEffect(() => {
-    const handler = (e: Event) => {
+    const handler = (e: Event & { prompt?: () => void }) => {
       e.preventDefault();
       deferredPromptRef.current = e;
       setShowInstallPrompt(true);
@@ -104,10 +114,11 @@ function MobilePaymentContent() {
   }, [id]);
 
   const handleInstall = async () => {
-    if (!deferredPromptRef.current) return;
-    deferredPromptRef.current.prompt();
-    const { outcome } = await deferredPromptRef.current.userChoice;
-    if (outcome === "accepted") setShowInstallPrompt(false);
+    const promptEvent = deferredPromptRef.current;
+    if (!promptEvent) return;
+    promptEvent.prompt?.();
+    const choice = promptEvent.userChoice ? await promptEvent.userChoice : { outcome: 'dismissed' };
+    if (choice.outcome === 'accepted') setShowInstallPrompt(false);
     deferredPromptRef.current = null;
   };
 
@@ -168,7 +179,7 @@ function MobilePaymentContent() {
       if (res.ok) {
         setPaySuccess(true);
         setMailStatus(result.mailSent);
-        setReservation((prev: any) => ({ ...prev, paymentStatus: 'paid', status: 'Onaylı' }));
+        setReservation((prev) => (prev ? { ...prev, paymentStatus: 'paid', status: 'Onaylı' } : prev));
       } else {
         toast.error(`Hata: ${result.error || "Ödeme başarısız."}`);
       }
@@ -191,11 +202,11 @@ function MobilePaymentContent() {
     ? reservation.paymentReference 
     : "PAYMENT-2026-06-29-001-ABC123";
     
-  const amount = reservation 
-    ? `${reservation.event.price},00 TL` 
+  const amount = reservation && reservation.event
+    ? `${reservation.event.price},00 TL`
     : "350,00 TL";
 
-  const eventTitle = reservation 
+  const eventTitle = reservation && reservation.event
     ? `${reservation.event.name} · ${reservation.seatName ? `Koltuk: ${reservation.seatName}` : "Genel Giriş"}`
     : "Yaz Konseri 2026 · Koltuk A12";
 
@@ -410,7 +421,7 @@ function MobilePaymentContent() {
             {/* Açıklama / Referans */}
             <div
               className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 flex items-center justify-between cursor-pointer active:bg-amber-500/20 transition"
-              onClick={() => copyToClipboard(reference, "reference")}
+              onClick={() => reference && copyToClipboard(reference, "reference")}
             >
               <div>
                 <p className="text-xs text-amber-400 mb-1">⚠️ Açıklama (Zorunlu)</p>

@@ -6,7 +6,7 @@ import { Calendar, Plus, X, AlertTriangle } from 'lucide-react';
 import AdminEventApprovalModal from '@/components/AdminEventApprovalModal';
 
 interface Event {
-  id: string | number;
+  id: string;
   name: string;
   date: string;
   price: number | string;
@@ -33,7 +33,7 @@ export default function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [halls, setHalls] = useState<Hall[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [approvalModalEvent, setApprovalModalEvent] = useState<any>(null);
+  const [approvalModalEvent, setApprovalModalEvent] = useState<Event | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   
   // Search & Filter State
@@ -146,7 +146,7 @@ export default function EventsPage() {
         const errData = await res.json();
         let errMsg = errData.error || errData.message || "Bilinmeyen hata";
         if (errData.details && Array.isArray(errData.details)) {
-          errMsg += ":\n" + errData.details.map((d: any) => `- ${d.message}`).join("\n");
+          errMsg += ":\n" + errData.details.map((d: { message?: string }) => `- ${d.message || ''}`).join("\n");
         }
         toast.error(`Hata: ${errMsg}`);
       }

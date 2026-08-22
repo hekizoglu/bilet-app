@@ -79,7 +79,7 @@ export default function CreateEventPage() {
         paymentType: layout.isSeated ? basicInfo.paymentType : (Number(basicInfo.price) > 0 ? basicInfo.paymentType : 'free'),
       };
 
-      const created = await apiFetch('/events', {
+      const created = await apiFetch<{ id: string }>('/events', {
         method: 'POST',
         body: JSON.stringify(payload),
       });

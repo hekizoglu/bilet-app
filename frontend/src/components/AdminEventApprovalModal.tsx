@@ -9,10 +9,11 @@ interface EventData {
   name: string;
   date: string;
   description?: string;
-  effectiveCapacity: number;
-  isSeated: boolean;
-  hall?: { name: string };
-  organizer?: { name: string; email: string };
+  effectiveCapacity?: number;
+  isSeated?: boolean;
+  status?: string;
+  hall?: { name?: string } | null;
+  organizer?: { name?: string; email?: string } | null;
 }
 
 interface Props {

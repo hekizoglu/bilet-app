@@ -30,7 +30,7 @@ const itemVariants: Variants = {
 };
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<{ eventsCount?: number; hallsCount?: number; pendingReservations?: number; totalReservations?: number; totalEarnings?: number } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const getCookie = (name: string) => {
@@ -109,7 +109,7 @@ export default function AdminDashboard() {
             <DollarSign size={90} className="text-green-600" />
           </div>
           <h3 className="text-slate-500 font-semibold text-xs tracking-wider uppercase mb-1">Toplam Ciro (Onaylı)</h3>
-          <p className="text-3xl font-black text-slate-900 mt-2">{defaultStats.totalEarnings.toLocaleString('tr-TR')} ₺</p>
+          <p className="text-3xl font-black text-slate-900 mt-2">{(defaultStats.totalEarnings || 0).toLocaleString('tr-TR')} ₺</p>
           <div className="mt-4 text-[11px] font-bold text-green-700 bg-green-50 px-2 py-1 rounded-md inline-flex items-center gap-1">
             <span>Banka EFT/Havale & Kredi Kartı</span>
           </div>
@@ -126,8 +126,8 @@ export default function AdminDashboard() {
               <Users size={90} className="text-orange-500" />
             </div>
             <h3 className="text-slate-500 font-semibold text-xs tracking-wider uppercase mb-1">Bekleyen Rezervasyonlar</h3>
-            <p className={`text-3xl font-black mt-2 ${defaultStats.pendingReservations > 0 ? 'text-orange-600' : 'text-slate-900'}`}>
-              {defaultStats.pendingReservations}
+            <p className={`text-3xl font-black mt-2 ${(defaultStats.pendingReservations || 0) > 0 ? 'text-orange-600' : 'text-slate-900'}`}>
+              {(defaultStats.pendingReservations || 0)}
             </p>
             <div className="mt-4 text-[11px] font-bold text-orange-700 bg-orange-50 px-2 py-1 rounded-md inline-flex items-center gap-1 hover:underline">
               <span>Rezervasyonları Kontrol Et</span>
@@ -147,7 +147,7 @@ export default function AdminDashboard() {
               <Calendar size={90} className="text-blue-600" />
             </div>
             <h3 className="text-slate-500 font-semibold text-xs tracking-wider uppercase mb-1">Aktif Etkinlikler</h3>
-            <p className="text-3xl font-black text-slate-900 mt-2">{defaultStats.eventsCount}</p>
+            <p className="text-3xl font-black text-slate-900 mt-2">{(defaultStats.eventsCount || 0)}</p>
             <div className="mt-4 text-[11px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md inline-flex items-center gap-1 hover:underline">
               <span>Etkinlik Yönetimi</span>
               <ArrowRight size={12} />
