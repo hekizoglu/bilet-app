@@ -770,35 +770,61 @@ res.json({ success: true, message: "Rezervasyon iptal edildi ve koltuk boşa ç�
   }
 });
 
-// Kapı Görevlisi: QR Bilet Okutma (Check-in)
-router.post('/checkin', requireAuth, async (req, res) => {
+// ── Kapı Görevlisi: QR Bilet Okutma (Check-in) ──
+// /checkin ve /check-in aynı işleyiciyi kullanır (P2-5 tekleştirme):
+// - eventId opsiyonel doğrulama, organizatör/ADMIN/staff yetkisi
+// - çift okutmada denetim (audit) kaydı + atomik güncelleme
+async function handleCheckin(req, res) {
   try {
     const { ticketCode, eventId } = req.body;
-    const reservation = await prisma.reservation.findUnique({ 
+    if (!ticketCode) return res.status(400).json({ error: "Bilet kodu gerekli." });
+
+    const reservation = await prisma.reservation.findUnique({
       where: { ticketCode },
-      include: { event: true }
+      include: { event: { include: { staff: true } } }
     });
 
-    if (!reservation) return res.status(404).json({ error: "Geçersiz Bilet Kodu" });
-    
-    if (req.user.role !== 'ADMIN' && reservation.event.organizerId !== req.user.id) {
-      return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
+    if (!reservation) return res.status(404).json({ error: "Bilet bulunamadı." });
+
+    const event = reservation.event;
+    const isStaff = (event.staff || []).some(s => s.userId === req.user.id);
+    if (event.organizerId !== req.user.id && !isStaff && req.user.role !== 'ADMIN') {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
     }
 
-    if (eventId && reservation.eventId !== eventId) return res.status(400).json({ error: "Bu bilet başka bir etkinliğe ait!" });
-    if (reservation.status !== 'Onaylı') return res.status(400).json({ error: "Bilet onaylı değil!" });
-    if (reservation.isUsed) return res.status(400).json({ error: "Bu bilet daha önce kullanılmış!" });
+    if (eventId && reservation.eventId !== eventId) {
+      return res.status(400).json({ error: "Bu bilet başka bir etkinliğe ait!" });
+    }
+    if (reservation.status !== 'Onaylı' && reservation.status !== 'Onaylandı') {
+      return res.status(400).json({ error: `Bu biletin durumu uygun değil: ${reservation.status}` });
+    }
+    if (reservation.isUsed) {
+      await prisma.auditLog.create({
+        data: {
+          eventId: event.id,
+          action: 'DUPLICATE_CHECKIN_ATTEMPT',
+          details: "Kullanılmış bilet kodu tekrar okutulmak istendi: " + ticketCode
+        }
+      }).catch(() => {});
+      return res.status(400).json({ error: "Bu bilet daha önce kullanılmış!" });
+    }
 
-    const updated = await prisma.reservation.update({
-      where: { ticketCode },
+    const updated = await prisma.reservation.updateMany({
+      where: { ticketCode, isUsed: false },
       data: { isUsed: true, usedAt: new Date() }
     });
 
-    res.json({ success: true, message: "Giriş Başarılı!", customer: updated.customer });
+    if (updated.count === 0) {
+      return res.status(400).json({ error: "Eşzamanlı işlem hatası veya bilet kullanılmış." });
+    }
+
+    res.json({ success: true, message: "Giriş Başarılı!", customer: reservation.customer });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası" });
+    res.status(500).json({ error: "Check-in sırasında hata oluştu" });
   }
-});
+}
+
+router.post('/checkin', requireAuth, handleCheckin);
 
 // Admin: Tüm Rezervasyonları Listele (Sayfalamalı)
 router.get('/', requireAuth, async (req, res) => {
@@ -1225,47 +1251,6 @@ res.json({
   }
 });
 
-// POST /api/reservations/checkin
-// Kapıda QR okutularak bilet kullanıldı (isUsed) işaretleme
-router.post('/checkin', requireAuth, async (req, res) => {
-  try {
-    const { ticketCode } = req.body;
-    if (!ticketCode) {
-      return res.status(400).json({ error: "Bilet kodu gerekli" });
-    }
-
-    const reservation = await prisma.reservation.findUnique({
-      where: { ticketCode },
-      include: { event: true }
-    });
-
-    if (!reservation) {
-      return res.status(404).json({ error: "Geçersiz bilet kodu" });
-    }
-    
-    if (req.user.role !== 'ADMIN' && reservation.event.organizerId !== req.user.id) {
-      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
-    }
-
-    if (reservation.status !== 'Onaylı') {
-      return res.status(400).json({ error: `Bu biletin durumu uygun değil: ${reservation.status}` });
-    }
-
-    if (reservation.isUsed) {
-      return res.status(400).json({ error: "Bu bilet daha önce kullanılmış!" });
-    }
-
-    const updated = await prisma.reservation.update({
-      where: { ticketCode },
-      data: { isUsed: true, usedAt: new Date() }
-    });
-
-    res.json({ success: true, message: "Check-in başarılı", reservation: updated });
-  } catch (error) {
-    res.status(500).json({ error: "Check-in işlemi sırasında hata oluştu" });
-  }
-});
-
 // GET /api/reservations/scanner/:eventId - Scanner (Offline) cihaz için biletleri indir
 router.get('/scanner/:eventId', requireAuth, async (req, res) => {
   try {
@@ -1405,50 +1390,8 @@ router.post('/rsvp', async (req, res) => {
 });
 
 
-router.post('/check-in', requireAuth, async (req, res) => {
-  try {
-    const { ticketCode } = req.body;
-    if (!ticketCode) return res.status(400).json({ error: "Bilet kodu gerekli." });
-
-    const reservation = await prisma.reservation.findUnique({
-      where: { ticketCode },
-      include: { event: { include: { staff: true } } }
-    });
-
-    if (!reservation) return res.status(404).json({ error: "Bilet bulunamadı." });
-    if (reservation.status !== 'Onaylı' && reservation.status !== 'Onaylandı') return res.status(400).json({ error: "Bilet durumu geçersiz." });
-
-    const event = reservation.event;
-    const isStaff = event.staff.some(s => s.userId === req.user.id);
-    if (event.organizerId !== req.user.id && !isStaff && req.user.role !== 'ADMIN') {
-      return res.status(403).json({ error: "Yetkisiz ilem." });
-    }
-
-    if (reservation.isUsed) {
-      await prisma.auditLog.create({
-        data: {
-          eventId: event.id,
-          action: 'DUPLICATE_CHECKIN_ATTEMPT',
-          details: "Kullanılmış bilet kodu tekrar okutulmak istendi: " + ticketCode
-        }
-      });
-      return res.status(400).json({ error: "Bu bilet daha nce kullanılmış." });
-    }
-
-    const updated = await prisma.reservation.updateMany({
-      where: { ticketCode, isUsed: false },
-      data: { isUsed: true, usedAt: new Date() }
-    });
-
-    if (updated.count === 0) {
-      return res.status(400).json({ error: "Ezamanl işlem hatas veya bilet kullanılmış." });
-    }
-
-    res.json({ success: true, reservation });
-  } catch (error) {
-    res.status(500).json({ error: "Sunucu hatas." });
-  }
-});
+// /check-in — eski istemciler için alias (P2-5)
+router.post('/check-in', requireAuth, handleCheckin);
 
 router.post('/sync', requireAuth, async (req, res) => {
   try {
