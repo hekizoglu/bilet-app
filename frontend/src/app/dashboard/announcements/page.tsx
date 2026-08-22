@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import { Bell, CheckCheck, Info, AlertTriangle, CheckCircle, Clock } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Bell, CheckCheck, Info, AlertTriangle, CheckCircle, Clock, Send } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiFetch } from '@/lib/api';
 
 interface NotificationItem {
   id: string;
@@ -13,77 +14,91 @@ interface NotificationItem {
   createdAt: string;
 }
 
+const TYPE_STYLES: Record<string, { icon: React.ReactNode; label: string; cls: string }> = {
+  INFO: { icon: <Info className="text-blue-500" size={20} />, label: 'Bilgi', cls: 'text-blue-600 border-blue-200 bg-blue-50' },
+  SUCCESS: { icon: <CheckCircle className="text-green-500" size={20} />, label: 'Başarı', cls: 'text-green-600 border-green-200 bg-green-50' },
+  WARNING: { icon: <AlertTriangle className="text-amber-500" size={20} />, label: 'Uyarı', cls: 'text-amber-600 border-amber-200 bg-amber-50' },
+  ALERT: { icon: <AlertTriangle className="text-red-500" size={20} />, label: 'Kritik', cls: 'text-red-600 border-red-200 bg-red-50' },
+};
+
 export default function AnnouncementsPage() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const fetchNotifications = async () => {
+  // Duyuru formu
+  const [formOpen, setFormOpen] = useState(false);
+  const [form, setForm] = useState({ title: '', message: '', type: 'INFO', targetEmail: '' });
+  const [sending, setSending] = useState(false);
+
+  const fetchNotifications = useCallback(async () => {
     try {
-      const token = document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/notifications`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.unreadCount || 0);
-      }
+      const data = await apiFetch<{ notifications: NotificationItem[]; unreadCount: number }>('/notifications');
+      setNotifications(data.notifications || []);
+      setUnreadCount(data.unreadCount || 0);
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchNotifications();
-  }, []);
+  }, [fetchNotifications]);
 
   const markAllAsRead = async () => {
     try {
-      const token = document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/notifications/read-all`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (res.ok) {
-        toast.success("Tüm bildirimler okundu olarak işaretlendi.");
-        fetchNotifications();
-      }
-    }catch {
+      await apiFetch('/notifications/read-all', { method: 'POST' });
+      toast.success("Tüm bildirimler okundu olarak işaretlendi.");
+      fetchNotifications();
+    } catch {
       toast.error("İşlem başarısız.");
     }
   };
 
   const markSingleAsRead = async (id: string) => {
     try {
-      const token = document.cookie.replace(/(?:(?:^|.*;\s*)token\s*\=\s*([^;]*).*$)|^.*$/, "$1");
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/notifications/${id}/read`, {
-        method: 'PATCH',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      await apiFetch(`/notifications/${id}/read`, { method: 'POST' });
       fetchNotifications();
     } catch (err) {
       console.error(err);
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'WARNING':
-      case 'ALERT':
-        return <AlertTriangle className="text-amber-500" size={20} />;
-      case 'SUCCESS':
-        return <CheckCircle className="text-green-500" size={20} />;
-      default:
-        return <Info className="text-blue-500" size={20} />;
+  const sendAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.title.trim() || !form.message.trim()) {
+      toast.warning("Başlık ve mesaj zorunludur.");
+      return;
+    }
+    setSending(true);
+    try {
+      const data = await apiFetch<{ createdCount: number }>('/notifications', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: form.title.trim(),
+          message: form.message.trim(),
+          type: form.type,
+          ...(form.targetEmail.trim() ? { targetEmail: form.targetEmail.trim() } : {}),
+        }),
+      });
+      toast.success(`Duyuru gönderildi (${data.createdCount} kullanıcıya).`);
+      setForm({ title: '', message: '', type: 'INFO', targetEmail: '' });
+      setFormOpen(false);
+      fetchNotifications();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Duyuru gönderilemedi.');
+    } finally {
+      setSending(false);
     }
   };
 
+  const getTypeStyle = (type: string) => TYPE_STYLES[type] || TYPE_STYLES.INFO;
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
             <Bell className="text-blue-600" />
@@ -92,16 +107,98 @@ export default function AnnouncementsPage() {
           <p className="text-gray-500 text-sm mt-1">Sistem ve etkinlik durumlarıyla ilgili tüm bildirimleriniz.</p>
         </div>
 
-        {unreadCount > 0 && (
+        <div className="flex gap-2">
           <button
-            onClick={markAllAsRead}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl flex items-center gap-2 transition cursor-pointer"
+            onClick={() => setFormOpen(!formOpen)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl flex items-center gap-2 transition cursor-pointer"
           >
-            <CheckCheck size={16} />
-            Tümünü Okundu İşaretle ({unreadCount})
+            <Send size={16} />
+            Duyuru Oluştur
           </button>
-        )}
+          {unreadCount > 0 && (
+            <button
+              onClick={markAllAsRead}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-xl flex items-center gap-2 transition cursor-pointer"
+            >
+              <CheckCheck size={16} />
+              Tümünü Okundu İşaretle ({unreadCount})
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* Duyuru oluşturma formu */}
+      {formOpen && (
+        <form onSubmit={sendAnnouncement} className="bg-white p-6 rounded-2xl border border-blue-100 shadow-sm space-y-4">
+          <h2 className="text-lg font-bold text-gray-900">Yeni Duyuru Gönder</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Başlık *</label>
+              <input
+                type="text"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="Örn: Bakım çalışması"
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                maxLength={120}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Tür</label>
+              <select
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+              >
+                <option value="INFO">Bilgi</option>
+                <option value="SUCCESS">Başarı</option>
+                <option value="WARNING">Uyarı</option>
+                <option value="ALERT">Kritik</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">Mesaj *</label>
+            <textarea
+              value={form.message}
+              onChange={(e) => setForm({ ...form, message: e.target.value })}
+              rows={3}
+              placeholder="Duyuru metni..."
+              className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+              maxLength={500}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+              Hedef Kullanıcı (Opsiyonel — boş bırakılırsa TÜM kullanıcılara gider)
+            </label>
+            <input
+              type="email"
+              value={form.targetEmail}
+              onChange={(e) => setForm({ ...form, targetEmail: e.target.value })}
+              placeholder="kullanici@example.com"
+              className="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setFormOpen(false)}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl text-sm font-medium hover:bg-gray-50 transition"
+            >
+              Vazgeç
+            </button>
+            <button
+              type="submit"
+              disabled={sending}
+              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold flex items-center gap-2 transition"
+            >
+              <Send size={15} />
+              {sending ? 'Gönderiliyor...' : 'Gönder'}
+            </button>
+          </div>
+        </form>
+      )}
 
       {loading ? (
         <div className="text-center py-12 text-gray-500">Bildirimler yükleniyor...</div>
@@ -117,34 +214,42 @@ export default function AnnouncementsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {notifications.map((n) => (
-            <div
-              key={n.id}
-              onClick={() => !n.isRead && markSingleAsRead(n.id)}
-              className={`p-5 rounded-2xl border transition-all cursor-pointer flex gap-4 items-start ${
-                n.isRead ? 'bg-white border-gray-100' : 'bg-blue-50/40 border-blue-100 shadow-sm'
-              }`}
-            >
-              <div className="p-2.5 bg-white rounded-xl shadow-xs border border-gray-100">
-                {getTypeIcon(n.type)}
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-center mb-1">
-                  <h3 className={`font-bold ${n.isRead ? 'text-gray-800' : 'text-gray-900 font-extrabold'}`}>
-                    {n.title}
-                  </h3>
-                  <span className="text-xs text-gray-400 flex items-center gap-1">
-                    <Clock size={12} />
-                    {new Date(n.createdAt).toLocaleDateString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+          {notifications.map((n) => {
+            const style = getTypeStyle(n.type);
+            return (
+              <div
+                key={n.id}
+                onClick={() => !n.isRead && markSingleAsRead(n.id)}
+                className={`p-5 rounded-2xl border transition-all cursor-pointer flex gap-4 items-start ${
+                  n.isRead ? 'bg-white border-gray-100' : 'bg-blue-50/40 border-blue-100 shadow-sm'
+                }`}
+              >
+                <div className="p-2.5 bg-white rounded-xl shadow-xs border border-gray-100">
+                  {style.icon}
                 </div>
-                <p className="text-gray-600 text-sm">{n.message}</p>
+                <div className="flex-1">
+                  <div className="flex flex-wrap justify-between items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className={`font-bold ${n.isRead ? 'text-gray-800' : 'text-gray-900 font-extrabold'}`}>
+                        {n.title}
+                      </h3>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${style.cls}`}>
+                        {style.label}
+                      </span>
+                    </div>
+                    <span className="text-xs text-gray-400 flex items-center gap-1">
+                      <Clock size={12} />
+                      {new Date(n.createdAt).toLocaleDateString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <p className="text-gray-600 text-sm">{n.message}</p>
+                </div>
+                {!n.isRead && (
+                  <span className="w-2.5 h-2.5 bg-blue-600 rounded-full mt-2 shrink-0"></span>
+                )}
               </div>
-              {!n.isRead && (
-                <span className="w-2.5 h-2.5 bg-blue-600 rounded-full mt-2 shrink-0"></span>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
