@@ -189,7 +189,8 @@ export default function AdminAnalyticsPage() {
                 const timeStr = ev.time
                   ? new Date(ev.time).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
                   : '—';
-                const isLive = i === 0 && Date.now() - new Date(ev.time).getTime() < 15000;
+                // Date.now render'da saf değildir; canlı rozet için kasıtlı — değer yalnızca görseldir
+                const isLive = i === 0 && Date.now() - new Date(ev.time).getTime() < 15000; // eslint-disable-line react-hooks/purity
                 return (
                   <div
                     key={ev.id || i}

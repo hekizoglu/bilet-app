@@ -178,7 +178,8 @@ export default function EventsPage() {
 
   const getLocalNowString = () => {
     const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-    return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 16);
+    // tarih input'u için 'şimdi' değeri kasıtlı
+    return (new Date(Date.now() - tzoffset)).toISOString().slice(0, 16); // eslint-disable-line react-hooks/purity
   };
   const nowString = getLocalNowString();
 

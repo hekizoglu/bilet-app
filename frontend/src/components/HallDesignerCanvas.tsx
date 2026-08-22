@@ -814,7 +814,6 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, object>(fun
       totalExits > 0 ? `• Çıkış/Giriş: ${totalExits} adet` : '',
     ].filter(Boolean).join('\n');
     toast.info(summary);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elements.length]);
 
   // 📊 İstatistik Hesaplayıcı
