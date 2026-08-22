@@ -560,96 +560,33 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
 
     // Send Telegram Notification (if cardless)
     if (event.paymentType === 'cardless') {
-      taskQueue.addJob('sendTelegram', async () => {
-        const { decrypt } = require('../utils/encryption');
-        const admin = await prisma.user.findFirst({
-          where: { role: 'ADMIN' }
-        });
-
-        if (admin && admin.telegramBotToken && admin.telegramChatId) {
-          const botToken = decrypt(admin.telegramBotToken);
-          const chatId = decrypt(admin.telegramChatId);
-          
-          if (botToken && chatId) {
-            const messageText = `🎫 *Yeni Rezervasyon Bildirimi!*\n\n` +
-              `*Müşteri:* ${reservation.customer}\n` +
-              `*E-posta:* ${reservation.email}\n` +
-              (reservation.phone ? `*Telefon:* ${reservation.phone}\n` : '') +
-              `*Etkinlik:* ${event.name}\n` +
-              `*Koltuk:* ${reservation.seatName || 'Genel Giriş'}\n` +
-              `*Tutar:* ${event.price} ₺\n` +
-              `*Referans:* \`${reservation.paymentReference}\`\n\n` +
-              `Lütfen ödemeyi kontrol edip admin panelinden onaylayın.`;
-
-            const https = require('https');
-            const payload = JSON.stringify({
-              chat_id: chatId,
-              text: messageText,
-              parse_mode: 'Markdown'
-            });
-
-            const options = {
-              hostname: 'api.telegram.org',
-              port: 443,
-              path: `/bot${botToken}/sendMessage`,
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(payload)
-              }
-            };
-
-            await retryWithBackoff(async () => {
-              return telegramCircuit.execute(options, payload);
-            }, 3, 1000);
-          }
-        }
+      taskQueue.addJob('sendTelegram', {
+        customer: reservation.customer,
+        email: reservation.email,
+        phone: reservation.phone,
+        eventName: event.name,
+        seatName: reservation.seatName,
+        price: event.price,
+        paymentReference: reservation.paymentReference
       });
     }
 
-    // Ücretsiz etkinlikler için anında e-bilet QR kodlu mail gönderimi
+// Ücretsiz etkinlikler için anında e-bilet QR kodlu mail gönderimi
     let mailStatus = 'not_required';
     if (event.paymentType === 'free') {
       mailStatus = 'queued';
-      taskQueue.addJob('sendFreeTicketEmail', async () => {
-        const QRCode = require('qrcode');
-        const qrDataUrl = await QRCode.toDataURL(reservation.ticketCode);
-
-        const nodemailer = require('nodemailer');
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-          port: process.env.SMTP_PORT || 587,
-          auth: {
-            user: process.env.SMTP_USER || 'mylene.stamm@ethereal.email',
-            pass: process.env.SMTP_PASS || 'Hk3V78Jqyv28pS7T1G'
-          }
-        });
-
-        const mailInfo = await retryWithBackoff(async () => {
-          return emailCircuit.execute(transporter, {
-            from: '"Bilet Sistemi" <noreply@bilet.local>',
-            to: reservation.email,
-            subject: `🎫 Biletiniz Onaylandı (Ücretsiz Etkinlik): ${event.name}`,
-            html: `
-              <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                <h2 style="color: #2563eb; text-align: center;">Biletiniz Hazır!</h2>
-                <p>Merhaba <b>${reservation.customer}</b>,</p>
-                <p><b>${event.name}</b> ücretsiz etkinliği için biletiniz başarıyla oluşturulmuştur.</p>
-                ${event.isSeated ? `<p>Koltuk: <b>${reservation.seatName || reservation.seatId}</b></p>` : `<p>Giriş: <b>Genel Giriş</b></p>`}
-                <div style="text-align: center; margin-top: 30px;">
-                  <p style="color: #666; font-size: 14px;">Kapıdaki görevliye aşağıdaki QR Kodu okutunuz:</p>
-                  <img src="${qrDataUrl}" alt="Bilet QR Kodu" style="width: 200px; height: 200px; border: 1px solid #ccc; border-radius: 10px;" />
-                  <p style="font-family: monospace; font-size: 18px; letter-spacing: 2px;">${reservation.ticketCode.split('-')[0].toUpperCase()}</p>
-                </div>
-              </div>
-            `
-          });
-        }, 3, 1000);
-        console.log("Ücretsiz bilet maili gönderildi:", nodemailer.getTestMessageUrl(mailInfo));
+            taskQueue.addJob('sendFreeTicketEmail', {
+        email: reservation.email,
+        customer: reservation.customer,
+        eventName: event.name,
+        isSeated: event.isSeated,
+        seatName: reservation.seatName,
+        seatId: reservation.seatId,
+        ticketCode: reservation.ticketCode
       });
     }
 
-    res.status(201).json({ success: true, reservation, mailSent: mailStatus });
+res.status(201).json({ success: true, reservation, mailSent: mailStatus });
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
   } finally {
@@ -796,65 +733,13 @@ router.post('/:id/cancel', requireAuth, async (req, res) => {
 
     // Waitlist (Bekleme Listesi) Kontrolü ve Soft Hold (Geçici Rezervasyon)
     const taskQueue = require('../utils/queue');
-    taskQueue.addJob('notifyWaitlist', async () => {
-      const waitlistEntry = await prisma.waitlist.findFirst({
-        where: { eventId: reservation.eventId, status: 'PENDING' },
-        orderBy: { createdAt: 'asc' }
-      });
-
-      if (waitlistEntry) {
-        // Soft Hold rezervasyon yarat (15 dakikalık opsiyon)
-        const newReservation = await prisma.reservation.create({
-          data: {
-             eventId: reservation.eventId,
-             seatId: reservation.seatId,
-             seatName: reservation.seatName,
-             customer: waitlistEntry.customerName,
-             email: waitlistEntry.email,
-             phone: waitlistEntry.phone,
-             ticketCode: require('crypto').randomUUID(),
-             paymentStatus: 'pending',
-             paymentReference: `WAITLIST-${Date.now()}`,
-             expiresAt: new Date(Date.now() + 15 * 60 * 1000)
-          }
-        });
-
-        await prisma.waitlist.update({
-          where: { id: waitlistEntry.id },
-          data: { status: 'NOTIFIED' }
-        });
-
-        // 15 dakika içinde ödenmezse iptal edecek zamanlayıcı (setTimeout ile arka planda)
-        // Kaldırıldı: setTimeout yerine global interval (index.js) expiresAt kontrolü yapacak.
-
-        const eventData = await prisma.event.findUnique({ where: { id: reservation.eventId } });
-        const nodemailer = require('nodemailer');
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-          port: process.env.SMTP_PORT || 587,
-          auth: { user: process.env.SMTP_USER || 'mylene.stamm@ethereal.email', pass: process.env.SMTP_PASS || 'Hk3V78Jqyv28pS7T1G' }
-        });
-        
-        await transporter.sendMail({
-          from: '"Bilet Sistemi" <noreply@bilet.local>',
-          to: waitlistEntry.email,
-          subject: `🎟️ Müjde! ${eventData.name} İçin Bilet Açıldı! (15 Dakika Opsiyon)`,
-          html: `
-            <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-              <h2 style="color: #2563eb; text-align: center;">Müjde, Bilet Bulduk!</h2>
-              <p>Merhaba <b>${waitlistEntry.customerName}</b>,</p>
-              <p>Bekleme listesinde olduğunuz <b>${eventData.name}</b> etkinliği için adınıza özel geçici bir rezervasyon ayrılmıştır.</p>
-              <p>Ödeme yapmanız için <b>15 dakikanız</b> bulunmaktadır. Bu süre içinde ödeme yapmazsanız bilet bir sonraki kişiye devredilecektir.</p>
-              <div style="text-align: center; margin-top: 30px;">
-                <a href="http://localhost:3005/payment/mobile?id=${newReservation.id}" style="display:inline-block; padding:12px 24px; background-color:#2563eb; color:white; text-decoration:none; font-weight:bold; border-radius:8px;">Hemen Satın Al</a>
-              </div>
-            </div>
-          `
-        });
-      }
+        taskQueue.addJob('notifyWaitlist', {
+      eventId: reservation.eventId,
+      seatId: reservation.seatId,
+      seatName: reservation.seatName
     });
 
-    res.json({ success: true, message: "Rezervasyon iptal edildi ve koltuk boşa çıkarıldı veya waitlist'e aktarıldı." });
+res.json({ success: true, message: "Rezervasyon iptal edildi ve koltuk boşa çıkarıldı veya waitlist'e aktarıldı." });
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
   }
@@ -1276,35 +1161,17 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
           });
         }, 3, 1000);
 
-        // Eğer cardless (telegram bildirimli) ise Telegram'a da düşür
+                // Eğer cardless (telegram bildirimli) ise Telegram'a da düşür
         if (reservation.event.paymentType === 'cardless') {
-          try {
-            const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
-            if (adminUser?.telegramBotToken && adminUser?.telegramChatId) {
-              const payload = JSON.stringify({
-                chat_id: adminUser.telegramChatId,
-                text: `⚠️ İptal/İade Bildirimi:\n\n👤 ${reservation.customer}\n🎫 Bilet ID: ${reservation.ticketCode.slice(0,8)}\n💰 İade Tutarı: ${amount} ₺\n📝 Neden: ${reason || 'Belirtilmedi'}`,
-                parse_mode: "HTML"
-              });
-              const options = {
-                hostname: 'api.telegram.org',
-                port: 443,
-                path: `/bot${adminUser.telegramBotToken}/sendMessage`,
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
-              };
-              
-              // Arka planda devre kesici (circuit breaker) ve retry mekanizmasıyla gönder
-              taskQueue.add(async () => {
-                await retryWithBackoff(() => telegramCircuit.execute(options, payload), 3, 2000);
-              }).catch(console.error);
-            }
-          } catch (telErr) {
-            console.error("Telegram iptal bildirimi gönderilemedi:", telErr);
-          }
+          taskQueue.addJob('sendCancellationTelegram', {
+            customer: reservation.customer,
+            ticketCode: reservation.ticketCode,
+            amount,
+            reason: reason || 'Belirtilmedi'
+          });
         }
 
-        res.json({
+res.json({
           success: true,
           message: "Bilet başarıyla iade edildi ve iptal e-postası gönderildi.",
           previewUrl: nodemailer.getTestMessageUrl(info),
@@ -1605,6 +1472,160 @@ router.post('/sync', requireAuth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatas." });
   }
+});
+
+
+// ── İş Kuyruğu İşleyicileri ──────────────────────────────────────
+// BullMQ (Redis) veya in-memory fallback — her iki modda da çalışır.
+// Closure'lar request bağlamına bağımlı olduğundan veri payload ile taşınır;
+// böylece Redis'te kalıcı olan işler restart sonrası da işlenebilir.
+
+taskQueue.registerJob('sendTelegram', async ({ customer, email, phone, eventName, seatName, price, paymentReference }) => {
+  const { decrypt } = require('../utils/encryption');
+  const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+  if (!admin || !admin.telegramBotToken || !admin.telegramChatId) return;
+  const botToken = decrypt(admin.telegramBotToken);
+  const chatId = decrypt(admin.telegramChatId);
+  if (!botToken || !chatId) return;
+
+  const messageText = `🎫 *Yeni Rezervasyon Bildirimi!*\n\n` +
+    `*Müşteri:* ${customer}\n` +
+    `*E-posta:* ${email}\n` +
+    (phone ? `*Telefon:* ${phone}\n` : '') +
+    `*Etkinlik:* ${eventName}\n` +
+    `*Koltuk:* ${seatName || 'Genel Giriş'}\n` +
+    `*Tutar:* ${price} ₺\n` +
+    `*Referans:* \`${paymentReference}\`\n\n` +
+    `Lütfen ödemeyi kontrol edip admin panelinden onaylayın.`;
+
+  const https = require('https');
+  const payload = JSON.stringify({ chat_id: chatId, text: messageText, parse_mode: 'Markdown' });
+  const options = {
+    hostname: 'api.telegram.org',
+    port: 443,
+    path: `/bot${botToken}/sendMessage`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+  };
+  await retryWithBackoff(async () => telegramCircuit.execute(options, payload), 3, 1000);
+});
+
+taskQueue.registerJob('sendFreeTicketEmail', async ({ email, customer, eventName, isSeated, seatName, seatId, ticketCode }) => {
+  const QRCode = require('qrcode');
+  const qrDataUrl = await QRCode.toDataURL(ticketCode);
+
+  const nodemailer = require('nodemailer');
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+    port: process.env.SMTP_PORT || 587,
+    auth: {
+      user: process.env.SMTP_USER || 'mylene.stamm@ethereal.email',
+      pass: process.env.SMTP_PASS || 'Hk3V78Jqyv28pS7T1G'
+    }
+  });
+
+  const mailInfo = await retryWithBackoff(async () => {
+    return emailCircuit.execute(transporter, {
+      from: '"Bilet Sistemi" <noreply@bilet.local>',
+      to: email,
+      subject: `🎫 Biletiniz Onaylandı (Ücretsiz Etkinlik): ${eventName}`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #2563eb; text-align: center;">Biletiniz Hazır!</h2>
+          <p>Merhaba <b>${customer}</b>,</p>
+          <p><b>${eventName}</b> ücretsiz etkinliği için biletiniz başarıyla oluşturulmuştur.</p>
+          ${isSeated ? `<p>Koltuk: <b>${seatName || seatId}</b></p>` : `<p>Giriş: <b>Genel Giriş</b></p>`}
+          <div style="text-align: center; margin-top: 30px;">
+            <p style="color: #666; font-size: 14px;">Kapıdaki görevliye aşağıdaki QR Kodu okutunuz:</p>
+            <img src="${qrDataUrl}" alt="Bilet QR Kodu" style="width: 200px; height: 200px; border: 1px solid #ccc; border-radius: 10px;" />
+            <p style="font-family: monospace; font-size: 18px; letter-spacing: 2px;">${ticketCode.split('-')[0].toUpperCase()}</p>
+          </div>
+        </div>
+      `
+    });
+  }, 3, 1000);
+  console.log("Ücretsiz bilet maili gönderildi:", nodemailer.getTestMessageUrl(mailInfo));
+});
+
+taskQueue.registerJob('notifyWaitlist', async ({ eventId, seatId, seatName }) => {
+  const waitlistEntry = await prisma.waitlist.findFirst({
+    where: { eventId, status: 'PENDING' },
+    orderBy: { createdAt: 'asc' }
+  });
+
+  if (!waitlistEntry) return;
+
+  // Soft Hold rezervasyon yarat (15 dakikalık opsiyon)
+  const newReservation = await prisma.reservation.create({
+    data: {
+      eventId,
+      seatId,
+      seatName,
+      customer: waitlistEntry.customerName,
+      email: waitlistEntry.email,
+      phone: waitlistEntry.phone,
+      ticketCode: require('crypto').randomUUID(),
+      paymentStatus: 'pending',
+      paymentReference: `WAITLIST-${Date.now()}`,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000)
+    }
+  });
+
+  await prisma.waitlist.update({
+    where: { id: waitlistEntry.id },
+    data: { status: 'NOTIFIED' }
+  });
+
+  const eventData = await prisma.event.findUnique({ where: { id: eventId } });
+  const nodemailer = require('nodemailer');
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+    port: process.env.SMTP_PORT || 587,
+    auth: { user: process.env.SMTP_USER || 'mylene.stamm@ethereal.email', pass: process.env.SMTP_PASS || 'Hk3V78Jqyv28pS7T1G' }
+  });
+
+  await transporter.sendMail({
+    from: '"Bilet Sistemi" <noreply@bilet.local>',
+    to: waitlistEntry.email,
+    subject: `🎟️ Müjde! ${eventData.name} İçin Bilet Açıldı! (15 Dakika Opsiyon)`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #2563eb; text-align: center;">Müjde, Bilet Bulduk!</h2>
+        <p>Merhaba <b>${waitlistEntry.customerName}</b>,</p>
+        <p>Bekleme listesinde olduğunuz <b>${eventData.name}</b> etkinliği için adınıza özel geçici bir rezervasyon ayrılmıştır.</p>
+        <p>Ödeme yapmanız için <b>15 dakikanız</b> bulunmaktadır. Bu süre içinde ödeme yapmazsanız bilet bir sonraki kişiye devredilecektir.</p>
+        <div style="text-align: center; margin-top: 30px;">
+          <a href="/payment/mobile?id=${newReservation.id}" style="display:inline-block; padding:12px 24px; background-color:#2563eb; color:white; text-decoration:none; font-weight:bold; border-radius:8px;">Hemen Satın Al</a>
+        </div>
+      </div>
+    `
+  });
+});
+
+taskQueue.registerJob('sendCancellationTelegram', async ({ customer, ticketCode, amount, reason }) => {
+  const { decrypt } = require('../utils/encryption');
+  const adminUser = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
+  if (!adminUser?.telegramBotToken || !adminUser?.telegramChatId) return;
+
+  // Token'lar veritabanında şifrelidir — decrypt edilmeden gönderilmez
+  const botToken = decrypt(adminUser.telegramBotToken);
+  const chatId = decrypt(adminUser.telegramChatId);
+  if (!botToken || !chatId) return;
+
+  const payload = JSON.stringify({
+    chat_id: chatId,
+    text: `⚠️ İptal/İade Bildirimi:\n\n👤 ${customer}\n🎫 Bilet ID: ${ticketCode.slice(0, 8)}\n💰 İade Tutarı: ${amount} ₺\n📝 Neden: ${reason}`,
+    parse_mode: "HTML"
+  });
+  const options = {
+    hostname: 'api.telegram.org',
+    port: 443,
+    path: `/bot${botToken}/sendMessage`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+  };
+
+  await retryWithBackoff(() => telegramCircuit.execute(options, payload), 3, 2000);
 });
 
 module.exports = router;

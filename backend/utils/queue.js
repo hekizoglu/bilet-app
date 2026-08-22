@@ -1,63 +1,114 @@
 /**
- * 🚀 Hafif Asenkron İş Kuyruğu (In-Memory Queue)
- * 
+ * 🚀 Asenkron İş Kuyruğu (Job Queue)
+ * ─────────────────────────────────────────────
  * E-posta ve Telegram bildirimleri gibi dış API çağrılarını
  * HTTP request/response döngüsünün dışına çıkarır (Non-blocking).
- * Müşterinin bekleme süresini <100ms'ye indirir.
- * 
- * İleride Redis + BullMQ sistemine geçilmek istendiğinde 
- * sadece bu dosya değiştirilerek sistem BullMQ'ya bağlanabilir.
+ *
+ * DAYANIKLILIK:
+ * - REDIS_URL tanımlıysa: BullMQ kullanılır → işler Redis'te kalıcıdır,
+ *   process restart'ında KAYBOLMAZ, PM2 cluster'da her job yalnızca BİR
+ *   worker tarafından işlenir, otomatik retry (3 deneme, üstel geri çekilme).
+ * - REDIS_URL yoksa: bellek içi kuyruğa düşer (tek process geliştirme).
+ *
+ * API:
+ *   registerJob(type, async (payload) => { ... })  — modül yüklenirken kaydet
+ *   addJob(type, payload)                          — işi kuyruğa ekle
  */
-const EventEmitter = require('events');
-class JobQueue extends EventEmitter {
-  constructor() {
-    super();
-    this.queue = [];
-    this.isProcessing = false;
-  }
 
-  /**
-   * Yeni bir işi kuyruğa ekler
-   * @param {string} type İşin tipi (örn: 'sendEmail', 'sendTelegram')
-   * @param {Function} task Yürütülecek asenkron fonksiyon
-   */
-  addJob(type, task) {
-    this.queue.push({ type, task, id: Date.now() + Math.random() });
-    console.log(`[Queue] Yeni iş eklendi: ${type} (Kuyruk uzunluğu: ${this.queue.length})`);
-    
-    // Eğer işleyici çalışmıyorsa başlat
-    if (!this.isProcessing) {
-      this.processQueue();
-    }
-  }
+const registry = new Map();
 
-  async processQueue() {
-    if (this.queue.length === 0) {
-      this.isProcessing = false;
-      return;
-    }
+function registerJob(type, fn) {
+  if (typeof fn !== 'function') throw new Error(`registerJob: '${type}' için fonksiyon gerekli`);
+  registry.set(type, fn);
+}
 
-    this.isProcessing = true;
-    const job = this.queue.shift();
+// ── BullMQ (Redis varsa) ─────────────────────────────────────────
+const redisUrl = process.env.REDIS_URL;
+let queue = null;
+let bullWorker = null;
 
-    try {
-      console.log(`[Queue] İşleniyor: ${job.type} (ID: ${job.id})`);
-      await job.task();
-      console.log(`[Queue] Başarılı: ${job.type} (ID: ${job.id})`);
-    } catch (error) {
-      console.error(`[Queue] Başarısız: ${job.type} (ID: ${job.id}) - Hata:`, error.message);
-      // Not: CircuitBreaker/Retry zaten 'task' içinde uygulanıyor. 
-      // O yüzden burada ekstra retry yapmaya gerek yok.
-    }
+if (redisUrl) {
+  try {
+    const { Queue, Worker } = require('bullmq');
+    const connection = { url: redisUrl };
 
-    // Bir sonraki işe geçmeden önce ufak bir nefes payı (Event loop blocklanmasın)
-    setTimeout(() => {
-      this.processQueue();
-    }, 100);
+    queue = new Queue('bilet-jobs', { connection });
+    console.log('[Queue] BullMQ bağlantısı kuruldu (Redis).');
+
+    bullWorker = new Worker('bilet-jobs', async (job) => {
+      const fn = registry.get(job.name);
+      if (!fn) {
+        console.error(`[Queue] Bilinmeyen iş türü: ${job.name}`);
+        throw new Error(`Bilinmeyen iş türü: ${job.name}`);
+      }
+      await fn(job.data || {});
+    }, { connection, concurrency: 5 });
+
+    bullWorker.on('failed', (job, err) => {
+      console.error(`[Queue] Başarısız: ${job?.name} (ID: ${job?.id}) - ${err.message}`);
+    });
+    bullWorker.on('completed', (job) => {
+      console.log(`[Queue] Tamamlandı: ${job.name} (ID: ${job.id})`);
+    });
+  } catch (e) {
+    console.warn('[Queue] BullMQ başlatılamadı, bellek içi kuyruk kullanılıyor:', e.message);
+    queue = null;
   }
 }
 
-// Global Singleton Instance
-const taskQueue = new JobQueue();
+// ── In-Memory Fallback (Redis yoksa) ─────────────────────────────
+const inMemoryQueue = [];
+let isProcessing = false;
 
-module.exports = taskQueue;
+async function processInMemoryQueue() {
+  if (inMemoryQueue.length === 0) {
+    isProcessing = false;
+    return;
+  }
+  isProcessing = true;
+  const job = inMemoryQueue.shift();
+  try {
+    const fn = registry.get(job.type);
+    if (fn) {
+      await fn(job.payload || {});
+      console.log(`[Queue] Başarılı: ${job.type}`);
+    } else {
+      console.error(`[Queue] Bilinmeyen iş türü: ${job.type}`);
+    }
+  } catch (error) {
+    console.error(`[Queue] Başarısız: ${job.type} -`, error.message);
+  }
+  setTimeout(processInMemoryQueue, 100);
+}
+
+/**
+ * Yeni bir işi kuyruğa ekler.
+ * @param {string} type — registerJob ile kayıtlı iş türü
+ * @param {object} payload — işleyiciye iletilecek veri
+ */
+function addJob(type, payload = {}) {
+  if (queue) {
+    // BullMQ: kalıcı + 3 otomatik deneme + üstel geri çekilme
+    return queue.add(type, payload, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 2000 },
+      removeOnComplete: 200,
+      removeOnFail: 500,
+    }).catch((err) => {
+      console.error(`[Queue] BullMQ ekleme hatası (${type}):`, err.message);
+    });
+  }
+
+  inMemoryQueue.push({ type, payload });
+  console.log(`[Queue] Yeni iş eklendi: ${type} (Kuyruk uzunluğu: ${inMemoryQueue.length})`);
+  if (!isProcessing) {
+    processInMemoryQueue();
+  }
+}
+
+module.exports = {
+  addJob,
+  registerJob,
+  /** Redis/BullMQ aktif mi? (diagnostik) */
+  isPersistent: () => !!queue,
+};

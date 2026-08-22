@@ -444,49 +444,17 @@ router.post('/:reservationId/pay-creditcard', creditCardLimiter, validate(credit
     });
 
     // QR Kodu Base64 formatında oluştur ve E-posta Gönder (Asenkron)
-    taskQueue.addJob('sendPaymentSuccessEmail', async () => {
-      try {
-        const QRCode = require('qrcode');
-        const qrDataUrl = await QRCode.toDataURL(reservation.ticketCode);
-
-        const nodemailer = require('nodemailer');
-        const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-          port: process.env.SMTP_PORT || 587,
-          auth: {
-            user: process.env.SMTP_USER || 'mylene.stamm@ethereal.email',
-            pass: process.env.SMTP_PASS || 'Hk3V78Jqyv28pS7T1G'
-          }
-        });
-
-        const mailInfo = await retryWithBackoff(async () => {
-          return emailCircuit.execute(transporter, {
-            from: '"Bilet Sistemi" <noreply@bilet.local>',
-            to: reservation.email,
-            subject: `🎫 Ödemeniz Onaylandı: ${reservation.event.name}`,
-            html: `
-              <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                <h2 style="color: #2563eb; text-align: center;">Ödemeniz Alındı ve Biletiniz Hazır!</h2>
-                <p>Merhaba <b>${reservation.customer}</b>,</p>
-                <p><b>${reservation.event.name}</b> etkinliği için kredi kartı ile yaptığınız ödeme başarıyla doğrulanmıştır.</p>
-                ${reservation.event.isSeated ? `<p>Koltuk: <b>${reservation.seatName || reservation.seatId}</b></p>` : `<p>Giriş: <b>Genel Giriş</b></p>`}
-                <div style="text-align: center; margin-top: 30px;">
-                  <p style="color: #666; font-size: 14px;">Kapıdaki görevliye aşağıdaki QR Kodu okutunuz:</p>
-                  <img src="${qrDataUrl}" alt="Bilet QR Kodu" style="width: 200px; height: 200px; border: 1px solid #ccc; border-radius: 10px;" />
-                  <p style="font-family: monospace; font-size: 18px; letter-spacing: 2px;">${reservation.ticketCode.split('-')[0].toUpperCase()}</p>
-                </div>
-              </div>
-            `
-          });
-        }, 3, 1000);
-        console.log("[Payment] Kredi kartı ödeme onay maili gönderildi:", nodemailer.getTestMessageUrl(mailInfo));
-      } catch (mailErr) {
-        console.error("[Payment] Mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
-        Sentry.captureException(mailErr);
-      }
+        taskQueue.addJob('sendPaymentSuccessEmail', {
+      email: reservation.email,
+      customer: reservation.customer,
+      eventName: reservation.event.name,
+      isSeated: reservation.event.isSeated,
+      seatName: reservation.seatName,
+      seatId: reservation.seatId,
+      ticketCode: reservation.ticketCode
     });
 
-    res.json({ 
+res.json({ 
       success: true, 
       message: "Ödeme kredi kartı ile başarıyla yapıldı ve Bilet E-postası kuyruğa alındı.", 
       reservation: updated,
@@ -495,6 +463,50 @@ router.post('/:reservationId/pay-creditcard', creditCardLimiter, validate(credit
 
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
+  }
+});
+
+
+// ── İş Kuyruğu İşleyicileri ──────────────────────────────────────
+taskQueue.registerJob('sendPaymentSuccessEmail', async ({ email, customer, eventName, isSeated, seatName, seatId, ticketCode }) => {
+  try {
+    const QRCode = require('qrcode');
+    const qrDataUrl = await QRCode.toDataURL(ticketCode);
+
+    const nodemailer = require('nodemailer');
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+      port: process.env.SMTP_PORT || 587,
+      auth: {
+        user: process.env.SMTP_USER || 'mylene.stamm@ethereal.email',
+        pass: process.env.SMTP_PASS || 'Hk3V78Jqyv28pS7T1G'
+      }
+    });
+
+    const mailInfo = await retryWithBackoff(async () => {
+      return emailCircuit.execute(transporter, {
+        from: '"Bilet Sistemi" <noreply@bilet.local>',
+        to: email,
+        subject: `🎫 Ödemeniz Onaylandı: ${eventName}`,
+        html: `
+          <div style="font-family: sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+            <h2 style="color: #2563eb; text-align: center;">Ödemeniz Alındı ve Biletiniz Hazır!</h2>
+            <p>Merhaba <b>${customer}</b>,</p>
+            <p><b>${eventName}</b> etkinliği için kredi kartı ile yaptığınız ödeme başarıyla doğrulanmıştır.</p>
+            ${isSeated ? `<p>Koltuk: <b>${seatName || seatId}</b></p>` : `<p>Giriş: <b>Genel Giriş</b></p>`}
+            <div style="text-align: center; margin-top: 30px;">
+              <p style="color: #666; font-size: 14px;">Kapıdaki görevliye aşağıdaki QR Kodu okutunuz:</p>
+              <img src="${qrDataUrl}" alt="Bilet QR Kodu" style="width: 200px; height: 200px; border: 1px solid #ccc; border-radius: 10px;" />
+              <p style="font-family: monospace; font-size: 18px; letter-spacing: 2px;">${ticketCode.split('-')[0].toUpperCase()}</p>
+            </div>
+          </div>
+        `
+      });
+    }, 3, 1000);
+    console.log("[Payment] Kredi kartı ödeme onay maili gönderildi:", nodemailer.getTestMessageUrl(mailInfo));
+  } catch (mailErr) {
+    console.error("[Payment] Mail gönderme hatası (Circuit Breaker/Retry):", mailErr.message);
+    Sentry.captureException(mailErr);
   }
 });
 
