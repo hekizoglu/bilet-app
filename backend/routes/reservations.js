@@ -371,6 +371,156 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
       reservation = await prisma.$transaction(async (tx) => {
         let resolvedSeatName = null;
 
+        // ═══ ÇOKLU KOLTUK SATIN ALMA (seatIds) ═══
+        // Tek siparişte birden fazla koltuk: N rezervasyon, ortak paymentReference,
+        // toplam tutar (kupon/puan dahil) orderTotal olarak her kayda yazılır.
+        const multiSeatIds = (Array.isArray(req.body.seatIds) && req.body.seatIds.length > 0)
+          ? [...new Set(req.body.seatIds)].slice(0, 10)
+          : null;
+
+        if (event.isSeated && multiSeatIds) {
+          const hall = await tx.hall.findUnique({ where: { id: event.hallId } });
+          if (!hall) throw new Error("Salon bilgisi bulunamadı.");
+
+          const allSeats = extractSeatsFromLayout(hall.layoutJson);
+          const seats = multiSeatIds.map(id => allSeats.find(s => s.id === id));
+          if (seats.some(s => !s)) throw new Error("Geçersiz koltuk seçimi.");
+
+          // Çifte rezervasyon kontrolü (tüm koltuklar)
+          const taken = await tx.reservation.findMany({
+            where: { eventId: event.id, seatId: { in: multiSeatIds }, status: { in: ['Onaylı', 'Beklemede'] } }
+          });
+          if (taken.length > 0) {
+            throw new Error(`Şu koltuk(lar) az önce alındı: ${taken.map(t => t.seatName || t.seatId).join(', ')}`);
+          }
+
+          // UI geçici kilit kontrolü
+          if (redisClient && req.body.socketId) {
+            for (const sid of multiSeatIds) {
+              const holder = await redisClient.get(`seat_lock:${event.id}:${sid}`);
+              if (holder && holder !== req.body.socketId) {
+                throw new Error("Seçtiğiniz koltuklardan biri şu anda başka bir kullanıcıda işlemde.");
+              }
+            }
+          }
+
+          const qty = seats.length;
+
+          // Dinamik fiyatlandırma (satış oranına göre)
+          let unitPrice = event.price;
+          if (event.dynamicPricingThreshold && event.maxPrice) {
+            const soldCount = await tx.reservation.count({
+              where: { eventId: event.id, status: { in: ['Onaylı', 'Beklemede'] } }
+            });
+            const capacity = event.capacity || allSeats.length;
+            unitPrice = calculateDynamicPrice(event.price, event.maxPrice, event.dynamicPricingThreshold, soldCount, capacity);
+          }
+
+          const subtotal = Math.round(unitPrice * qty * 100) / 100;
+
+          // Kupon (toplam üzerinden)
+          let discountAmount = 0;
+          let finalOrderTotal = subtotal;
+          if (req.body.couponCode) {
+            const couponCodeTrimmed = req.body.couponCode.trim().toUpperCase();
+            const coupon = await tx.coupon.findUnique({ where: { code: couponCodeTrimmed } });
+            if (!coupon) throw new Error("Geçersiz kupon kodu.");
+            if (!coupon.isActive) throw new Error("Bu kupon artık aktif değil.");
+            if (coupon.validUntil && new Date(coupon.validUntil) < new Date()) throw new Error("Bu kuponun süresi dolmuş.");
+            if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) throw new Error("Bu kuponun kullanım limiti dolmuş.");
+            if (coupon.organizerId && coupon.organizerId !== event.organizerId) throw new Error("Bu kupon kodu bu etkinlik için geçerli değildir.");
+            const { finalPrice, discountAmount: da } = calculateFinalPrice(subtotal, coupon);
+            discountAmount = da;
+            finalOrderTotal = finalPrice;
+            const maxU = coupon.maxUses || 999999;
+            const upd = await tx.coupon.updateMany({ where: { id: coupon.id, usedCount: { lt: maxU } }, data: { usedCount: { increment: 1 } } });
+            if (upd.count === 0) throw new Error("Kupon kullanım limiti eşzamanlı bir işlemle dolmuş olabilir.");
+          }
+
+          // Puan (yalnızca doğrulanmış sahip — P1-3 kuralı)
+          let pointsUsed = 0;
+          let pointUser = null;
+          if (req.body.usePoints) {
+            const authHeader = req.headers.authorization || '';
+            let authedEmail = null;
+            if (authHeader.startsWith('Bearer ')) {
+              try {
+                const decoded = jwt.verify(authHeader.slice('Bearer '.length), getJwtSecret());
+                authedEmail = decoded.email;
+              } catch (e) {}
+            }
+            if (!authedEmail || authedEmail.toLowerCase() !== String(req.body.email).trim().toLowerCase()) {
+              throw new Error("Puan kullanmak için giriş yapmalı ve e-posta adresinizin formdakiyle aynı olması gerekir.");
+            }
+            pointUser = await tx.user.findUnique({ where: { email: authedEmail } });
+            if (pointUser && pointUser.points > 0 && finalOrderTotal > 0) {
+              pointsUsed = Math.min(pointUser.points, finalOrderTotal);
+              finalOrderTotal = Math.round((finalOrderTotal - pointsUsed) * 100) / 100;
+              await tx.user.update({ where: { email: authedEmail }, data: { points: { decrement: pointsUsed } } });
+            }
+          }
+
+          // Kişi başı fiyat (son bilete kalan kuruş)
+          const perTicket = Math.floor((finalOrderTotal / qty) * 100) / 100;
+          const remainder = Math.round((finalOrderTotal - perTicket * qty) * 100) / 100;
+
+          const dateStr = new Date().toISOString().split('T')[0];
+          const randomStr = Math.random().toString(36).substring(2, 8).toUpperCase();
+          const paymentReference = `PAYMENT-${dateStr}-${randomStr}`;
+          const baseStatus = event.paymentType === 'free' ? 'Onaylı' : 'Beklemede';
+          const basePaymentStatus = event.paymentType === 'free' ? 'paid' : 'pending';
+          const orderTotal = finalOrderTotal;
+
+          const created = [];
+          for (let i = 0; i < seats.length; i++) {
+            const seat = seats[i];
+            const ticketFinal = i === seats.length - 1
+              ? Math.round((perTicket + remainder) * 100) / 100
+              : perTicket;
+            const isFreeFinal = ticketFinal <= 0 || event.paymentType === 'free';
+            created.push(await tx.reservation.create({
+              data: {
+                eventId: event.id,
+                seatId: seat.id,
+                seatName: seat.name,
+                customer: req.body.customer,
+                email: req.body.email,
+                phone: req.body.phone,
+                ticketCode: require('crypto').randomUUID(),
+                status: isFreeFinal ? 'Onaylı' : baseStatus,
+                paymentStatus: isFreeFinal ? 'paid' : basePaymentStatus,
+                paidAt: isFreeFinal ? new Date() : null,
+                paymentReference,
+                paymentDetails: JSON.stringify({
+                  basePrice: unitPrice,
+                  finalPrice: ticketFinal,
+                  discountAmount: Math.round((discountAmount / qty) * 100) / 100,
+                  orderQuantity: qty,
+                  orderTotal,
+                  pointsUsed: Math.round((pointsUsed / qty) * 100) / 100,
+                  ...(req.body.couponCode ? { couponCode: req.body.couponCode.trim().toUpperCase() } : {})
+                }),
+                earnedPoints: ticketFinal > 0 ? Math.round(ticketFinal * 0.05 * 100) / 100 : 0,
+                expiresAt: !isFreeFinal ? new Date(Date.now() + 15 * 60 * 1000) : undefined
+              }
+            }));
+          }
+
+          // Puan kazandır (anında onaylananlar için)
+          if (baseStatus === 'Onaylı') {
+            const totalEarned = created.reduce((sum, r) => sum + (r.earnedPoints || 0), 0);
+            if (totalEarned > 0) {
+              let u = pointUser || await tx.user.findUnique({ where: { email: req.body.email } });
+              if (!u) u = await tx.user.create({ data: { email: req.body.email, role: 'CUSTOMER' } });
+              await tx.user.update({ where: { email: u.email }, data: { points: { increment: totalEarned } } });
+            }
+          }
+
+          return { multi: created, orderTotal, paymentReference };
+        }
+
+        // ═══ TEK KOLTUK (mevcut akış) ═══
+
         // 1. Koltuklu Etkinlikler İçin Koltuk Doğrulama ve Çifte Rezervasyon Kontrolü
         if (event.isSeated) {
           if (!req.body.seatId) {
@@ -560,39 +710,55 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
       return res.status(400).json({ error: transactionErr.message });
     }
 
-    // Geçici kilidi kaldır ve önbellekleri temizle
-    if (redisClient && event.isSeated && req.body.seatId) {
-      await redisClient.del(`seat_lock:${event.id}:${req.body.seatId}`);
+    // Çoklu sipariş mi?
+    const isMulti = !!reservation.multi;
+    const primaryRes = isMulti ? reservation.multi[0] : reservation;
+    const orderTotal = isMulti ? reservation.orderTotal : null;
+
+    // Geçici kilitleri kaldır ve önbellekleri temizle
+    if (redisClient && event.isSeated) {
+      const lockIds = isMulti ? reservation.multi.map(r => r.seatId) : [req.body.seatId];
+      for (const sid of lockIds) {
+        if (sid) await redisClient.del(`seat_lock:${event.id}:${sid}`);
+      }
     }
     await cache.clearEventCache(event.id);
     await cache.clearAdminReservationsCache();
 
-    // Soket Yayını: Sadece o etkinliğe (room) bağlı müşterilere seat_booked mesajı yolla
+    // Soket Yayını: satılan koltukları etkinlik odasına bildir
     const io = req.app.get('io');
-    if (event.isSeated && req.body.seatId) {
-      io.to(event.id).emit('seat_booked', { seatId: req.body.seatId });
+    if (event.isSeated) {
+      const soldSeats = isMulti ? reservation.multi.map(r => r.seatId) : [req.body.seatId];
+      for (const sid of soldSeats) {
+        if (sid) io.to(event.id).emit('seat_booked', { seatId: sid });
+      }
     }
 
     // Admin dashboard için analitik yayını
     try {
-      const pDetails = reservation.paymentDetails ? JSON.parse(reservation.paymentDetails) : { finalPrice: event.price };
+      const amount = isMulti
+        ? orderTotal
+        : (JSON.parse(primaryRes.paymentDetails || '{}').finalPrice || event.price);
       io.to('admin_room').emit('new_sale', {
-        amount: pDetails.finalPrice || event.price,
+        amount,
         eventId: event.id,
-        status: reservation.status
+        status: primaryRes.status,
+        count: isMulti ? reservation.multi.length : 1
       });
     } catch(e) {}
 
-    // Send Telegram Notification (if cardless)
+    // Telegram Bildirimi (cardless)
     if (event.paymentType === 'cardless') {
       taskQueue.addJob('sendTelegram', {
-        customer: reservation.customer,
-        email: reservation.email,
-        phone: reservation.phone,
+        customer: primaryRes.customer,
+        email: primaryRes.email,
+        phone: primaryRes.phone,
         eventName: event.name,
-        seatName: reservation.seatName,
-        price: event.price,
-        paymentReference: reservation.paymentReference
+        seatName: isMulti
+          ? `${reservation.multi.length} koltuk (${reservation.multi.map(r => r.seatName).join(', ')})`
+          : primaryRes.seatName,
+        price: isMulti ? orderTotal : event.price,
+        paymentReference: primaryRes.paymentReference
       });
     }
 
@@ -600,18 +766,32 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
     let mailStatus = 'not_required';
     if (event.paymentType === 'free') {
       mailStatus = 'queued';
-            taskQueue.addJob('sendFreeTicketEmail', {
-        email: reservation.email,
-        customer: reservation.customer,
-        eventName: event.name,
-        isSeated: event.isSeated,
-        seatName: reservation.seatName,
-        seatId: reservation.seatId,
-        ticketCode: reservation.ticketCode
+      const mailTargets = isMulti ? reservation.multi : [reservation];
+      for (const r of mailTargets) {
+        taskQueue.addJob('sendFreeTicketEmail', {
+          email: r.email,
+          customer: r.customer,
+          eventName: event.name,
+          isSeated: event.isSeated,
+          seatName: r.seatName,
+          seatId: r.seatId,
+          ticketCode: r.ticketCode
+        });
+      }
+    }
+
+    if (isMulti) {
+      return res.status(201).json({
+        success: true,
+        reservation: primaryRes,
+        reservations: reservation.multi,
+        count: reservation.multi.length,
+        orderTotal,
+        mailSent: mailStatus
       });
     }
 
-res.status(201).json({ success: true, reservation, mailSent: mailStatus });
+    res.status(201).json({ success: true, reservation, mailSent: mailStatus });
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
   } finally {
@@ -969,6 +1149,16 @@ router.get('/public/:id', async (req, res) => {
     const isOwner = typeof req.query.email === 'string' &&
       req.query.email.trim().toLowerCase() === reservation.email.trim().toLowerCase();
 
+    // Ödeme tutarı: çoklu siparişte sipariş toplamı (orderTotal), tekilde indirim sonrası finalPrice
+    let amountDue = reservation.event?.price || 0;
+    try {
+      const pd = reservation.paymentDetails ? JSON.parse(reservation.paymentDetails) : null;
+      if (pd) {
+        if (typeof pd.orderTotal === 'number') amountDue = pd.orderTotal;
+        else if (typeof pd.finalPrice === 'number') amountDue = pd.finalPrice;
+      }
+    } catch (e) {}
+
     // Admin bilgilerini çek
     const admin = await prisma.user.findFirst({
       where: { role: 'ADMIN' }
@@ -983,6 +1173,7 @@ router.get('/public/:id', async (req, res) => {
       paymentStatus: reservation.paymentStatus,
       status: reservation.status,
       seatName: reservation.seatName || reservation.seatId,
+      amountDue,
       event: {
         name: reservation.event.name,
         date: reservation.event.date,

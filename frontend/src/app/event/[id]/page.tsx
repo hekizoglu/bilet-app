@@ -81,15 +81,21 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
   const [reservationSuccess, setReservationSuccess] = useState<ReservationResult | null>(null);
   const [adminPaymentInfo, setAdminPaymentInfo] = useState<AdminPaymentInfo | null>(null);
 
+  const MAX_SEATS = 6;
+
   const handleSeatToggle = (seat: SeatInfo) => {
-    // Backend tek rezervasyonda tek koltuk destekler: çoklu seçim yerine tek seçim yapılır
+    // Çoklu koltuk seçimi desteklenir (max 6) — backend seatIds ile tek siparişte N rezervasyon oluşturur
     const isAlreadySelected = selectedSeats.some((s) => s.id === seat.id);
     let newSelected: SeatInfo[];
     if (isAlreadySelected) {
-      newSelected = [];
+      newSelected = selectedSeats.filter((s) => s.id !== seat.id);
       toast.info(`Koltuk ${seat.name} seçimi kaldırıldı.`);
     } else {
-      newSelected = [seat];
+      if (selectedSeats.length >= MAX_SEATS) {
+        toast.warning(`Tek siparişte en fazla ${MAX_SEATS} koltuk seçilebilir.`);
+        return;
+      }
+      newSelected = [...selectedSeats, seat];
       toast.success(`Koltuk ${seat.name} seçildi.`);
     }
     setSelectedSeats(newSelected);
@@ -227,17 +233,23 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
           socketId: socketInstance ? socketInstance.id : undefined
         };
         if (data.isSeated) {
-          payload.seatId = form.seatId;
+          if (selectedSeats.length > 1) {
+            payload.seatIds = selectedSeats.map((s) => s.id);
+          } else {
+            payload.seatId = form.seatId;
+          }
         }
         try {
-          const result = await apiFetch<{ reservation: ReservationResult }>('/reservations', {
+          const result = await apiFetch<{ reservation: ReservationResult; reservations?: ReservationResult[]; count?: number; orderTotal?: number }>('/reservations', {
             method: 'POST',
             body: JSON.stringify(payload)
           });
+          // Çoklu sipariş: ilk bilete yönlendir; ödeme sayfası amountDue ile toplamı gösterir
+          const firstRes = result.reservation;
           if (data.paymentType && data.paymentType !== 'free') {
-            router.push(`/payment/mobile?id=${result.reservation.id}`);
+            router.push(`/payment/mobile?id=${firstRes.id}`);
           } else {
-            setReservationSuccess(result.reservation);
+            setReservationSuccess(firstRes);
           }
         } catch (err: unknown) {
           toast.error(`Hata: ${err instanceof Error ? err.message : 'Bilinmeyen hata'}`);

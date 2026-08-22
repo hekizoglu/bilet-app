@@ -30,6 +30,7 @@ function MobilePaymentContent() {
     paymentStatus?: string;
     status?: string;
     seatName?: string;
+    amountDue?: number | null;
     event?: { name?: string; date?: string; price?: number; isSeated?: boolean; paymentType?: string };
     adminPayment?: { iban?: string | null; telegramUsername?: string | null; email?: string | null };
   } | null>(null);
@@ -203,9 +204,13 @@ function MobilePaymentContent() {
     ? reservation.paymentReference 
     : "PAYMENT-2026-06-29-001-ABC123";
     
-  const amount = reservation && reservation.event
-    ? `${reservation.event.price},00 TL`
-    : "350,00 TL";
+  // amountDue backend tarafından döner: çoklu siparişte toplam (orderTotal),
+  // tekilde indirim sonrası tutar. Yoksa etkinlik fiyatına düşer.
+  const amount = reservation && (reservation.amountDue != null)
+    ? `${Number(reservation.amountDue).toFixed(2).replace('.', ',')} TL`
+    : reservation && reservation.event
+      ? `${reservation.event.price},00 TL`
+      : "350,00 TL";
 
   const eventTitle = reservation && reservation.event
     ? `${reservation.event.name} · ${reservation.seatName ? `Koltuk: ${reservation.seatName}` : "Genel Giriş"}`

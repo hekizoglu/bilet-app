@@ -281,33 +281,37 @@ router.post('/bank-webhook', webhookLimiter, async (req, res) => {
 
     const paymentRef = match[0].toUpperCase();
 
-    // Rezervasyonu bul
-    const reservation = await prisma.reservation.findFirst({
+    // Rezervasyon(lar)ı bul — çoklu siparişte aynı referans N kayıt taşır
+    const reservations = await prisma.reservation.findMany({
       where: { paymentReference: paymentRef },
       include: { event: { include: { hall: true } } }
     });
 
-    if (!reservation) {
+    if (reservations.length === 0) {
       return res.status(404).json({ error: `Eşleşen rezervasyon bulunamadı (Ref: ${paymentRef}).` });
     }
 
-    if (reservation.paymentStatus === 'paid') {
+    const allPaid = reservations.every(r => r.paymentStatus === 'paid');
+    if (allPaid) {
       return res.json({ success: true, message: "Ödeme zaten onaylanmış durumda." });
     }
 
-    if (reservation.status === 'İptal' || reservation.paymentStatus === 'failed') {
-      // Gerçek bir sistemde bu durum admin paneline "İade Gerekenler" olarak düşmelidir.
-      console.warn(`⚠️ İPTAL EDİLMİŞ REZERVASYONA ÖDEME GELDİ! Rezervasyon: ${reservation.id}, Tutar: ${amount}`);
-      // Bankanın tekrar tekrar webhook göndermesini engellemek için 200 dönüyoruz ancak işlemi "İptal" olarak bırakıyoruz.
+    const cancelledOne = reservations.find(r => r.status === 'İptal' || r.paymentStatus === 'failed');
+    if (cancelledOne) {
+      console.warn(`⚠️ İPTAL EDİLMİŞ REZERVASYONA ÖDEME GELDİ! Rezervasyon: ${cancelledOne.id}, Tutar: ${amount}`);
       return res.json({ success: true, message: "Rezervasyon iptal edilmiş ancak ödeme alındı, manuel inceleme gerekiyor." });
     }
 
-    // 3. TUTAR KONTROLÜ: Gönderilen tutar, beklenen (indirim/kupon sonrası) tutardan azsa reddet.
-    let expectedAmount = reservation.event?.price || 0;
-    try {
-      const pd = reservation.paymentDetails ? JSON.parse(reservation.paymentDetails) : null;
-      if (pd && typeof pd.finalPrice === 'number') expectedAmount = pd.finalPrice;
-    } catch (e) { /* yok say */ }
+    // 3. TUTAR KONTROLÜ: beklenen = tüm kayıtların (indirim/kupon sonrası) toplamı
+    let expectedAmount = 0;
+    for (const r of reservations) {
+      let price = r.event?.price || 0;
+      try {
+        const pd = r.paymentDetails ? JSON.parse(r.paymentDetails) : null;
+        if (pd && typeof pd.finalPrice === 'number') price = pd.finalPrice;
+      } catch (e) { /* yok say */ }
+      expectedAmount += price;
+    }
 
     const receivedAmount = Number(amount);
     if (Number.isNaN(receivedAmount) || receivedAmount < expectedAmount - 0.01) {
@@ -317,17 +321,17 @@ router.post('/bank-webhook', webhookLimiter, async (req, res) => {
       });
     }
 
-    // Rezervasyonu atomic olarak güncelle (sadece pending ise)
+    // Bekleyen tüm kayıtları atomic olarak onayla (yalnızca pending olanlar)
+    const pendingIds = reservations.filter(r => r.paymentStatus === 'pending').map(r => r.id);
     const updateResult = await prisma.reservation.updateMany({
-      where: { 
-        id: reservation.id,
+      where: {
+        id: { in: pendingIds },
         paymentStatus: 'pending'
       },
       data: {
         paymentStatus: 'paid',
         status: 'Onaylı',
-        paidAt: new Date(),
-        paymentDetails: JSON.stringify({ senderIban, amount: receivedAmount, transactionId, webhookReceivedAt: new Date() })
+        paidAt: new Date()
       }
     });
 
@@ -335,9 +339,27 @@ router.post('/bank-webhook', webhookLimiter, async (req, res) => {
       return res.json({ success: true, message: "Ödeme daha önce onaylanmış veya işlenemedi." });
     }
 
-    // Güncellenmiş rezervasyon verisini tam olarak almak için tekrar fetch edelim (updateMany objeyi döndürmez)
+    // Webhook bilgisini mevcut paymentDetails'e ekle (fiyat bilgisi korunur)
+    for (const r of reservations) {
+      let details = {};
+      try { details = r.paymentDetails ? JSON.parse(r.paymentDetails) : {}; } catch (e) {}
+      await prisma.reservation.update({
+        where: { id: r.id },
+        data: {
+          paymentDetails: JSON.stringify({
+            ...details,
+            senderIban,
+            amount: receivedAmount,
+            transactionId,
+            webhookReceivedAt: new Date()
+          })
+        }
+      });
+    }
+
+    // Güncellenmiş ilk kaydı döndür
     const updatedReservation = await prisma.reservation.findUnique({
-      where: { id: reservation.id }
+      where: { id: reservations[0].id }
     });
 
     // QR Kodu Base64 formatında oluştur ve E-posta Gönder
