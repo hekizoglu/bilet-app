@@ -7,11 +7,23 @@ const { requireAuth } = require('../middlewares/auth');
 const cache = require('../utils/cache');
 
 function getCalculatedSeatCount(layoutJson) {
+  // DİKKAT: reservations.js extractSeatsFromLayout ile aynı mantıkta sayılmalıdır;
+  // aksi halde "salon kapasitesi" ile "satılabilir koltuk sayısı" tutarsız olur.
   try {
     const parsed = JSON.parse(layoutJson);
-    if (parsed && parsed.elements) {
-      return parsed.elements.filter(el => el.type === 'seat' || el.type === 'chair').length;
+    if (!parsed) return 0;
+    let count = 0;
+    if (Array.isArray(parsed.elements)) {
+      for (const el of parsed.elements) {
+        if (el.type === 'chair') count += 1;
+        else if (['round_table', 'rect_table', 'bistro'].includes(el.type)) {
+          count += el.seatCount || 1;
+        }
+      }
+    } else if (Array.isArray(parsed.chairs)) {
+      count = parsed.chairs.length; // eski format
     }
+    return count;
   } catch (e) {}
   return 0;
 }

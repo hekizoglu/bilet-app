@@ -25,7 +25,6 @@ const { createRateLimiter } = require('./utils/rateLimiter');
 const { metricsMiddleware, getMetricsSummary } = require('./utils/metrics');
 const http = require('http');
 const { Server } = require('socket.io');
-const xss = require('xss-clean');
 
 // Redis and Adapters
 const Redis = require('ioredis');
@@ -167,7 +166,6 @@ app.use(express.json({
   limit: '1mb',
   verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); }
 }));
-// app.use(xss()); // Add XSS protection (Disabled due to req.query read-only error)
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use('/api', limiter); // Sadece API rotalarına uygula
 app.use('/api', metricsMiddleware); // p95 latency ve hata oranı ölçümü
