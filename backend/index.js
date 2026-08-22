@@ -426,7 +426,14 @@ Sentry.setupExpressErrorHandler(app);
 
 if (process.env.NODE_ENV !== 'test') {
   const PORT = process.env.PORT || 5000;
-  
+
+  // PM2 Cluster: zamanlayıcılar YALNIZCA lider process'te çalışır
+  // (NODE_APP_INSTANCE='0'). Aksi halde her process aynı temizliği/mailleri
+  // tekrarlar (çifte iptal, çifte hatırlatma).
+  const isLeader = (process.env.NODE_APP_INSTANCE || '0') === '0';
+  if (isLeader) {
+    console.log('[Scheduler] Lider process — zamanlayıcılar aktif.');
+
   // Arka planda 5 dakikayı geçen "Beklemede" rezervasyonları temizle
   setInterval(async () => {
     try {
@@ -465,10 +472,6 @@ if (process.env.NODE_ENV !== 'test') {
     }
   }, 60 * 1000); // Her 1 dakikada bir çalıştır
 
-  server.listen(PORT, () => {
-    logger.info(`Backend servisi ${PORT} portunda çalışıyor.`);
-  });
-
   // Etkinlik hatırlatmaları: her saat başı kontrol et (24 saat + 2 saat kala)
   // Önceden reminderCron hiçbir yerden import edilmiyordu → hiç çalışmıyordu.
   const { checkAndSendReminders } = require('./services/reminderCron');
@@ -478,6 +481,11 @@ if (process.env.NODE_ENV !== 'test') {
       console.error('Hatırlatma cron hatası:', e.message);
     });
   }, 60 * 60 * 1000); // 1 saat
+  } // isLeader
+
+  server.listen(PORT, () => {
+    logger.info(`Backend servisi ${PORT} portunda çalışıyor.`);
+  });
 }
 
 module.exports = { app, server };
