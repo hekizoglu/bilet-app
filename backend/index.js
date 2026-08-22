@@ -407,6 +407,16 @@ if (process.env.NODE_ENV !== 'test') {
   server.listen(PORT, () => {
     logger.info(`Backend servisi ${PORT} portunda çalışıyor.`);
   });
+
+  // Etkinlik hatırlatmaları: her saat başı kontrol et (24 saat + 2 saat kala)
+  // Önceden reminderCron hiçbir yerden import edilmiyordu → hiç çalışmıyordu.
+  const { checkAndSendReminders } = require('./services/reminderCron');
+  checkAndSendReminders().catch(() => {});
+  setInterval(() => {
+    checkAndSendReminders().catch((e) => {
+      console.error('Hatırlatma cron hatası:', e.message);
+    });
+  }, 60 * 60 * 1000); // 1 saat
 }
 
 module.exports = { app, server };

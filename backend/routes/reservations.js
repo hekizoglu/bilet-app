@@ -1537,10 +1537,10 @@ router.post('/check-in', requireAuth, async (req, res) => {
         data: {
           eventId: event.id,
           action: 'DUPLICATE_CHECKIN_ATTEMPT',
-          details: "Kullan�lm�� bilet kodu tekrar okutulmak istendi: " + ticketCode
+          details: "Kullanılmış bilet kodu tekrar okutulmak istendi: " + ticketCode
         }
       });
-      return res.status(400).json({ error: "Bu bilet daha �nce kullan�lm��." });
+      return res.status(400).json({ error: "Bu bilet daha nce kullanılmış." });
     }
 
     const updated = await prisma.reservation.updateMany({
@@ -1549,19 +1549,19 @@ router.post('/check-in', requireAuth, async (req, res) => {
     });
 
     if (updated.count === 0) {
-      return res.status(400).json({ error: "E�zamanl� i�lem hatas� veya bilet kullan�lm��." });
+      return res.status(400).json({ error: "Ezamanl işlem hatas veya bilet kullanılmış." });
     }
 
     res.json({ success: true, reservation });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatas�." });
+    res.status(500).json({ error: "Sunucu hatas." });
   }
 });
 
 router.post('/sync', requireAuth, async (req, res) => {
   try {
     const { checkIns } = req.body;
-    if (!Array.isArray(checkIns)) return res.status(400).json({ error: "Ge�ersiz veri." });
+    if (!Array.isArray(checkIns)) return res.status(400).json({ error: "Geersiz veri." });
 
     const results = { success: 0, conflicts: 0, failed: 0 };
 
@@ -1588,7 +1588,7 @@ router.post('/sync', requireAuth, async (req, res) => {
           data: {
             eventId: event.id,
             action: 'OFFLINE_SYNC_CONFLICT',
-            details: "Bilet offline iken tekrar kullan�lm�� olarak i�aretlendi: " + checkIn.ticketCode
+            details: "Bilet offline iken tekrar kullanılmış olarak iaretlendi: " + checkIn.ticketCode
           }
         });
         results.conflicts++;
@@ -1603,7 +1603,7 @@ router.post('/sync', requireAuth, async (req, res) => {
     }
     res.json({ success: true, results });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatas�." });
+    res.status(500).json({ error: "Sunucu hatas." });
   }
 });
 

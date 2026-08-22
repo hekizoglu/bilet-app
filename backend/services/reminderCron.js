@@ -18,7 +18,7 @@ async function checkAndSendReminders() {
 
     for (const event of upcoming24hEvents) {
       for (const res of event.reservations) {
-        if (res.status === 'Onaylandı') {
+        if (res.status === 'Onaylı') {
           await sendEmail({
             to: res.email,
             subject: `Hatırlatma: ${event.name} etkinliğinize 24 saat kaldı!`,
@@ -41,7 +41,7 @@ async function checkAndSendReminders() {
 
     for (const event of upcoming2hEvents) {
       for (const res of event.reservations) {
-        if (res.status === 'Onaylandı') {
+        if (res.status === 'Onaylı') {
           await sendEmail({
             to: res.email,
             subject: `Son Hatırlatma: ${event.name} etkinliğinize 2 saat kaldı!`,
