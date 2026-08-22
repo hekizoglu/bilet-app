@@ -232,13 +232,45 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
       return sum + (resv.event?.price || 0);
     }, 0);
 
+    // Canlı Analitik sayfası için son satışlar (etkinlik adı ile birlikte)
+    const recentSales = await prismaInstance.reservation.findMany({
+      where: { ...eventIdsWhere, status: { in: ['Onaylı', 'Beklemede'] } },
+      select: {
+        id: true,
+        customer: true,
+        seatName: true,
+        status: true,
+        paymentStatus: true,
+        createdAt: true,
+        paymentDetails: true,
+        event: { select: { name: true, price: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 8
+    });
+
     res.json({
       eventsCount,
       hallsCount,
       pendingReservations,
       totalReservations,
       totalEarnings,
-      scoped: isAdmin ? 'system' : 'organizer'
+      scoped: isAdmin ? 'system' : 'organizer',
+      recentSales: recentSales.map(r => ({
+        id: r.id,
+        customer: r.customer,
+        seatName: r.seatName,
+        status: r.status,
+        paymentStatus: r.paymentStatus,
+        time: r.createdAt,
+        eventName: r.event?.name || 'Bilinmeyen',
+        amount: (() => {
+          try {
+            const pd = r.paymentDetails ? JSON.parse(r.paymentDetails) : null;
+            return pd?.finalPrice ?? r.event?.price ?? 0;
+          } catch { return r.event?.price ?? 0; }
+        })()
+      }))
     });
   } catch (err) {
     console.error("Dashboard istatistik hatası:", err);
