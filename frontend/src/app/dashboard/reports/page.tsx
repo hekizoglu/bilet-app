@@ -179,6 +179,37 @@ export default function ReportsPage() {
           Aylık Ödeme Detayları
         </h2>
         <div className="overflow-x-auto">
+          {/* Aylık satış bar grafiği */}
+          <div className="mb-6">
+            <h3 className="text-sm font-bold text-gray-700 mb-3">Aylık Tahsilat Görünümü</h3>
+            {monthlyReports.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">Grafik için ödeme verisi bulunmuyor.</p>
+            ) : (
+              <>
+                <div className="flex items-end gap-2 h-40">
+                  {monthlyReports.map((item) => {
+                    const maxSum = Math.max(...monthlyReports.map(m => m.paidSum), 1);
+                    const barH = Math.max(6, Math.round((item.paidSum / maxSum) * 100));
+                    return (
+                      <div key={item.month} className="flex-1 flex flex-col items-center gap-1.5 group">
+                        <div className="text-[10px] font-bold text-gray-500 opacity-0 group-hover:opacity-100 transition">
+                          {item.paidSum.toLocaleString('tr-TR')} ₺
+                        </div>
+                        <div
+                          className="w-full max-w-[46px] bg-gradient-to-t from-blue-600 to-indigo-400 rounded-t-lg transition-all duration-500 group-hover:from-blue-500 group-hover:to-indigo-300"
+                          style={{ height: `${barH}%` }}
+                          title={`${item.month}: ${item.paidSum.toLocaleString('tr-TR')} ₺ (${item.paidCount} bilet)`}
+                        />
+                        <div className="text-[10px] text-gray-400 font-medium truncate max-w-full">{item.month.split(' ')[0]}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-400 mt-2">Çubuk yüksekliği o ayın tahsilatıyla orantılıdır (üzerine gelince tutar görünür).</p>
+              </>
+            )}
+          </div>
+
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100 text-gray-600 text-sm">
