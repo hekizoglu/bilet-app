@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { X, CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface EventData {
   id: string;
@@ -27,7 +28,7 @@ export default function AdminEventApprovalModal({ event, onClose, onRefresh }: P
 
   const handleAction = async (action: 'approve' | 'reject' | 'suspend') => {
     if (action === 'reject' && !rejectReason.trim()) {
-      alert("Lütfen ret gerekçesi girin.");
+      toast.warning("Lütfen ret gerekçesi girin.");
       return;
     }
 
@@ -50,10 +51,10 @@ export default function AdminEventApprovalModal({ event, onClose, onRefresh }: P
         onClose();
       } else {
         const data = await res.json();
-        alert(`Hata: ${data.error || 'İşlem başarısız'}`);
+        toast.error(`Hata: ${data.error || 'İşlem başarısız'}`);
       }
     } catch (err) {
-      alert("Sunucuya ulaşılamadı.");
+      toast.error("Sunucuya ulaşılamadı.");
     } finally {
       setIsSubmitting(false);
     }

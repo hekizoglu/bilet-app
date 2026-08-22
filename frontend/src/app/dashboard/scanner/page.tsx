@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { Download, UploadCloud, CheckCircle, XCircle, AlertTriangle, Scan, Camera } from 'lucide-react';
 
@@ -58,7 +59,7 @@ export default function OfflineScannerPage() {
   };
 
   const downloadTickets = async () => {
-    if (!selectedEventId) return alert("Lütfen bir etkinlik seçin");
+    if (!selectedEventId) toast.error("Lütfen bir etkinlik seçin"); return;
     
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/events/${selectedEventId}/attendees`, {
@@ -69,17 +70,17 @@ export default function OfflineScannerPage() {
         setTickets(data.attendees || []);
         localStorage.setItem('offline_tickets', JSON.stringify(data.attendees || []));
         localStorage.setItem('offline_event_id', selectedEventId);
-        alert(`${(data.attendees || []).length} adet bilet cihazınıza başarıyla indirildi. İnterneti kapatabilirsiniz.`);
+        toast.success(`${(data.attendees || []).length} adet bilet cihazınıza indirildi. İnterneti kapatabilirsiniz.`);
       } else {
-        alert("Biletler indirilemedi.");
+        toast.error("Biletler indirilemedi.");
       }
     } catch (e) {
-      alert("Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.");
+      toast.error("Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.");
     }
   };
 
   const syncTickets = async () => {
-    if (pendingSync.length === 0) return alert("Senkronize edilecek yeni veri yok.");
+    if (pendingSync.length === 0) toast.info("Senkronize edilecek yeni veri yok."); return;
 
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/sync`, {
@@ -95,18 +96,18 @@ export default function OfflineScannerPage() {
         const data = await res.json();
         setPendingSync([]);
         localStorage.removeItem('pending_sync');
-        alert(`${data.results.success} bilet başarıyla sunucuya eşitlendi. (Çakışma: ${data.results.conflicts}, Hata: ${data.results.failed})`);
+        toast.success(`${data.results.success} bilet sunucuya eşitlendi. (Çakışma: ${data.results.conflicts})`);
       } else {
-        alert("Senkronizasyon başarısız oldu.");
+        toast.error("Senkronizasyon başarısız oldu.");
       }
     } catch (e) {
-      alert("Sunucuya bağlanılamadı. Lütfen internet bağlantınızın olduğundan emin olun.");
+      toast.error("Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.");
     }
   };
 
   const startScanner = () => {
     if (tickets.length === 0) {
-      alert("Önce biletleri cihaza indirmelisiniz!");
+      toast.warning("Önce biletleri cihaza indirmelisiniz!");
       return;
     }
     

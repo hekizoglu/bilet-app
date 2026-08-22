@@ -4,6 +4,7 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { Ticket, Settings, LogOut, User, Building, Home } from 'lucide-react';
+import { Toaster, toast } from 'sonner';
 
 export default function ProfileLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -36,10 +37,10 @@ export default function ProfileLayout({ children }: { children: ReactNode }) {
         router.push('/dashboard');
       } else {
         const err = await res.json();
-        alert(err.error || "Geçiş yapılamadı.");
+        toast.error(err.error || "Geçiş yapılamadı.");
       }
     } catch (error) {
-      alert("Sunucuya bağlanılamadı.");
+      toast.error("Sunucuya bağlanılamadı.");
     }
   };
 
@@ -50,7 +51,9 @@ export default function ProfileLayout({ children }: { children: ReactNode }) {
   ];
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
+    <>
+      <Toaster position="top-center" richColors />
+      <div className="flex flex-col md:flex-row min-h-screen bg-gray-50">
       {/* Mobile Top Header */}
       <header className="flex md:hidden items-center justify-between px-6 py-4 bg-white border-b border-gray-100 sticky top-0 z-40">
         <div className="flex items-center gap-3">
@@ -147,6 +150,7 @@ export default function ProfileLayout({ children }: { children: ReactNode }) {
           );
         })}
       </nav>
-    </div>
+      </div>
+    </>
   );
 }

@@ -4,7 +4,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { LayoutDashboard, Calendar, Map as MapIcon, Users, LogOut, Settings, User, Bell, Menu, X, BarChart3, Tag } from 'lucide-react';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -85,10 +85,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         router.push('/profile');
       } else {
         const err = await res.json();
-        alert(err.error || "Geçiş yapılamadı.");
+        toast.error(err.error || "Geçiş yapılamadı.");
       }
     } catch (error) {
-      alert("Sunucuya bağlanılamadı.");
+      toast.error("Sunucuya bağlanılamadı.");
     }
   };
 

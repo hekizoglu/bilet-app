@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, Suspense } from "react";
 import { QrCode, Copy, CheckCircle, Smartphone, CreditCard, ArrowLeft, Share2, Wallet, Loader2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
 // Phase 13.8 — Mobil Ödeme Ekranı (Dynamic Refactoring)
 // Özellikler: API Entegrasyonu, QR ile IBAN gösterimi, One-Tap kopyalama, Mobil-first tasarım
@@ -174,10 +175,10 @@ function MobilePaymentContent() {
         setMailStatus(result.mailSent);
         setReservation((prev: any) => ({ ...prev, paymentStatus: 'paid', status: 'Onaylı' }));
       } else {
-        alert(`Hata: ${result.error || "Ödeme başarısız."}`);
+        toast.error(`Hata: ${result.error || "Ödeme başarısız."}`);
       }
     } catch (err) {
-      alert("Ödeme sunucusuna bağlanılamadı.");
+      toast.error("Ödeme sunucusuna bağlanılamadı.");
     } finally {
       setIsSubmittingPay(false);
     }

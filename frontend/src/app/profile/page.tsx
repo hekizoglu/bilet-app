@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Ticket, Calendar, MapPin, Loader2, Navigation } from 'lucide-react';
 import Link from 'next/link';
 import { QRCodeCanvas } from 'qrcode.react';
+import { toast } from 'sonner';
 import QRCode from "react-qr-code";
 
 export default function ProfilePage() {
@@ -61,14 +62,14 @@ export default function ProfilePage() {
         }
       });
       if (res.ok) {
-        alert("Ödeme bildiriminiz başarıyla alındı. Yönetici onayından sonra biletiniz onaylanacaktır.");
+        toast.success("Ödeme bildiriminiz alındı. Onay sonrası biletiniz aktifleşecek.");
         fetchReservations();
       } else {
         const err = await res.json();
-        alert(err.error || "Bildirim başarısız.");
+        toast.error(err.error || "Bildirim başarısız.");
       }
     } catch (error) {
-      alert("Sunucuya bağlanılamadı.");
+      toast.error("Sunucuya bağlanılamadı.");
     }
   };
 
@@ -83,14 +84,14 @@ export default function ProfilePage() {
         }
       });
       if (res.ok) {
-        alert("Biletiniz iptal edildi ve iade süreci başlatıldı.");
+        toast.success("Biletiniz iptal edildi, iade süreci başlatıldı.");
         fetchReservations();
       } else {
         const err = await res.json();
-        alert(err.error || "İade işlemi başarısız.");
+        toast.error(err.error || "İade işlemi başarısız.");
       }
     } catch (error) {
-      alert("Sunucuya bağlanılamadı.");
+      toast.error("Sunucuya bağlanılamadı.");
     }
   };
 
@@ -110,14 +111,14 @@ export default function ProfilePage() {
         body: JSON.stringify({ newCustomer, newEmail })
       });
       if (res.ok) {
-        alert("Biletiniz başarıyla devredildi.");
+        toast.success("Biletiniz başarıyla devredildi.");
         fetchReservations();
       } else {
         const err = await res.json();
-        alert(err.error || "Devir işlemi başarısız.");
+        toast.error(err.error || "Devir işlemi başarısız.");
       }
     } catch (error) {
-      alert("Sunucuya bağlanılamadı.");
+      toast.error("Sunucuya bağlanılamadı.");
     }
   };
 

@@ -8,6 +8,7 @@ import { Trash2, Save, Plus, Settings, Copy, MousePointer2, Image as ImageIcon }
 import { ElementType, NumberingType, DesignerElement, HallLayout } from '../types/layout';
 
 import { ValidationEngine, ValidationIssue } from './designer/ValidationEngine';
+import { toast } from 'sonner';
 
 export interface AutoGenerateConfig {
   hallLengthM: number;
@@ -811,7 +812,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
       bistrosPlaced > 0 ? `• Bar/Bistro: ${bistrosPlaced} adet` : '',
       totalExits > 0 ? `• Çıkış/Giriş: ${totalExits} adet` : '',
     ].filter(Boolean).join('\n');
-    alert(summary);
+    toast.info(summary);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elements.length]);
 
@@ -833,7 +834,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
 
   const saveLayout = useCallback(async () => {
     if (!name.trim()) {
-      alert("Lütfen salon adı giriniz.");
+      toast.warning("Lütfen salon adı giriniz.");
       return;
     }
 
@@ -865,15 +866,15 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
       });
       
       if (res.ok) {
-        alert("Kayıt Başarılı!");
+        toast.success("Salon kaydedildi!");
         router.push('/dashboard/halls');
       } else {
         const errData = await res.json();
-        alert(`Hata: ${errData.error || errData.details}`);
+        toast.error(`Hata: ${errData.error || errData.details}`);
       }
     } catch (e) {
       console.error(e);
-      alert("Sunucuya ulaşılamadı.");
+      toast.error("Sunucuya ulaşılamadı.");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [name, description, address, elements, backgroundImage, isGlobal, hallId, router]);

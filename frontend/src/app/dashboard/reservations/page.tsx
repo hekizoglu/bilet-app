@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { Users, CheckCircle, Clock } from 'lucide-react';
 
 export default function ReservationsPage() {
@@ -55,13 +56,13 @@ export default function ReservationsPage() {
 
       const data = await res.json();
       if (res.ok) {
-        alert('Rezervasyon onaylandı ve e-posta gönderildi! Test URL: ' + (data.previewUrl || 'Yok'));
+        toast.success('Rezervasyon onaylandı ve e-posta gönderildi!');
         fetchReservations(pagination.page); // Refresh list
       } else {
-        alert('Hata: ' + data.error);
+        toast.error('Hata: ' + data.error);
       }
     } catch (err) {
-      alert('Bağlantı hatası');
+      toast.error('Bağlantı hatası');
     }
   };
 
@@ -83,13 +84,13 @@ export default function ReservationsPage() {
 
       const data = await res.json();
       if (res.ok) {
-        alert('Rezervasyon başarıyla iptal edildi!');
+        toast.success('Rezervasyon başarıyla iptal edildi!');
         fetchReservations(pagination.page); // Refresh list
       } else {
-        alert('Hata: ' + data.error);
+        toast.error('Hata: ' + data.error);
       }
     } catch (err) {
-      alert('Bağlantı hatası');
+      toast.error('Bağlantı hatası');
     }
   };
 
@@ -110,13 +111,13 @@ export default function ReservationsPage() {
 
       const data = await res.json();
       if (res.ok) {
-        alert('Ödeme doğrulandı, rezervasyon onaylandı ve e-posta gönderildi! Test URL: ' + (data.previewUrl || 'Yok'));
+        toast.success('Ödeme doğrulandı, rezervasyon onaylandı!');
         fetchReservations(pagination.page);
       } else {
-        alert('Hata: ' + data.error);
+        toast.error('Hata: ' + data.error);
       }
     } catch (err) {
-      alert('Bağlantı hatası');
+      toast.error('Bağlantı hatası');
     }
   };
 
@@ -145,14 +146,14 @@ export default function ReservationsPage() {
 
       const data = await res.json();
       if (res.ok) {
-        alert('Bilet başarıyla iade edildi!');
+        toast.success('Bilet başarıyla iade edildi!');
         setRefundReservation(null);
         fetchReservations(pagination.page);
       } else {
-        alert('Hata: ' + data.error);
+        toast.error('Hata: ' + data.error);
       }
     } catch (err) {
-      alert('Bağlantı hatası');
+      toast.error('Bağlantı hatası');
     }
   };
 
