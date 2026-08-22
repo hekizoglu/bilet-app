@@ -80,6 +80,11 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Lint
+        working-directory: frontend
+        run: npx eslint src
+        # Error seviyesindeki sorunlar build'i engeller; warning'ler bilgi amaçlıdır.
+
       - name: Build
         working-directory: frontend
         run: npm run build

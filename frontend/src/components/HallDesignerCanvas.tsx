@@ -753,7 +753,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
       wallPositions.push({ x: newCanvasWidth - wallPadding - BISTRO_R * 2, y: stageTopBoundary + 20 });
 
       for (let i = 0; i < bistroCount && i < wallPositions.length; i++) {
-        let pos = wallPositions[i];
+        const pos = wallPositions[i];
         // Çakışma kontrolü — çakışıyorsa atla (yerleştirme yapma)
         if (!isOverlapping(pos.x, pos.y, BISTRO_R * 2, BISTRO_R * 2)) {
           newElements.push({
