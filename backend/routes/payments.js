@@ -100,7 +100,7 @@ router.post('/validate-iban', validate(ibanValidationSchema), (req, res) => {
       res.json({ valid: false, message: "Geçersiz IBAN numarası." });
     }
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -195,7 +195,7 @@ router.post('/:reservationId/manual-verify', paymentVerifyLimiter, requireAuth, 
     }
 
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -393,7 +393,7 @@ router.post('/bank-webhook', webhookLimiter, async (req, res) => {
     }
 
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -494,7 +494,7 @@ router.post('/:reservationId/pay-creditcard', creditCardLimiter, validate(credit
     });
 
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 

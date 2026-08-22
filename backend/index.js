@@ -7,8 +7,8 @@ Sentry.init({
   integrations: [
     nodeProfilingIntegration(),
   ],
-  tracesSampleRate: 1.0,
-  profilesSampleRate: 1.0,
+  tracesSampleRate: 0.1,
+  profilesSampleRate: 0.1,
 });
 
 const express = require('express');
@@ -140,7 +140,7 @@ io.on('connection', (socket) => {
 // Rate Limiter Ayarı (DDoS Koruması)
 const limiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 dakika
-  max: 100, // Her IP için 15 dakikada en fazla 100 istek
+  max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10), // Her IP için 15 dakikada en fazla 100 istek (RATE_LIMIT_MAX ile ayarlanabilir)
   message: { error: "Çok fazla istek attınız, lütfen daha sonra tekrar deneyin." }
 });
 
@@ -164,7 +164,7 @@ app.use(cors({
 // bankanın gönderdiği ORİJİNAL byte dizisi üzerinden yapılır (JSON yeniden
 // serileştirme imzayı bozardı).
 app.use(express.json({
-  limit: '10mb',
+  limit: '1mb',
   verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); }
 }));
 // app.use(xss()); // Add XSS protection (Disabled due to req.query read-only error)
@@ -211,16 +211,22 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
 
     const prismaInstance = require('./prisma');
 
+    // GÜVENLİK/MAHREMİYET: ORGANIZER yalnızca KENDİ verilerini görür;
+    // sistem geneli istatistikler yalnızca ADMIN'e açıktır.
+    const isAdmin = req.user.role === 'ADMIN';
+    const organizerWhere = isAdmin ? {} : { organizerId: req.user.id };
+    const eventIdsWhere = isAdmin ? {} : { event: { organizerId: req.user.id } };
+
     const [eventsCount, hallsCount, pendingReservations, totalReservations] = await Promise.all([
-      prismaInstance.event.count(),
-      prismaInstance.hall.count(),
-      prismaInstance.reservation.count({ where: { status: 'Beklemede' } }),
-      prismaInstance.reservation.count()
+      prismaInstance.event.count({ where: organizerWhere }),
+      prismaInstance.hall.count({ where: organizerWhere }),
+      prismaInstance.reservation.count({ where: { ...eventIdsWhere, status: 'Beklemede' } }),
+      prismaInstance.reservation.count({ where: eventIdsWhere })
     ]);
 
     // Toplam Ciro Hesaplama (Onaylı biletlerin toplam fiyatı)
     const confirmedReservations = await prismaInstance.reservation.findMany({
-      where: { status: 'Onaylı' },
+      where: { ...eventIdsWhere, status: 'Onaylı' },
       include: { event: true }
     });
 
@@ -233,7 +239,8 @@ app.get('/api/admin/stats', requireAuth, async (req, res) => {
       hallsCount,
       pendingReservations,
       totalReservations,
-      totalEarnings
+      totalEarnings,
+      scoped: isAdmin ? 'system' : 'organizer'
     });
   } catch (err) {
     console.error("Dashboard istatistik hatası:", err);

@@ -256,7 +256,7 @@ router.get('/availability/:eventId', async (req, res) => {
     res.json(responseData);
 
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -651,7 +651,7 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
 
     res.status(201).json({ success: true, reservation, mailSent: mailStatus });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   } finally {
     if (lock) {
       try { await lock.release(); } catch (e) { console.error("Redlock release error:", e.message); }
@@ -752,7 +752,7 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
     }
 
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -856,7 +856,7 @@ router.post('/:id/cancel', requireAuth, async (req, res) => {
 
     res.json({ success: true, message: "Rezervasyon iptal edildi ve koltuk boşa çıkarıldı veya waitlist'e aktarıldı." });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -886,7 +886,7 @@ router.post('/checkin', requireAuth, async (req, res) => {
 
     res.json({ success: true, message: "Giriş Başarılı!", customer: updated.customer });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -936,7 +936,7 @@ router.get('/', requireAuth, async (req, res) => {
     cache.set(cacheKey, responseData, 5 * 1000); // 5 seconds cache
     res.json(responseData);
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -960,7 +960,7 @@ router.get('/my', requireAuth, async (req, res) => {
     });
     res.json(reservations);
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -983,7 +983,7 @@ router.post('/:id/request-payment', requireAuth, async (req, res) => {
 
     res.json({ success: true, message: "Ödeme bildiriminiz alındı.", reservation: updated });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -1012,7 +1012,7 @@ router.get('/:id/payment-status', async (req, res) => {
     if (!reservation) return res.status(404).json({ error: "Rezervasyon bulunamadı" });
     res.json(reservation);
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -1061,7 +1061,7 @@ router.get('/public/:id', async (req, res) => {
       } : null
     });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -1126,7 +1126,7 @@ router.post('/:id/self-refund', requireAuth, async (req, res) => {
 
     res.json({ success: true, message: "İade işlemi başarıyla başlatıldı.", reservation: updated });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -1177,7 +1177,7 @@ router.post('/:id/transfer', requireAuth, async (req, res) => {
 
     res.json({ success: true, message: "Bilet başarıyla devredildi.", reservation: updated });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -1329,7 +1329,7 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
     }
 
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -1370,7 +1370,7 @@ router.post('/checkin', requireAuth, async (req, res) => {
 
     res.json({ success: true, message: "Check-in başarılı", reservation: updated });
   } catch (error) {
-    res.status(500).json({ error: "Check-in işlemi sırasında hata oluştu", details: error.message });
+    res.status(500).json({ error: "Check-in işlemi sırasında hata oluştu" });
   }
 });
 
@@ -1396,7 +1396,7 @@ router.get('/scanner/:eventId', requireAuth, async (req, res) => {
     });
     res.json(reservations);
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -1435,7 +1435,7 @@ router.post('/bulk-checkin', requireAuth, async (req, res) => {
 
     res.json({ success: true, count: updated.count });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -1508,7 +1508,7 @@ router.post('/rsvp', async (req, res) => {
 
     res.json({ success: true, message: "Katılım durumunuz kaydedildi.", reservation });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 

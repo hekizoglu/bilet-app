@@ -39,7 +39,7 @@ router.post('/', requireAuth, validate(hallSchema), async (req, res) => {
     cache.del('halls');
     res.status(201).json(hall);
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -71,7 +71,7 @@ router.post('/:id/clone', requireAuth, async (req, res) => {
     cache.del('halls');
     res.status(201).json(clone);
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -161,7 +161,7 @@ router.put('/:id', requireAuth, validate(hallSchema), async (req, res) => {
     cache.del(`hall_${req.params.id}`);
     res.json(hall);
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 

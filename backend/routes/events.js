@@ -75,7 +75,7 @@ router.post('/', requireAuth, validate(eventSchema), async (req, res) => {
     cache.del('aggregator_events');
     res.status(201).json(event);
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -295,7 +295,7 @@ router.post('/:id/waitlist', waitlistLimiter, async (req, res) => {
 
     res.json({ success: true, message: "Bekleme listesine başarıyla eklendiniz." });
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 
@@ -312,7 +312,13 @@ router.put('/:id', requireAuth, validate(eventSchema), async (req, res) => {
     }
 
     const data = { ...req.body, date: new Date(req.body.date) };
-    
+
+    // FIX: PUBLIC → PRIVATE geçişte davet linki (privateSlug) üretilmediği için
+    // özel etkinliklerin linki hiç çalışmıyordu. Slug yoksa otomatik üret.
+    if (data.visibility === 'PRIVATE' && !existingEvent.privateSlug) {
+      data.privateSlug = generateSlug();
+    }
+
     // Faz 1: Kapasite ve Onay durumu hesaplama
     let hallLayout = null;
     const isSeated = data.isSeated !== undefined ? data.isSeated : existingEvent.isSeated;
@@ -351,7 +357,7 @@ router.put('/:id', requireAuth, validate(eventSchema), async (req, res) => {
     cache.del('aggregator_events'); // FIND-006 fix from iteration 3
     res.json(event);
   } catch (error) {
-    res.status(500).json({ error: "Sunucu hatası", details: error.message });
+    res.status(500).json({ error: "Sunucu hatası" });
   }
 });
 

@@ -42,7 +42,7 @@ router.get('/', requireAuth, requireAdminOrOrganizer, async (req, res) => {
     });
     return res.json(coupons);
   } catch (error) {
-    return res.status(500).json({ error: 'Sunucu hatası', details: error.message });
+    return res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
 
@@ -72,7 +72,7 @@ router.post('/', requireAuth, requireAdminOrOrganizer, async (req, res) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Eksik veya hatalı veri', details: error.issues });
     }
-    return res.status(500).json({ error: 'Sunucu hatası', details: error.message });
+    return res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
 
@@ -91,7 +91,7 @@ router.delete('/:id', requireAuth, requireAdminOrOrganizer, async (req, res) => 
     });
     return res.json({ success: true, message: 'Kupon pasife alındı.', coupon });
   } catch (error) {
-    return res.status(500).json({ error: 'Sunucu hatası', details: error.message });
+    return res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
 
@@ -124,7 +124,7 @@ router.post('/validate', couponLimiter, async (req, res) => {
       discountValue: coupon.discountValue,
     });
   } catch (error) {
-    return res.status(500).json({ error: 'Sunucu hatası', details: error.message });
+    return res.status(500).json({ error: 'Sunucu hatası' });
   }
 });
 
