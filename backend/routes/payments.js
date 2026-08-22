@@ -11,6 +11,7 @@ const { CircuitBreaker, retryWithBackoff } = require('../utils/circuitBreaker');
 const taskQueue = require('../utils/queue');
 const Sentry = require('@sentry/node');
 const { checkFinancialConsistency } = require('../utils/metrics');
+const paymentProvider = require('../services/paymentProvider');
 
 // Dış SMTP servisi için Circuit Breaker tanımı (Hata eşiği: 3, soğuma süresi: 20 saniye)
 const emailCircuit = new CircuitBreaker(
@@ -428,7 +429,7 @@ const creditCardLimiter = createRateLimiter({
 // 13.8: Credit Card payment simulation
 router.post('/:reservationId/pay-creditcard', creditCardLimiter, validate(creditCardSchema), async (req, res) => {
   try {
-    if (process.env.NODE_ENV === 'production') {
+    if (process.env.NODE_ENV === 'production' && paymentProvider.provider === 'sim') {
       return res.status(403).json({ error: "Sanal pos entegrasyonu test aşamasındadır. Production ortamında test kartı ile ödeme yapılamaz." });
     }
     const { cardNumber, expiry, cvv, holderName } = req.body;
@@ -447,6 +448,29 @@ router.post('/:reservationId/pay-creditcard', creditCardLimiter, validate(credit
 
     if (reservation.status === 'İptal' || reservation.paymentStatus === 'failed') {
       return res.status(400).json({ error: "Bu rezervasyon iptal edilmiş. Lütfen yeni bir bilet alınız." });
+    }
+
+    // GERÇEK SANAL POS: PAYMENT_PROVIDER=iyzico|paytr ise ödemeyi sağlayıcıya devret
+    if (paymentProvider.provider !== 'sim') {
+      try {
+        const pay = await paymentProvider.createPayment({
+          reservationId: reservation.id,
+          amount: Number(reservation.event?.price || 0),
+          description: `${reservation.event?.name || 'Etkinlik'} - ${reservation.paymentReference}`,
+          buyerEmail: reservation.email,
+          buyerName: reservation.customer,
+        });
+        return res.json({
+          success: true,
+          message: "Ödeme sayfasına yönlendiriliyorsunuz.",
+          paymentStatus: 'pending',
+          redirectUrl: pay.redirectUrl,
+          paymentId: pay.paymentId
+        });
+      } catch (posErr) {
+        console.error("[PaymentProvider] POS hatası:", posErr.message);
+        return res.status(502).json({ error: `Ödeme sağlayıcısına ulaşılamadı: ${posErr.message}` });
+      }
     }
 
     // Rezervasyonu ödenmiş ve onaylı olarak güncelle
