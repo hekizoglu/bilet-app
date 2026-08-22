@@ -6,6 +6,7 @@ import io from 'socket.io-client';
 import dynamic from 'next/dynamic';
 import { toast } from 'sonner';
 import { apiFetch, API_ORIGIN } from '@/lib/api';
+import Countdown from '@/components/Countdown';
 
 // Konva hydration hatalarını önlemek için client-side import yapıyoruz
 const DynamicSeatMapViewer = dynamic(() => import('@/components/SeatMapViewer'), { ssr: false });
@@ -358,26 +359,76 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
 
   const groupedSeats = data.isSeated ? getGroupedSeats(data.availableSeats) : [];
 
+  // Kapasite doluluk oranı (animasyonlu çubuk için)
+  const totalCap = data.isSeated ? data.totalCapacity : data.capacity;
+  const availableCount = data.isSeated ? data.availableSeats?.length : data.available;
+  const soldCount = Math.max(0, (totalCap || 0) - (availableCount || 0));
+  const soldRatio = totalCap > 0 ? soldCount / totalCap : 0;
+  const almostFull = totalCap > 0 && availableCount > 0 && soldRatio >= 0.8;
+  const isFull = totalCap > 0 && availableCount <= 0;
+
+  const eventDate = data.eventDate;
+
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-8 font-sans">
       <div className="mb-6">
         <h1 className="text-3xl font-extrabold tracking-tight text-gray-900 mb-2">
           {data.isSeated ? data.hallName : "Genel Giriş Etkinliği"}
         </h1>
-        {data.paymentType === 'cardless' && (
-          <span className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-            Bu etkinlik Kartsız Ödeme ile çalışmaktadır.
-          </span>
-        )}
-        {data.paymentType === 'creditcard' && (
-          <span className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-            Bu etkinlik Kredi Kartı ile çalışmaktadır.
-          </span>
-        )}
-        {data.paymentType === 'free' && (
-          <span className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
-            Ücretsiz Etkinlik
-          </span>
+
+        {/* Rozetler */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {data.paymentType === 'cardless' && (
+            <span className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+              Bu etkinlik Kartsız Ödeme ile çalışmaktadır.
+            </span>
+          )}
+          {data.paymentType === 'creditcard' && (
+            <span className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              Bu etkinlik Kredi Kartı ile çalışmaktadır.
+            </span>
+          )}
+          {data.paymentType === 'free' && (
+            <span className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-xs font-semibold bg-green-50 text-green-700 border border-green-200">
+              Ücretsiz Etkinlik
+            </span>
+          )}
+        </div>
+
+        {/* Geri sayım + kapasite (tarih bilgisi varsa) */}
+        {eventDate && (
+          <div className="bg-white border border-gray-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+            <div className="flex-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+                Etkinlik Başlamasına Kalan
+              </p>
+              <Countdown target={eventDate} />
+            </div>
+
+            {totalCap > 0 && (
+              <div className="sm:w-64">
+                <div className="flex justify-between text-xs font-semibold mb-1.5">
+                  <span className={isFull ? 'text-gray-400' : almostFull ? 'text-red-500' : 'text-gray-500'}>
+                    {isFull ? 'Tükendi' : `${availableCount} bilet kaldı`}
+                  </span>
+                  <span className="text-gray-400">{soldCount}/{totalCap} satıldı</span>
+                </div>
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-1000 ease-out ${
+                      isFull ? 'bg-gray-300' : almostFull ? 'bg-red-500 animate-pulse' : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                    }`}
+                    style={{ width: `${Math.min(100, Math.max(4, soldRatio * 100))}%` }}
+                  />
+                </div>
+                {almostFull && !isFull && (
+                  <p className="text-[11px] font-bold text-red-500 mt-1.5 animate-pulse">
+                    ⚡ Az kaldı — biletler hızla tükeniyor!
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
 

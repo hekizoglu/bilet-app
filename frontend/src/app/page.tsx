@@ -7,6 +7,7 @@ import {
   Armchair, QrCode, PlusCircle, RefreshCw, Zap, Users, Info,
 } from 'lucide-react';
 import SkeletonLoader from '@/components/SkeletonLoader';
+import Countdown from '@/components/Countdown';
 import { motion, AnimatePresence } from 'motion/react';
 import { apiFetch } from '@/lib/api';
 
@@ -118,52 +119,6 @@ const relativeDay = (iso: string) => {
   return '';
 };
 
-/** Her saniye güncelleyen "şimdi" zamanı (geri sayım için) */
-function useNow(intervalMs = 1000) {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(t);
-  }, [intervalMs]);
-  return now;
-}
-
-/** Canlı tıklayan geri sayım: 2 gün : 14 saat : 05 dk : 33 sn */
-function Countdown({ target }: { target: string }) {
-  const now = useNow();
-  const diff = Math.max(0, new Date(target).getTime() - now);
-  const d = Math.floor(diff / 86400000);
-  const h = Math.floor((diff % 86400000) / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  const s = Math.floor((diff % 60000) / 1000);
-
-  if (diff <= 0) {
-    return <span className="text-sm font-bold text-white/80">Etkinlik başladı 🎉</span>;
-  }
-
-  const cells = [
-    { v: d, l: 'gün' },
-    { v: h, l: 'saat' },
-    { v: m, l: 'dk' },
-    { v: s, l: 'sn' },
-  ];
-
-  return (
-    <div className="flex items-center gap-2">
-      {cells.map((c, i) => (
-        <div key={c.l} className="flex items-center gap-2">
-          {i > 0 && <span className="text-white/40 font-black text-lg">:</span>}
-          <div className="bg-white/15 backdrop-blur border border-white/20 rounded-lg px-2.5 py-1.5 text-center min-w-[52px]">
-            <div className="text-xl font-black tabular-nums leading-none">{String(c.v).padStart(2, '0')}</div>
-            <div className="text-[9px] font-bold uppercase tracking-wider text-white/60 mt-0.5">{c.l}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────
 // Bileşenler
 // ─────────────────────────────────────────────────────────────
 
@@ -336,7 +291,7 @@ function HeroFeatured({ event }: { event: PublicEvent }) {
           <div className="text-right text-xs font-semibold text-white/70">
             Başlamasına kalan
             <div className="mt-1.5">
-              <Countdown target={event.date} />
+              <Countdown target={event.date} dark />
             </div>
           </div>
         </div>

@@ -195,6 +195,7 @@ router.get('/availability/:eventId', async (req, res) => {
         available: Math.max(0, event.capacity - sold),
         paymentType: event.paymentType,
         eventId: event.id,
+        eventDate: event.date,
         price: finalDynamicPrice,
         basePrice: event.price
       };
@@ -245,6 +246,7 @@ router.get('/availability/:eventId', async (req, res) => {
         hallLayout: event.hall.layoutJson,
         paymentType: event.paymentType,
         eventId: event.id,
+        eventDate: event.date,
         price: finalDynamicPrice,
         basePrice: event.price
       };
