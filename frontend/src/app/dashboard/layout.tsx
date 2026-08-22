@@ -87,7 +87,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         const err = await res.json();
         toast.error(err.error || "Geçiş yapılamadı.");
       }
-    } catch (error) {
+    }catch {
       toast.error("Sunucuya bağlanılamadı.");
     }
   };

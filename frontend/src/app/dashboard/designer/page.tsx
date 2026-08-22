@@ -30,12 +30,6 @@ export default function DesignerPage() {
   const [isSettingsPanelOpen, setIsSettingsPanelOpen] = useState(true);
   const [isCanvasModalOpen, setIsCanvasModalOpen] = useState(false);
 
-  const handleAutoGenerate = (config: AutoGenerateConfig) => {
-    if (canvasRef.current?.autoGenerateLayout) {
-      canvasRef.current.autoGenerateLayout(config);
-    }
-    setIsCanvasModalOpen(true);
-  };
 
   const openEmptyCanvas = () => {
     setViewMode('canvas');
@@ -117,7 +111,7 @@ export default function DesignerPage() {
             </h2>
           </div>
           <div className="p-6 flex-1 overflow-y-auto">
-            <HallSettingsPanel onAutoGenerate={handleAutoGenerate} />
+            <HallSettingsPanel />
           </div>
         </div>
 

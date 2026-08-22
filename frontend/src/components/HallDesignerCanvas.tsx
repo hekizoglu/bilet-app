@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 'react';
 import { Stage, Layer, Rect, Text, Group, Circle, Image as KonvaImage, Line } from 'react-konva';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Trash2, Save, Plus, Settings, Copy, MousePointer2, Image as ImageIcon } from 'lucide-react';
+import { Save, Settings } from 'lucide-react';
 
-import { ElementType, NumberingType, DesignerElement, HallLayout } from '../types/layout';
+import { ElementType, DesignerElement, HallLayout } from '../types/layout';
 
 import { ValidationEngine, ValidationIssue } from './designer/ValidationEngine';
 import { toast } from 'sonner';
@@ -28,9 +28,6 @@ export interface AutoGenerateConfig {
   [key: string]: unknown;
 }
 
-interface HallDesignerCanvasProps {
-  onAutoGenerate?: (config: AutoGenerateConfig) => void;
-}
 
 interface HallDesignerCanvasHandle {
   autoGenerateLayout: (config: AutoGenerateConfig, skipConfirm?: boolean) => void;
@@ -43,7 +40,7 @@ const MIN_ELEMENT_SIZE = 30;
 const MIN_RADIUS = 20;
 
 // Inner component - sarılmış function
-const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesignerCanvasProps>(function HallDesignerCanvas({ onAutoGenerate }, ref) {
+const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, object>(function HallDesignerCanvas({}, ref) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const hallId = searchParams.get('id');
@@ -61,7 +58,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   
   const [canvasWidth, setCanvasWidth] = useState(1000);
   const [canvasHeight, setCanvasHeight] = useState(800);
-  const [validationIssues, setValidationIssues] = useState<ValidationIssue[]>([]);
+  const [, setValidationIssues] = useState<ValidationIssue[]>([]); // değer render'da kullanılmıyor, yalnızca setter
 
   // Arka plan görseli
   const [bgImageObj, setBgImageObj] = useState<HTMLImageElement | null>(null);
@@ -888,7 +885,6 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, HallDesigne
   const selectedElement = selectedIds.length > 0
     ? elements.find(e => e.id === selectedIds[0]) ?? null
     : null;
-  const hasSelection = selectedIds.length > 0;
 
   // --- Çizim Yardımcı Fonksiyonları ---
   const renderRoundTable = (el: DesignerElement, isSelected: boolean) => {

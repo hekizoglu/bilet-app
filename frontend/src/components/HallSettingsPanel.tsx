@@ -1,5 +1,4 @@
 ﻿'use client';
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Zap } from 'lucide-react';
 
@@ -19,11 +18,7 @@ export interface AutoGenerateConfig {
   totalCapacity: number;
 }
 
-interface HallSettingsPanelProps {
-  onAutoGenerate?: (config: AutoGenerateConfig) => void;
-}
-
-export function HallSettingsPanel({ onAutoGenerate }: HallSettingsPanelProps) {
+export function HallSettingsPanel() {
   const router = useRouter();
   return (
     <div className="space-y-4">

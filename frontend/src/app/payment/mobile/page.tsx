@@ -50,11 +50,6 @@ function MobilePaymentContent() {
     return () => clearInterval(timer);
   }, [timeLeft, paySuccess, reservation]);
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
 
   // PWA: Ana ekrana ekle butonu için install prompt yönetimi
   useEffect(() => {
@@ -177,7 +172,7 @@ function MobilePaymentContent() {
       } else {
         toast.error(`Hata: ${result.error || "Ödeme başarısız."}`);
       }
-    } catch (err) {
+    }catch {
       toast.error("Ödeme sunucusuna bağlanılamadı.");
     } finally {
       setIsSubmittingPay(false);

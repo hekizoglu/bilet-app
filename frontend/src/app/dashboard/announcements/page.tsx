@@ -51,7 +51,7 @@ export default function AnnouncementsPage() {
         toast.success("Tüm bildirimler okundu olarak işaretlendi.");
         fetchNotifications();
       }
-    } catch (err) {
+    }catch {
       toast.error("İşlem başarısız.");
     }
   };

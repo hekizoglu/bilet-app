@@ -30,7 +30,7 @@ export default function AdminAnalyticsPage() {
             totalRevenue: data.totalEarnings || 0
           }));
         }
-      } catch (err) {}
+      } catch {}
     };
     fetchInitialStats();
 

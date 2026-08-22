@@ -60,7 +60,7 @@ export default function ProfileSettingsPage() {
         const data = await res.json();
         setError(data.error || 'Kaydedilirken bir hata oluştu.');
       }
-    } catch (err) {
+    }catch {
       setError('Sunucu bağlantı hatası.');
     } finally {
       setSaving(false);

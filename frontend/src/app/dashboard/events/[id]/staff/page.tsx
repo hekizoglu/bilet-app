@@ -52,7 +52,7 @@ export default function EventStaffPage() {
       } else {
         toast.error(data.error || "Eklenemedi.");
       }
-    } catch (err) {
+    }catch {
       toast.error("Bir hata oluştu.");
     }
   };
@@ -71,7 +71,7 @@ export default function EventStaffPage() {
       } else {
         toast.error("Silinemedi.");
       }
-    } catch (err) {
+    }catch {
       toast.error("Bir hata oluştu.");
     }
   };

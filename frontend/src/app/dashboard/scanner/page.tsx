@@ -74,7 +74,7 @@ export default function OfflineScannerPage() {
       } else {
         toast.error("Biletler indirilemedi.");
       }
-    } catch (e) {
+    }catch {
       toast.error("Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.");
     }
   };
@@ -100,7 +100,7 @@ export default function OfflineScannerPage() {
       } else {
         toast.error("Senkronizasyon başarısız oldu.");
       }
-    } catch (e) {
+    }catch {
       toast.error("Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.");
     }
   };
@@ -138,7 +138,7 @@ export default function OfflineScannerPage() {
     handleTicketCode(decodedText);
   };
 
-  const onScanFailure = (error: any) => {
+  const onScanFailure = () => {
     // ignore
   };
 

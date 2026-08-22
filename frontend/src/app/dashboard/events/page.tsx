@@ -171,7 +171,7 @@ export default function EventsPage() {
       } else {
         toast.error("Link yenilenirken hata oluştu.");
       }
-    } catch (e) {
+    }catch {
       toast.error("Sunucuya bağlanılamadı");
     }
   };

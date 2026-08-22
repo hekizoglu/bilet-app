@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { Info, Ticket, Users, Globe, Lock, QrCode, CreditCard, Armchair, ChevronLeft } from 'lucide-react';
+import { Info, Ticket, Users, Globe, Lock, QrCode, CreditCard, Armchair } from 'lucide-react';
 
 export default function HowItWorksPage() {
   const features = [

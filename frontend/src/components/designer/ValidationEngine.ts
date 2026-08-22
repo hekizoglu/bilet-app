@@ -6,7 +6,6 @@ export interface ValidationIssue {
   message: string;
 }
 
-const PIXEL_PER_METER = 80;
 
 export class ValidationEngine {
   

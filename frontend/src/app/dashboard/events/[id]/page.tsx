@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { useParams, useRouter } from 'next/navigation';
-import { Calendar, Users, Scan, Link as LinkIcon, Edit, ChevronLeft, Ticket, CheckCircle, Clock, Copy, Share2 } from 'lucide-react';
+import { Calendar, Users, Scan, Link as   ChevronLeft, Ticket, CheckCircle, Clock, Copy, Share2 } from 'lucide-react';
 
 export default function EventDashboardPage() {
   const params = useParams();
@@ -71,7 +71,7 @@ export default function EventDashboardPage() {
   // Stats calculation
   const totalTickets = attendees.length;
   const usedTickets = attendees.filter(a => a.isUsed).length;
-  const totalRevenue = attendees.reduce((acc, curr) => acc + (event.price || 0), 0); // basic logic
+  const totalRevenue = attendees.reduce((acc) => acc + (event.price || 0), 0); // basic logic
   const eventUrl = `${window.location.origin}/event/${event.visibility === 'PRIVATE' ? event.privateSlug : event.id}`;
 
   const copyLink = () => {

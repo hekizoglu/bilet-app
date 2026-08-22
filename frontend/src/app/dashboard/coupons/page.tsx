@@ -1,10 +1,9 @@
 "use client";
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 export default function AdminCouponsPage() {
-  const router = useRouter();
+
   const [coupons, setCoupons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({
@@ -65,7 +64,7 @@ export default function AdminCouponsPage() {
         const err = await res.json();
         toast.error(`Hata: ${err.error}`);
       }
-    } catch (err) {
+    }catch {
       toast.error("Bir hata oluştu.");
     }
   };
@@ -81,7 +80,7 @@ export default function AdminCouponsPage() {
       if (res.ok) {
         fetchCoupons();
       }
-    } catch (err) {
+    }catch {
       toast.error("Hata oluştu.");
     }
   };

@@ -68,7 +68,7 @@ export default function ProfilePage() {
         const err = await res.json();
         toast.error(err.error || "Bildirim başarısız.");
       }
-    } catch (error) {
+    }catch {
       toast.error("Sunucuya bağlanılamadı.");
     }
   };
@@ -90,7 +90,7 @@ export default function ProfilePage() {
         const err = await res.json();
         toast.error(err.error || "İade işlemi başarısız.");
       }
-    } catch (error) {
+    }catch {
       toast.error("Sunucuya bağlanılamadı.");
     }
   };
@@ -117,7 +117,7 @@ export default function ProfilePage() {
         const err = await res.json();
         toast.error(err.error || "Devir işlemi başarısız.");
       }
-    } catch (error) {
+    }catch {
       toast.error("Sunucuya bağlanılamadı.");
     }
   };

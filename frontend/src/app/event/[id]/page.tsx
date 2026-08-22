@@ -202,7 +202,7 @@ export default function CustomerEventPage({ params }: { params: Promise<{ id: st
           toast.error(`Hata: ${err?.message || 'Bilinmeyen hata'}`);
         }
       }
-    } catch (err) {
+    }catch {
       toast.error("Bağlantı hatası");
     } finally {
       setIsSubmitting(false);

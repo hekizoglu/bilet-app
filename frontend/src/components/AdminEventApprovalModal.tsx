@@ -53,7 +53,7 @@ export default function AdminEventApprovalModal({ event, onClose, onRefresh }: P
         const data = await res.json();
         toast.error(`Hata: ${data.error || 'İşlem başarısız'}`);
       }
-    } catch (err) {
+    }catch {
       toast.error("Sunucuya ulaşılamadı.");
     } finally {
       setIsSubmitting(false);

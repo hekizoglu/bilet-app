@@ -41,7 +41,7 @@ export default function FeedbackWidget() {
         setErrorMsg(data.error || 'Bir hata oluştu.');
         setStatus('error');
       }
-    } catch (err) {
+    }catch {
       setErrorMsg('Sunucuya bağlanılamadı.');
       setStatus('error');
     }

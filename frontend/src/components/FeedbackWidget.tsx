@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { MessageSquare, X, Send } from 'lucide-react';
+import { MessageSquare, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function FeedbackWidget() {
@@ -31,7 +31,7 @@ export default function FeedbackWidget() {
       } else {
         toast.error(data.error || 'Gönderim başarısız.');
       }
-    } catch (error) {
+    }catch {
       toast.error('Bağlantı hatası oluştu.');
     } finally {
       setIsSubmitting(false);

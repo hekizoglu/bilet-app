@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
-
 export default function DebugSentry() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">

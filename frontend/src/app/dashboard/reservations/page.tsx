@@ -61,7 +61,7 @@ export default function ReservationsPage() {
       } else {
         toast.error('Hata: ' + data.error);
       }
-    } catch (err) {
+    }catch {
       toast.error('Bağlantı hatası');
     }
   };
@@ -89,7 +89,7 @@ export default function ReservationsPage() {
       } else {
         toast.error('Hata: ' + data.error);
       }
-    } catch (err) {
+    }catch {
       toast.error('Bağlantı hatası');
     }
   };
@@ -116,7 +116,7 @@ export default function ReservationsPage() {
       } else {
         toast.error('Hata: ' + data.error);
       }
-    } catch (err) {
+    }catch {
       toast.error('Bağlantı hatası');
     }
   };
@@ -152,7 +152,7 @@ export default function ReservationsPage() {
       } else {
         toast.error('Hata: ' + data.error);
       }
-    } catch (err) {
+    }catch {
       toast.error('Bağlantı hatası');
     }
   };

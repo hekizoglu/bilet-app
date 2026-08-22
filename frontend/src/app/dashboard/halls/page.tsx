@@ -50,7 +50,7 @@ export default function HallsPage() {
         const data = await res.json();
         toast.error(`Hata: ${data.error || 'Bilinmeyen hata'}`);
       }
-    } catch (err) {
+    }catch {
       toast.error('Sunucuya bağlanılamadı');
     }
   };
