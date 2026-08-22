@@ -262,32 +262,57 @@ app.get('/api/admin/reports', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Bu işlem için yetkiniz yok.' });
     }
 
-    const prismaInstance = require('./prisma');
+    // ORGANIZER yalnızca kendi etkinliklerinin verilerini görür (ADMIN sistem geneli)
+    const isAdmin = req.user.role === 'ADMIN';
+    const eventScope = isAdmin ? {} : { event: { organizerId: req.user.id } };
 
-    // Tüm rezervasyonları çek (sadece gereken alanlar)
-    const reservations = await prismaInstance.reservation.findMany({
-      select: {
-        paymentStatus: true,
-        paymentDetails: true,
-        paymentMethod: true,
-        createdAt: true,
-        event: {
-          select: { price: true }
+    // 60 saniyelik önbellek — dashboard sık sorgular; veri 1 dk'da bir güncellenir
+    const cacheKey = `admin_reports_${isAdmin ? 'system' : `org_${req.user.id}`}`;
+    const cacheModule = require('./utils/cache');
+    const cached = cacheModule.get(cacheKey);
+    if (cached) return res.json(cached);
+
+    const prismaInstance = require('./prisma');
+    const now = new Date();
+    const twentyFourMonthsAgo = new Date(now.getFullYear() - 2, now.getMonth(), 1);
+
+    // ── Paralel, daraltılmış sorgular (tüm tabloyu belleğe almak yerine) ──
+    // 1) Tutar özetleri + yöntem dağılımı için tüm satırların LEAN hali
+    // 2) IBAN toplamları: yalnızca senderIban içeren ödenmiş kayıtlar
+    // 3) Aylık dağılım: yalnızca son 24 ayın ödenmiş kayıtları (paidAt doğru kullanılarak)
+    const [allRows, ibanRows, monthlyRows] = await Promise.all([
+      prismaInstance.reservation.findMany({
+        where: eventScope,
+        select: {
+          paymentStatus: true,
+          paymentMethod: true,
+          event: { select: { price: true, paymentType: true } }
         }
-      }
-    });
+      }),
+      prismaInstance.reservation.findMany({
+        where: { ...eventScope, paymentStatus: 'paid', paymentDetails: { contains: 'senderIban' } },
+        select: {
+          paymentDetails: true,
+          event: { select: { price: true } }
+        }
+      }),
+      prismaInstance.reservation.findMany({
+        where: { ...eventScope, paymentStatus: 'paid', paidAt: { gte: twentyFourMonthsAgo } },
+        select: {
+          paidAt: true,
+          paymentDetails: true,
+          event: { select: { price: true } }
+        }
+      })
+    ]);
 
     let totalPaid = 0;
     let totalPending = 0;
     let totalRefunded = 0;
     const methodDistribution = { bankTransfer: 0, creditcard: 0, telegram: 0, free: 0 };
-    const ibanTotals = {};
-    const monthlyReports = {};
 
-    reservations.forEach(r => {
+    allRows.forEach(r => {
       const price = r.event?.price || 0;
-
-      // Ödeme durumu dağılımları
       if (r.paymentStatus === 'paid') {
         totalPaid += price;
       } else if (r.paymentStatus === 'pending' || r.paymentStatus === 'pending_verification') {
@@ -303,43 +328,42 @@ app.get('/api/admin/reports', requireAuth, async (req, res) => {
         totalRefunded += refAmt;
       }
 
-      // Ödeme yöntemi dağılımları
       const method = r.paymentMethod || r.event?.paymentType || 'free';
       methodDistribution[method] = (methodDistribution[method] || 0) + 1;
-
-      // IBAN Toplamları
-      if (r.paymentStatus === 'paid' && r.paymentDetails) {
-        try {
-          const details = JSON.parse(r.paymentDetails);
-          const iban = details.senderIban || 'Diğer / Belirtilmemiş';
-          ibanTotals[iban] = (ibanTotals[iban] || 0) + price;
-        } catch(e) {}
-      }
-
-      // Aylık Dağılım
-      const date = r.paidAt || r.createdAt;
-      if (date) {
-        const monthKey = new Date(date).toLocaleString('tr-TR', { year: 'numeric', month: 'long' });
-        if (!monthlyReports[monthKey]) {
-          monthlyReports[monthKey] = { paidCount: 0, paidSum: 0 };
-        }
-        if (r.paymentStatus === 'paid') {
-          monthlyReports[monthKey].paidCount++;
-          monthlyReports[monthKey].paidSum += price;
-        }
-      }
     });
 
-    res.json({
-      summary: {
-        totalPaid,
-        totalPending,
-        totalRefunded
-      },
+    // IBAN toplamları (yalnızca gerçekten IBAN içeren kayıtlardan)
+    const ibanTotals = {};
+    ibanRows.forEach(r => {
+      try {
+        const details = JSON.parse(r.paymentDetails);
+        const iban = details.senderIban || 'Diğer / Belirtilmemiş';
+        ibanTotals[iban] = (ibanTotals[iban] || 0) + (r.event?.price || 0);
+      } catch(e) {}
+    });
+
+    // Aylık dağılım (son 24 ay — FIX: paidAt alanı artık doğru kullanılıyor)
+    const monthlyReports = {};
+    monthlyRows.forEach(r => {
+      const date = r.paidAt || r.createdAt;
+      if (!date) return;
+      const monthKey = new Date(date).toLocaleString('tr-TR', { year: 'numeric', month: 'long' });
+      if (!monthlyReports[monthKey]) {
+        monthlyReports[monthKey] = { paidCount: 0, paidSum: 0 };
+      }
+      monthlyReports[monthKey].paidCount++;
+      monthlyReports[monthKey].paidSum += r.event?.price || 0;
+    });
+
+    const result = {
+      summary: { totalPaid, totalPending, totalRefunded },
       methodDistribution,
       ibanTotals,
       monthlyReports: Object.entries(monthlyReports).map(([month, data]) => ({ month, ...data }))
-    });
+    };
+
+    cacheModule.set(cacheKey, result, 60 * 1000);
+    res.json(result);
   } catch (err) {
     console.error("Dashboard rapor hatası:", err);
     res.status(500).json({ error: 'Raporlar hesaplanamadı.' });
