@@ -70,9 +70,9 @@ router.post('/', requireAuth, validate(eventSchema), async (req, res) => {
     // Etkinliği oluşturan kişi, o etkinliğin organizatörüdür
     data.organizerId = req.user.id;
     const event = await prisma.event.create({ data });
-    cache.del('events');
-    cache.del('public_events');
-    cache.del('aggregator_events');
+    await cache.del('events');
+    await cache.del('public_events');
+    await cache.del('aggregator_events');
     res.status(201).json(event);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -95,7 +95,7 @@ router.post('/:id/regenerate-slug', requireAuth, async (req, res) => {
       data: { privateSlug: newSlug }
     });
     
-    cache.del('events');
+    await cache.del('events');
     res.json({ privateSlug: updated.privateSlug });
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -107,7 +107,7 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const isAdmin = req.user.role === 'ADMIN';
     const cacheKey = isAdmin ? 'events_admin' : `events_user_${req.user.id}`;
-    const cached = cache.get(cacheKey);
+    const cached = await cache.get(cacheKey);
     if (cached) return res.json(cached);
 
     const whereClause = isAdmin ? {} : { organizerId: req.user.id };
@@ -121,7 +121,7 @@ router.get('/', requireAuth, async (req, res) => {
       }, 
       orderBy: { createdAt: 'desc' } 
     });
-    cache.set(cacheKey, events, 5 * 60 * 1000); // 5 min cache
+    await cache.set(cacheKey, events, 5 * 60 * 1000); // 5 min cache
     res.json(events);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -173,11 +173,11 @@ async function getPublicEventsEnriched() {
 // Ana sayfa için zenginleştirilmiş liste: satış/kapasite bilgisi ile
 router.get('/public', async (req, res) => {
   try {
-    const cached = cache.get('public_events');
+    const cached = await cache.get('public_events');
     if (cached) return res.json(cached);
 
     const enriched = await getPublicEventsEnriched();
-    cache.set('public_events', enriched, 5 * 60 * 1000);
+    await cache.set('public_events', enriched, 5 * 60 * 1000);
     res.json(enriched);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -187,7 +187,7 @@ router.get('/public', async (req, res) => {
 // Get Public Stats (Homepage sosyal kanıt / istatistik şeridi)
 router.get('/stats', async (req, res) => {
   try {
-    const cached = cache.get('public_stats');
+    const cached = await cache.get('public_stats');
     if (cached) return res.json(cached);
 
     const now = new Date();
@@ -207,7 +207,7 @@ router.get('/stats', async (req, res) => {
       ticketsSold,
     };
 
-    cache.set('public_stats', result, 2 * 60 * 1000);
+    await cache.set('public_stats', result, 2 * 60 * 1000);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: "İstatistikler alınamadı." });
@@ -217,7 +217,7 @@ router.get('/stats', async (req, res) => {
 // Get Aggregator Events (Merkezi Keşif Portalı)
 router.get('/aggregator', async (req, res) => {
   try {
-    const cached = cache.get('aggregator_events');
+    const cached = await cache.get('aggregator_events');
     if (cached) return res.json(cached);
 
     const events = await prisma.event.findMany({
@@ -234,7 +234,7 @@ router.get('/aggregator', async (req, res) => {
       },
       orderBy: { date: 'asc' }
     });
-    cache.set('aggregator_events', events, 5 * 60 * 1000);
+    await cache.set('aggregator_events', events, 5 * 60 * 1000);
     res.json(events);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -349,12 +349,12 @@ router.put('/:id', requireAuth, validate(eventSchema), async (req, res) => {
     });
     
     if (req.user.role !== 'ADMIN') {
-      cache.del(`events_user_${req.user.id}`);
+      await cache.del(`events_user_${req.user.id}`);
     } else {
-      cache.del('events_admin');
+      await cache.del('events_admin');
     }
-    cache.del('public_events');
-    cache.del('aggregator_events'); // FIND-006 fix from iteration 3
+    await cache.del('public_events');
+    await cache.del('aggregator_events'); // FIND-006 fix from iteration 3
     res.json(event);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -375,11 +375,11 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
         status: 'Aktif'
       }
     });
-    cache.del('events');
-    cache.del('events_admin');
-    cache.del(`events_user_${event.organizerId}`);
-    cache.del('public_events');
-    cache.del('aggregator_events');
+    await cache.del('events');
+    await cache.del('events_admin');
+    await cache.del(`events_user_${event.organizerId}`);
+    await cache.del('public_events');
+    await cache.del('aggregator_events');
     res.json({ success: true, event });
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -400,11 +400,11 @@ router.post('/:id/reject', requireAuth, async (req, res) => {
         status: 'Taslak' // Organizatör düzeltip yeniden gönderebilsin
       }
     });
-    cache.del('events');
-    cache.del('events_admin');
-    cache.del(`events_user_${event.organizerId}`);
-    cache.del('public_events');
-    cache.del('aggregator_events');
+    await cache.del('events');
+    await cache.del('events_admin');
+    await cache.del(`events_user_${event.organizerId}`);
+    await cache.del('public_events');
+    await cache.del('aggregator_events');
     res.json({ success: true, event });
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -424,11 +424,11 @@ router.post('/:id/suspend', requireAuth, async (req, res) => {
         status: 'Pasif'
       }
     });
-    cache.del('events');
-    cache.del('events_admin');
-    cache.del(`events_user_${event.organizerId}`);
-    cache.del('public_events');
-    cache.del('aggregator_events');
+    await cache.del('events');
+    await cache.del('events_admin');
+    await cache.del(`events_user_${event.organizerId}`);
+    await cache.del('public_events');
+    await cache.del('aggregator_events');
     res.json({ success: true, event });
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });

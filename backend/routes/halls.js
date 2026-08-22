@@ -48,7 +48,7 @@ router.post('/', requireAuth, validate(hallSchema), async (req, res) => {
     req.body.organizerId = req.user.id;
     req.body.calculatedSeatCount = getCalculatedSeatCount(req.body.layoutJson);
     const hall = await prisma.hall.create({ data: req.body });
-    cache.del('halls');
+    await cache.del('halls');
     res.status(201).json(hall);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -80,7 +80,7 @@ router.post('/:id/clone', requireAuth, async (req, res) => {
         calculatedSeatCount: getCalculatedSeatCount(original.layoutJson)
       }
     });
-    cache.del('halls');
+    await cache.del('halls');
     res.status(201).json(clone);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -169,8 +169,8 @@ router.put('/:id', requireAuth, validate(hallSchema), async (req, res) => {
       where: { id: req.params.id },
       data: req.body
     });
-    cache.del('halls');
-    cache.del(`hall_${req.params.id}`);
+    await cache.del('halls');
+    await cache.del(`hall_${req.params.id}`);
     res.json(hall);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });

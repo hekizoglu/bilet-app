@@ -269,7 +269,7 @@ app.get('/api/admin/reports', requireAuth, async (req, res) => {
     // 60 saniyelik önbellek — dashboard sık sorgular; veri 1 dk'da bir güncellenir
     const cacheKey = `admin_reports_${isAdmin ? 'system' : `org_${req.user.id}`}`;
     const cacheModule = require('./utils/cache');
-    const cached = cacheModule.get(cacheKey);
+    const cached = await cacheModule.get(cacheKey);
     if (cached) return res.json(cached);
 
     const prismaInstance = require('./prisma');
@@ -362,7 +362,7 @@ app.get('/api/admin/reports', requireAuth, async (req, res) => {
       monthlyReports: Object.entries(monthlyReports).map(([month, data]) => ({ month, ...data }))
     };
 
-    cacheModule.set(cacheKey, result, 60 * 1000);
+    await cacheModule.set(cacheKey, result, 60 * 1000);
     res.json(result);
   } catch (err) {
     console.error("Dashboard rapor hatası:", err);

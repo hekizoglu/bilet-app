@@ -156,7 +156,7 @@ const telegramCircuit = new CircuitBreaker(
 router.get('/availability/:eventId', async (req, res) => {
   try {
     const cacheKey = `availability_${req.params.eventId}`;
-    const cached = cache.get(cacheKey);
+    const cached = await cache.get(cacheKey);
     if (cached) return res.json(cached);
 
     // uuid format check
@@ -252,7 +252,7 @@ router.get('/availability/:eventId', async (req, res) => {
       };
     }
 
-    cache.set(cacheKey, responseData, 5 * 60 * 1000);
+    await cache.set(cacheKey, responseData, 5 * 60 * 1000);
     res.json(responseData);
 
   } catch (error) {
@@ -539,8 +539,8 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
     if (redisClient && event.isSeated && req.body.seatId) {
       await redisClient.del(`seat_lock:${event.id}:${req.body.seatId}`);
     }
-    cache.clearEventCache(event.id);
-    cache.clearAdminReservationsCache();
+    await cache.clearEventCache(event.id);
+    await cache.clearAdminReservationsCache();
 
     // Soket Yayını: Sadece o etkinliğe (room) bağlı müşterilere seat_booked mesajı yolla
     const io = req.app.get('io');
@@ -705,8 +705,8 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
     }
 
     // Evict availability and reservation list caches
-    cache.clearEventCache(reservation.eventId);
-    cache.clearAdminReservationsCache();
+    await cache.clearEventCache(reservation.eventId);
+    await cache.clearAdminReservationsCache();
 
     // Fikir #6: QR Kodu Base64 formatında oluştur
     const QRCode = require('qrcode');
@@ -785,8 +785,8 @@ router.post('/:id/cancel', requireAuth, async (req, res) => {
     }
 
     // Evict caches
-    cache.clearEventCache(reservation.eventId);
-    cache.clearAdminReservationsCache();
+    await cache.clearEventCache(reservation.eventId);
+    await cache.clearAdminReservationsCache();
 
     // Soket Yayını: Koltuğun serbest bırakıldığını bildir
     const io = req.app.get('io');
@@ -899,7 +899,7 @@ router.get('/', requireAuth, async (req, res) => {
     
     const whereClause = req.user.role === 'ADMIN' ? {} : { event: { organizerId: req.user.id } };
     const cacheKey = `admin_reservations_${page}_${limit}_${req.user.id}`;
-    const cached = cache.get(cacheKey);
+    const cached = await cache.get(cacheKey);
     if (cached) return res.json(cached);
 
     const [reservations, total] = await prisma.$transaction([
@@ -933,7 +933,7 @@ router.get('/', requireAuth, async (req, res) => {
       }
     };
 
-    cache.set(cacheKey, responseData, 5 * 1000); // 5 seconds cache
+    await cache.set(cacheKey, responseData, 5 * 1000); // 5 seconds cache
     res.json(responseData);
   } catch (error) {
     res.status(500).json({ error: "Sunucu hatası" });
@@ -1114,8 +1114,8 @@ router.post('/:id/self-refund', requireAuth, async (req, res) => {
     }
 
     // Evict availability and reservation list caches
-    cache.clearEventCache(reservation.eventId);
-    cache.clearAdminReservationsCache();
+    await cache.clearEventCache(reservation.eventId);
+    await cache.clearAdminReservationsCache();
 
     // Soket Yayını: Koltuğun serbest bırakıldığını bildir (Real-time seat release)
     const io = req.app.get('io');
@@ -1173,7 +1173,7 @@ router.post('/:id/transfer', requireAuth, async (req, res) => {
       }
     });
 
-    cache.clearAdminReservationsCache();
+    await cache.clearAdminReservationsCache();
 
     res.json({ success: true, message: "Bilet başarıyla devredildi.", reservation: updated });
   } catch (error) {
@@ -1233,8 +1233,8 @@ router.post('/:id/refund', requireAuth, async (req, res) => {
     }
 
     // Evict availability and reservation list caches
-    cache.clearEventCache(reservation.eventId);
-    cache.clearAdminReservationsCache();
+    await cache.clearEventCache(reservation.eventId);
+    await cache.clearAdminReservationsCache();
 
     // Soket Yayını: Koltuğun serbest bırakıldığını bildir (Real-time seat release)
     const io = req.app.get('io');
