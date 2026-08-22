@@ -226,3 +226,38 @@ Ayrıca `services/reminderCron.js` **hiçbir yerden import edilmiyor** → 24 sa
 | `bank-webhook` auth'suz | `routes/payments.js:184` → ✅ `requireAuth` yok |
 | `/api/users/me` yok | `grep` → ✅ backend'de tanımsız |
 | reminderCron çalışmıyor | `grep reminderCron` → ✅ hiçbir yerden import edilmiyor |
+
+---
+
+## 9. 🔄 Güncelleme (2026-08-22) — Düzeltme Durumu
+
+Yukarıdaki rapordaki maddelerin büyük bölümü **uygulandı ve main'e push edildi**:
+
+| Madde | Durum |
+|---|---|
+| P0-1 Sahte webhook ile bedava bilet | ✅ **ÇÖZÜLDÜ** — HMAC-SHA256 imza (ham gövde), `WEBHOOK_SECRET` üretimde zorunlu, tutar kontrolü, rate limit, regex uyumu |
+| P0-2 IDOR (public/:id) | ✅ **ÇÖZÜLDÜ** — `?email=` sahiplik kanıtı; frontend JWT'den email gönderiyor |
+| P0-3 Kart/CVV | ✅ **ÇÖZÜLDÜ** (kısmi) — Luhn doğrulaması eklendi; gerçek sanal POS entegrasyonu hâlâ önerilir |
+| P0-4 Hardcoded secret fallback'leri | ✅ **ÇÖZÜLDÜ** — `getJwtSecret()` zorunlu, encryption key env tabanlı |
+| P0-5 `.env.staging` repoda | ✅ **ÇÖZÜLDÜ** — takipten çıkarıldı + gitignore |
+| P1-1 lock-seat DoS | ✅ **ÇÖZÜLDÜ** — sahiplik tabanlı (lockId) + sıkı limiter |
+| P1-2 bulk-checkin yetkisi | ✅ **ÇÖZÜLDÜ** — eventId zorunlu + sahiplik kontrolü |
+| P1-3 Sadakat puanı başkasının hesabından | ⏳ Açık — misafir checkout'ta `usePoints` kısıtı önerilir |
+| P1-4 Docker `/api/api/` | ✅ **ÇÖZÜLDÜ** — merkezi `lib/api.ts` + relative fallback + dev proxy |
+| P1-5 Eksik endpoint'ler | ✅ **ÇÖZÜLDÜ** — `/users/me`, `/switch-role`, `POST /notifications/:id/read` eklendi |
+| P1-6 CI kırmızı | ✅ **ÇÖZÜLDÜ** — `DATABASE_URL` + `prisma db push` + lint adımı; CI yeşil |
+| P1-7 Status string kaosu | ✅ **ÇÖZÜLDÜ** — `Onayland`/`Onaylandı` düzeltildi; reminder cron index.js'e bağlandı |
+| P1-8 Mojibake | ✅ **ÇÖZÜLDÜ** — UTF-8 normalize |
+| P2-1 XSS devre dışı | ✅ — bakımsız `xss-clean` kaldırıldı; zod + React escape yeterli |
+| P2-2 In-memory cache | ✅ **ÇÖZÜLDÜ** — Redis destekli cache (fallback ile) |
+| P2-3 In-memory queue | ✅ **ÇÖZÜLDÜ** — BullMQ (Redis) + in-memory fallback |
+| P2-4 Duplicate route'lar | ✅ **ÇÖZÜLDÜ** — tekleştirildi |
+| P2-5 Duplike check-in | ⏳ Açık — 4 endpoint tek servise indirilebilir |
+| P2-6 Admin stats organizatör kapsamı | ✅ **ÇÖZÜLDÜ** — ORGANIZER yalnızca kendi verisi |
+| P2-7 PRIVATE slug üretimi | ✅ **ÇÖZÜLDÜ** — PUT'ta otomatik slug |
+| P2-8 Koltuk sayımı tutarsızlığı | ✅ **ÇÖZÜLDÜ** — ortak sayım mantığı |
+| P2-9 ESLint 130 hata | ✅ **ÇÖZÜLDÜ** — **0 hata + 0 warning** |
+| P2-10 Sentry örnekleme | ✅ **ÇÖZÜLDÜ** — %10 |
+| P2-11 Global rate limit | ✅ **ÇÖZÜLDÜ** — `RATE_LIMIT_MAX` env |
+| P2-13 expiresAt/çifte temizlik | ⏳ Açık (kısmen) |
+| P3 Teknik borç | ⏳ Devam ediyor |

@@ -515,15 +515,23 @@ PM2 cluster modunda birden fazla Node.js process'i çalışır. A process'indeki
 
 ---
 
-### ⚠ BİLİNEN KISITLAMALAR (Henüz Çözülmedi):
+### ✅ ÇÖZÜLEN KISITLAMALAR (2026-08-22 itibarıyla):
 
-1. **In-Memory Cache (PM2'de tutarsız):** Her process kendi cache'ini tutar. Bir process'te cache temizlendiğinde diğerleri eski veriyi gösterebilir. **Çözüm:** Redis cache'e geçilmesi.
+1. ✅ **In-Memory Cache → Redis destekli:** `utils/cache.js` yeniden yazıldı — `REDIS_URL` tanımlıysa tüm PM2 process'leri AYNI önbelleği paylaşır (tek invalidation noktası); Redis yoksa bellek içi fallback çalışır. `isRedisActive()` ile durum sorgulanabilir.
 
-2. **setTimeout Zamanlayıcı Kalıcılığı:** Sunucu yeniden başlarsa 15 dakikalık soft hold zamanlayıcıları kaybolur. Ödeme bekleniyor statüsündeki geçici rezervasyonlar ebediyen asılı kalır. **Çözüm:** BullMQ veya cron job ile periyodik temizlik.
+2. ✅ **setTimeout/Zamanlayıcı Kaybolması → BullMQ:** `utils/queue.js` yeniden yazıldı — `REDIS_URL` tanımlıysa işler Redis'te kalıcıdır (process restart'ında kaybolmaz, PM2 cluster'da her job tek worker tarafından işlenir, 3 otomatik deneme + üstel geri çekilme); Redis yoksa in-memory fallback. E-posta/Telegram işleri artık `registerJob(type, fn)` + `addJob(type, payload)` deseniyle çalışır.
 
-3. **Telegram Auth Gmail Bypass:** `telegram.js` route'u `@telegram.local` sahte e-postalar oluşturur — bu Gmail kısıtlamasına tabi değildir. Bu bilinçli bir tasarım kararıdır (Telegram kullanıcılarının Gmail hesabı olmayabilir), ama farkında olunmalıdır.
+3. ⚠️ **Telegram Auth Gmail Bypass:** `telegram.js` route'u `@telegram.local` sahte e-postalar oluşturur — bilinçli tasarım kararıdır (Telegram kullanıcılarının Gmail hesabı olmayabilir), farkında olunmalıdır. **Devam ediyor (bilinçli).**
 
-4. **Admin Stats'ta PrismaClient Sızıntısı:** `index.js` satır 148'de her istatistik sorgusunda yeni `PrismaClient` oluşturulup `$disconnect()` yapılıyor. Yoğun trafik altında bağlantı havuzu şişebilir. **Çözüm:** Global Prisma instance kullanılması.
+4. ✅ **PrismaClient Sızıntısı:** `prisma.js` global singleton kullanıyor (NODE_ENV=production hariç `global.prisma`); istatistik sorguları tek instance üzerinden çalışır.
+
+### 🔒 Ek Güvenlik (2026-08-22):
+1. Banka webhook'u HMAC-SHA256 imza + tutar kontrolü ile korunuyor (`WEBHOOK_SECRET` üretimde zorunlu).
+2. IDOR: `/api/reservations/public/:id` kişisel verileri yalnızca `?email=` ile sahipliğini kanıtlayana döner.
+3. Hardcoded secret fallback'leri kaldırıldı; şifreleme `ENCRYPTION_KEY` veya `JWT_SECRET`'ten türetilir.
+4. `lock-seat` sahiplik tabanlı (lockId), `bulk-checkin` etkinlik sahipliği doğrulamalı.
+5. API yanıtlarında iç hata detayları gizlenir; JSON limiti 1mb; Sentry örneklemesi %10.
+6. `.env.staging` repodan çıkarıldı ve `.gitignore`'a eklendi.
 
 ---
 
