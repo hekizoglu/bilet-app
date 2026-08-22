@@ -73,3 +73,8 @@ aie-system/solutions/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# Secret içeren ortam dosyaları (asla commit etme)
+.env.staging
+.env.test
+.env.production

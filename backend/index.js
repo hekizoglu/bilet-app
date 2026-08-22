@@ -92,7 +92,9 @@ io.on('connection', (socket) => {
     }
     try {
       const jwt = require('jsonwebtoken');
-      const decoded = jwt.verify(data.token, process.env.JWT_SECRET || 'supersecret_bilet_key');
+      // Güvenlik: hardcoded fallback yok — getJwtSecret geçersiz/eksik secret'ta hata fırlatır
+      const { getJwtSecret } = require('./utils/securityConfig');
+      const decoded = jwt.verify(data.token, getJwtSecret());
       if (decoded.role === 'ADMIN' || decoded.role === 'ORGANIZER') {
         socket.join('admin_room');
         logger.info(`Socket ${socket.id} joined admin_room (User: ${decoded.email})`);
@@ -158,7 +160,13 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json({ limit: '10mb' }));
+// verify callback: ham gövdeyi req.rawBody'e sakla — webhook imza doğrulaması
+// bankanın gönderdiği ORİJİNAL byte dizisi üzerinden yapılır (JSON yeniden
+// serileştirme imzayı bozardı).
+app.use(express.json({
+  limit: '10mb',
+  verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); }
+}));
 // app.use(xss()); // Add XSS protection (Disabled due to req.query read-only error)
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use('/api', limiter); // Sadece API rotalarına uygula

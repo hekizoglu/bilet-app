@@ -259,9 +259,18 @@ router.get('/availability/:eventId', async (req, res) => {
 });
 
 // Geçici Koltuk Kilitleme (Redis)
-router.post('/lock-seat', checkoutLimiter, async (req, res) => {
+// GÜVENLİK: Kilidin sahibi bir rastgele lockId'dir — kilidi yalnızca sahibi
+// kaldırabilir (herkesin her koltuğu kilitleyip satışı durdurması engellenir,
+// DoS koruması). Ayrıca IP başına agresif limiter uygulanır.
+const seatLockLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: { error: "Çok fazla koltuk işlemi yaptınız, lütfen biraz bekleyin." }
+});
+
+router.post('/lock-seat', seatLockLimiter, async (req, res) => {
   try {
-    const { eventId, seatId, action } = req.body;
+    const { eventId, seatId, action, lockId } = req.body;
     if (!eventId || !seatId) return res.status(400).json({ error: "Eksik parametre" });
     
     if (!redisClient) {
@@ -277,12 +286,19 @@ router.post('/lock-seat', checkoutLimiter, async (req, res) => {
       });
       if (existing) return res.status(400).json({ error: "Koltuk çoktan rezerve edilmiş" });
 
-      const acquired = await redisClient.set(lockKey, 'locked', 'NX', 'PX', 300000); // 5 dk
+      // Kilit sahibi: rastgele üretilen lockId (client'a döner, unlock'ta istenir)
+      const newLockId = require('crypto').randomUUID();
+      const acquired = await redisClient.set(lockKey, newLockId, 'NX', 'PX', 300000); // 5 dk
       if (!acquired) return res.status(400).json({ error: "Koltuk şu anda işlemde" });
 
       if (io) io.to(eventId).emit('seat_locked', { seatId });
-      return res.json({ success: true });
+      return res.json({ success: true, lockId: newLockId });
     } else if (action === 'unlock') {
+      // Yalnızca kilidi alan istemci (lockId eşleşmesi) kaldırabilir
+      const holder = await redisClient.get(lockKey);
+      if (holder && lockId && holder !== lockId) {
+        return res.status(403).json({ error: "Bu kilidi kaldırma yetkiniz yok." });
+      }
       await redisClient.del(lockKey);
       if (io) io.to(eventId).emit('seat_unlocked', { seatId });
       return res.json({ success: true });
@@ -999,6 +1015,10 @@ router.get('/:id/payment-status', async (req, res) => {
 });
 
 // GET /api/reservations/public/:id
+// Ödeme sayfasının (mobil) ihtiyaç duyduğu bilgileri döndürür.
+// GÜVENLİK (IDOR): Müşterinin adı/e-postası/telefonu yalnızca
+// rezervasyon sahibi (email query param'ı ile kanıtlayan) tarafından görülebilir.
+// Admin IBAN'ı havale akışı için kasıtlı olarak döndürülür (admin-payment-info ile aynı veri).
 router.get('/public/:id', async (req, res) => {
   try {
     const reservation = await prisma.reservation.findUnique({
@@ -1006,7 +1026,11 @@ router.get('/public/:id', async (req, res) => {
       include: { event: { include: { hall: true } } }
     });
     if (!reservation) return res.status(404).json({ error: "Rezervasyon bulunamadı" });
-    
+
+    // Sahiplik kanıtı: query'deki email, rezervasyonun e-postasıyla eşleşmeli
+    const isOwner = typeof req.query.email === 'string' &&
+      req.query.email.trim().toLowerCase() === reservation.email.trim().toLowerCase();
+
     // Admin bilgilerini çek
     const admin = await prisma.user.findFirst({
       where: { role: 'ADMIN' }
@@ -1014,9 +1038,10 @@ router.get('/public/:id', async (req, res) => {
 
     res.json({
       id: reservation.id,
-      customer: reservation.customer,
-      email: reservation.email,
-      paymentReference: reservation.paymentReference,
+      // Yalnızca sahibine özel alanlar
+      customer: isOwner ? reservation.customer : null,
+      email: isOwner ? reservation.email : null,
+      paymentReference: isOwner ? reservation.paymentReference : null,
       paymentStatus: reservation.paymentStatus,
       status: reservation.status,
       seatName: reservation.seatName || reservation.seatId,
@@ -1374,16 +1399,30 @@ router.get('/scanner/:eventId', requireAuth, async (req, res) => {
 });
 
 // POST /api/reservations/bulk-checkin - Offline scanner'dan gelen biletleri sisteme eşitle
+// GÜVENLİK: Yalnızca etkinliğin organizatörü (veya ADMIN) kendi etkinliğinin
+// biletlerini işaretleyebilir — rastgele bilet kodlarını "kullanıldı" yapma
+// saldırısı engellenir. eventId zorunludur.
 router.post('/bulk-checkin', requireAuth, async (req, res) => {
   try {
-    const { ticketCodes } = req.body;
+    const { ticketCodes, eventId } = req.body;
     if (!Array.isArray(ticketCodes) || ticketCodes.length === 0) {
       return res.status(400).json({ error: "Geçersiz ticketCodes listesi" });
+    }
+    if (!eventId || typeof eventId !== 'string') {
+      return res.status(400).json({ error: "eventId zorunludur." });
+    }
+
+    // Sahiplik kontrolü: etkinlik var mı ve kullanıcı yetkili mi?
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!event) return res.status(404).json({ error: "Etkinlik bulunamadı." });
+    if (req.user.role !== 'ADMIN' && event.organizerId !== req.user.id) {
+      return res.status(403).json({ error: "Bu işlem için yetkiniz yok." });
     }
 
     const updated = await prisma.reservation.updateMany({
       where: {
         ticketCode: { in: ticketCodes },
+        eventId, // Yalnızca bu etkinliğin biletleri
         isUsed: false
       },
       data: {

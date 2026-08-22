@@ -73,7 +73,21 @@ function MobilePaymentContent() {
       return;
     }
 
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/public/${id}`)
+    // Sahiplik kanıtı: kullanıcının e-postasını gönder (IDOR koruması — kişisel
+    // bilgiler yalnızca rezervasyon sahibine gösterilir). Cookie'deki JWT'den
+    // çözülür, yoksa localStorage'da saklanan son kullanılan e-posta denenir.
+    let ownerEmail = '';
+    try {
+      const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        if (payload?.email) ownerEmail = payload.email;
+      }
+    } catch { /* token yoksa sessizce geç */ }
+    if (!ownerEmail) ownerEmail = localStorage.getItem('bilet_last_email') || '';
+    const emailQuery = ownerEmail ? `?email=${encodeURIComponent(ownerEmail)}` : '';
+
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/reservations/public/${id}${emailQuery}`)
       .then((r) => {
         if (!r.ok || !r.headers.get('content-type')?.includes('application/json')) throw new Error("Bilet detayları yüklenemedi.");
         return r.json();

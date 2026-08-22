@@ -2,8 +2,19 @@ const crypto = require('crypto');
 
 // AES-256-CBC encryption
 const algorithm = 'aes-256-cbc';
-// We need a 32-byte key. If JWT_SECRET is not 32 bytes, we hash it to get 32 bytes.
-const ENCRYPTION_KEY = crypto.createHash('sha256').update(String(process.env.JWT_SECRET || 'super-secret-key-for-encryption-which-is-long-enough')).digest('base64').substring(0, 32);
+// 32 byte anahtar. Öncelik: ENCRYPTION_KEY env'i, yoksa JWT_SECRET'in SHA-256'sı.
+// GÜVENLİK: Bilinen/fallback bir anahtar YOKTUR — ikisi de yoksa modül yüklenemez.
+const rawKey = process.env.ENCRYPTION_KEY || process.env.JWT_SECRET;
+if (!rawKey) {
+  throw new Error(
+    'Şifreleme anahtarı eksik: ENCRYPTION_KEY veya JWT_SECRET ortam değişkeni tanımlanmalıdır.'
+  );
+}
+const ENCRYPTION_KEY = crypto
+  .createHash('sha256')
+  .update(String(rawKey))
+  .digest('base64')
+  .substring(0, 32);
 
 // IV length is 16 bytes for AES
 const IV_LENGTH = 16;
@@ -27,7 +38,7 @@ function decrypt(text) {
   try {
     const textParts = text.split(':');
     if (textParts.length !== 2) return text; // Maybe it's not encrypted
-    
+
     const iv = Buffer.from(textParts.shift(), 'hex');
     const encryptedText = Buffer.from(textParts.join(':'), 'hex');
     const decipher = crypto.createDecipheriv(algorithm, Buffer.from(ENCRYPTION_KEY), iv);

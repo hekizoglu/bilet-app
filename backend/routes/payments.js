@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const prisma = require('../prisma');
 const ibantools = require('ibantools');
 const { requireAuth } = require('../middlewares/auth');
@@ -31,11 +32,29 @@ const webhookSchema = z.object({
   transactionId: z.string().optional()
 });
 
+/** Luhn algoritması ile kart numarası doğrulama (temel sahtecilik engeli) */
+function isValidLuhn(num) {
+  let sum = 0;
+  let double = false;
+  for (let i = num.length - 1; i >= 0; i--) {
+    let d = num.charCodeAt(i) - 48;
+    if (d < 0 || d > 9) return false;
+    if (double) {
+      d *= 2;
+      if (d > 9) d -= 9;
+    }
+    sum += d;
+    double = !double;
+  }
+  return sum % 10 === 0;
+}
+
 const creditCardSchema = z.object({
   cardNumber: z.string({ required_error: "Kart numarası girilmedi." })
     .trim()
     .transform(val => val.replace(/\s/g, ''))
-    .pipe(z.string().length(16, "Geçersiz kart numarası. Kart numarası 16 haneli olmalıdır.")),
+    .pipe(z.string().length(16, "Geçersiz kart numarası. Kart numarası 16 haneli olmalıdır."))
+    .refine(isValidLuhn, { message: "Geçersiz kart numarası (Luhn kontrolü başarısız)." }),
   expiry: z.string({ required_error: "Son kullanma tarihi girilmedi." }).trim().regex(/^\d{2}\/\d{2}$/, "Geçersiz son kullanma tarihi formatı. Örn: 12/29"),
   cvv: z.string({ required_error: "CVV kodu girilmedi." }).trim().min(3, "CVV en az 3 hane olmalıdır.").max(4, "CVV en fazla 4 hane olmalıdır."),
   holderName: z.string({ required_error: "Kart sahibi adı girilmedi." }).trim().min(3, "Kart sahibi adı en az 3 karakter olmalıdır.")
@@ -181,11 +200,63 @@ router.post('/:reservationId/manual-verify', paymentVerifyLimiter, requireAuth, 
 });
 
 // Banka Webhook: Otomatik Ödeme Eşleştirme
-router.post('/bank-webhook', validate(webhookSchema), async (req, res) => {
-  try {
-    const { description, amount, senderIban, transactionId } = req.body;
+// ─────────────────────────────────────────────
+// GÜVENLİK: Bu uç nokta kimliksizdir çünkü banka sunucudan sunucuya çağırır.
+// Korumalar:
+//  1) HMAC-SHA256 imza doğrulaması (X-Webhook-Signature header'ı)
+//     → WEBHOOK_SECRET ortam değişkeni ile imzalanır; üretimde zorunludur.
+//  2) Tutar kontrolü: gönderilen tutar, rezervasyonun beklenen tutarından
+//     azsa işlem REDDEDİLİR (eksik havale ile otomatik onay engellenir).
+//  3) Rate limit + aynı transactionId'nin tekrar işlenmesi engellenir.
+const webhookLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  message: { error: 'Çok fazla webhook isteği.' }
+});
 
-    // 13.7 Fraud Detection: Aynı transactionId daha önce işlenmiş mi?
+// İmza, HAM gövde (raw body) üzerinden doğrulanır — bankalar gönderdikleri byte
+// dizisini imzalar; JSON yeniden serileştirme imzayı bozar. Ham gövde global
+// express.json verify callback'i ile req.rawBody'e konur (bkz. index.js).
+router.post('/bank-webhook', webhookLimiter, async (req, res) => {
+  try {
+    const rawBody = req.rawBody || JSON.stringify(req.body);
+
+    // 1. İmza doğrulama (varsa). WEBHOOK_SECRET set edilmemişse production'da isteği reddet.
+    const webhookSecret = process.env.WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const receivedSig = (req.headers['x-webhook-signature'] || '').trim();
+      const expectedSig = crypto
+        .createHmac('sha256', webhookSecret)
+        .update(rawBody)
+        .digest('hex');
+      const receivedBuffer = Buffer.from(receivedSig, 'hex');
+      const expectedBuffer = Buffer.from(expectedSig, 'hex');
+      const valid =
+        receivedBuffer.length === expectedBuffer.length &&
+        crypto.timingSafeEqual(receivedBuffer, expectedBuffer);
+
+      if (!valid) {
+        console.warn('⚠️ FRAUD DETECTION: Geçersiz webhook imzası reddedildi.');
+        return res.status(401).json({ error: 'Geçersiz webhook imzası.' });
+      }
+    } else if (process.env.NODE_ENV === 'production') {
+      // Üretimde imza anahtarı olmadan çalışmaya izin verme
+      console.error('CRITICAL: WEBHOOK_SECRET tanımlı değil — banka webhook\'u devre dışı.');
+      return res.status(503).json({ error: 'Webhook yapılandırması eksik.' });
+    }
+
+    // Ham gövdeyi elle doğrula (global validate middleware'i burada kullanılmaz)
+    const parsed = JSON.parse(rawBody);
+    const validated = webhookSchema.safeParse(parsed);
+    if (!validated.success) {
+      return res.status(400).json({
+        error: 'Doğrulama Hatası',
+        details: validated.error.errors.map(e => ({ path: e.path.join('.'), message: e.message }))
+      });
+    }
+    const { description, amount, senderIban, transactionId } = validated.data;
+
+    // 2. Aynı transactionId daha önce işlenmiş mi?
     if (transactionId) {
       const existing = await prisma.reservation.findFirst({
         where: {
@@ -198,8 +269,10 @@ router.post('/bank-webhook', validate(webhookSchema), async (req, res) => {
       }
     }
 
-    // Regex ile referans kodunu çıkar (PAYMENT-YYYY-MM-DD-XXX-ABC123 formatı)
-    const refRegex = /PAYMENT-\d{4}-\d{2}-\d{2}-[A-Z0-9]{3}-[A-Z0-9]{6}/i;
+    // Regex ile referans kodunu çıkar. Üretim formatı:
+    //   PAYMENT-YYYY-MM-DD-ABC123   (tek parça 6 karakter)
+    // Eski format: PAYMENT-YYYY-MM-DD-XXX-ABC123 (iki parça) — geriye dönük uyumluluk için ikisi de kabul edilir.
+    const refRegex = /PAYMENT-\d{4}-\d{2}-\d{2}-(?:[A-Z0-9]{3}-)?[A-Z0-9]{6}/i;
     const match = description.match(refRegex);
 
     if (!match) {
@@ -229,9 +302,22 @@ router.post('/bank-webhook', validate(webhookSchema), async (req, res) => {
       return res.json({ success: true, message: "Rezervasyon iptal edilmiş ancak ödeme alındı, manuel inceleme gerekiyor." });
     }
 
+    // 3. TUTAR KONTROLÜ: Gönderilen tutar, beklenen (indirim/kupon sonrası) tutardan azsa reddet.
+    let expectedAmount = reservation.event?.price || 0;
+    try {
+      const pd = reservation.paymentDetails ? JSON.parse(reservation.paymentDetails) : null;
+      if (pd && typeof pd.finalPrice === 'number') expectedAmount = pd.finalPrice;
+    } catch (e) { /* yok say */ }
+
+    const receivedAmount = Number(amount);
+    if (Number.isNaN(receivedAmount) || receivedAmount < expectedAmount - 0.01) {
+      console.warn(`⚠️ FRAUD DETECTION: Eksik ödeme! Beklenen: ${expectedAmount}, Gönderilen: ${receivedAmount} (Ref: ${paymentRef})`);
+      return res.status(400).json({
+        error: `Gönderilen tutar beklenen tutardan az. Beklenen: ${expectedAmount} ₺, Gelen: ${receivedAmount} ₺`
+      });
+    }
+
     // Rezervasyonu atomic olarak güncelle (sadece pending ise)
-    // Prisma'da update'e ek where koşulu eklemek için updateMany veya özel yapı gerekir, ama id benzersiz olduğu için update de yeterli.
-    // Ancak sadece 'pending' olanları güncellemek için updateMany kullanıp dönen count'a bakmak en güvenlisidir.
     const updateResult = await prisma.reservation.updateMany({
       where: { 
         id: reservation.id,
@@ -241,7 +327,7 @@ router.post('/bank-webhook', validate(webhookSchema), async (req, res) => {
         paymentStatus: 'paid',
         status: 'Onaylı',
         paidAt: new Date(),
-        paymentDetails: JSON.stringify({ senderIban, amount, transactionId, webhookReceivedAt: new Date() })
+        paymentDetails: JSON.stringify({ senderIban, amount: receivedAmount, transactionId, webhookReceivedAt: new Date() })
       }
     });
 
