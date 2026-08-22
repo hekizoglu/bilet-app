@@ -18,6 +18,8 @@ const { CircuitBreaker, retryWithBackoff } = require('../utils/circuitBreaker');
 const taskQueue = require('../utils/queue');
 const Sentry = require('@sentry/node');
 const { Mutex } = require('async-mutex');
+const jwt = require('jsonwebtoken');
+const { getJwtSecret } = require('../utils/securityConfig');
 const { calculateFinalPrice } = require('../services/pricingService');
 
 const reservationMutex = new Mutex();
@@ -482,18 +484,34 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
         // eventIdOrSlug parametresini ve geçici UI alanlarını (socketId, seatIds) temizleyip gerçek eventId ve doğrulanmış seatName ile kaydet
         const { eventIdOrSlug, couponCode, usePoints, socketId, seatIds, ...rest } = req.body;
 
-        // Puan kullanımı
+        // Puan kullanımı — GÜVENLİK (P1-3): yalnızca JWT ile doğrulanmış ve
+        // formdaki e-postayla EŞLEŞEN kullanıcı puan harcayabilir. Aksi halde
+        // herkes başkasının e-postasını yazıp puanlarını tüketebilirdi.
         let pointsUsed = 0;
-        let user = await tx.user.findUnique({ where: { email: rest.email } });
-        if (usePoints && user && user.points > 0 && paymentDetailsObj.finalPrice > 0) {
-          pointsUsed = Math.min(user.points, paymentDetailsObj.finalPrice);
-          paymentDetailsObj.finalPrice -= pointsUsed;
-          paymentDetailsObj.pointsUsed = pointsUsed;
-          
-          await tx.user.update({
-            where: { email: rest.email },
-            data: { points: { decrement: pointsUsed } }
-          });
+        let user = null;
+        if (usePoints) {
+          const authHeader = req.headers.authorization || '';
+          let authedEmail = null;
+          if (authHeader.startsWith('Bearer ')) {
+            try {
+              const decoded = jwt.verify(authHeader.slice('Bearer '.length), getJwtSecret());
+              authedEmail = decoded.email;
+            } catch (e) { /* geçersiz token */ }
+          }
+          if (!authedEmail || authedEmail.toLowerCase() !== String(rest.email).trim().toLowerCase()) {
+            throw new Error("Puan kullanmak için giriş yapmalı ve e-posta adresinizin formdakiyle aynı olması gerekir.");
+          }
+          user = await tx.user.findUnique({ where: { email: authedEmail } });
+          if (user && user.points > 0 && paymentDetailsObj.finalPrice > 0) {
+            pointsUsed = Math.min(user.points, paymentDetailsObj.finalPrice);
+            paymentDetailsObj.finalPrice -= pointsUsed;
+            paymentDetailsObj.pointsUsed = pointsUsed;
+
+            await tx.user.update({
+              where: { email: authedEmail },
+              data: { points: { decrement: pointsUsed } }
+            });
+          }
         }
 
         // Sadakat Puanı Hesaplama (Satın alınan tutarın %5'i kadar puan)
@@ -505,7 +523,10 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
         // Beklemede (havale/eft) olanlar için Onay anına (approve endpoint) bırakıyoruz.
         if (finalStatus === 'Onaylı' && earnedPoints > 0) {
           if (!user) {
-             user = await tx.user.create({ data: { email: rest.email, role: 'CUSTOMER' } });
+            user = await tx.user.findUnique({ where: { email: rest.email } });
+          }
+          if (!user) {
+            user = await tx.user.create({ data: { email: rest.email, role: 'CUSTOMER' } });
           }
           await tx.user.update({
             where: { email: rest.email },
@@ -523,7 +544,11 @@ router.post('/', checkoutLimiter, validate(resSchema), async (req, res) => {
             paymentStatus: finalPaymentStatus,
             paymentReference,
             paymentDetails: JSON.stringify(paymentDetailsObj),
-            earnedPoints
+            earnedPoints,
+            // Ücretli (beklemede) rezervasyonlar için 15 dakikalık ödeme penceresi
+            expiresAt: finalStatus === 'Beklemede'
+              ? new Date(Date.now() + 15 * 60 * 1000)
+              : undefined
           }
         });
       }, {
