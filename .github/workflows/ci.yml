@@ -91,3 +91,72 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:5000
           NEXT_PUBLIC_SOCKET_URL: http://localhost:5000
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ── Backend hazırla ve başlat ──
+      - name: Backend Install
+        working-directory: backend
+        run: npm ci
+
+      - name: Backend Prisma
+        working-directory: backend
+        run: npx prisma generate && npx prisma db push --skip-generate
+        env:
+          DATABASE_URL: file:./prisma/e2e.db
+
+      - name: Backend Seed
+        working-directory: backend
+        run: node seed-preview.js
+        env:
+          DATABASE_URL: file:./prisma/e2e.db
+
+      - name: Start Backend
+        working-directory: backend
+        run: |
+          DATABASE_URL=file:./prisma/e2e.db \
+          JWT_SECRET=e2e-test-secret-12345678901234567890 \
+          NODE_ENV=staging ENABLE_LOCAL_AUTH=true PORT=5000 \
+          nohup node index.js > /tmp/backend.log 2>&1 &
+          for i in $(seq 1 30); do curl -s -o /dev/null http://localhost:5000/health && break; sleep 2; done
+          curl -sf http://localhost:5000/health
+
+      # ── Frontend hazırla ve başlat ──
+      - name: Frontend Install
+        working-directory: frontend
+        run: npm ci
+
+      - name: Frontend Build
+        working-directory: frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5000
+          NEXT_PUBLIC_SOCKET_URL: http://localhost:5000
+
+      - name: Start Frontend
+        working-directory: frontend
+        run: |
+          NEXT_PUBLIC_API_URL=http://localhost:5000 \
+          nohup npx next start -p 3005 > /tmp/frontend.log 2>&1 &
+          for i in $(seq 1 30); do curl -s -o /dev/null http://localhost:3005 && break; sleep 2; done
+          curl -sf http://localhost:3005
+
+      # ── Playwright ──
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E Tests
+        run: npx playwright test
+        env:
+          CI: 'true'
