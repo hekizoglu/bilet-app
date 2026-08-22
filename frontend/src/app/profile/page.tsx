@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Ticket, Calendar, MapPin, Loader2, Navigation } from 'lucide-react';
 import Link from 'next/link';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -26,18 +26,14 @@ const [reservations, setReservations] = useState<MyReservation[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<MyReservation | null>(null);
   const [userDetails, setUserDetails] = useState<{ email?: string; points?: number; name?: string; telegramUsername?: string | null; iban?: string | null } | null>(null);
 
-  useEffect(() => {
-    fetchReservations();
-  }, []);
-
-  const getCookie = (name: string) => {
+    const getCookie = (name: string) => {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop()?.split(';').shift();
     return null;
   };
 
-  const fetchReservations = async () => {
+const fetchReservations = useCallback(async () => {
     try {
       const token = document.cookie.split('; ').find(row => row.startsWith('token='))?.split('=')[1];
       if (!token) return;
@@ -64,7 +60,15 @@ const [reservations, setReservations] = useState<MyReservation[]>([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+useEffect(() => {
+    fetchReservations();
+  }, [fetchReservations]);
+
+
+
+  
 
   const handlePaymentNotification = async (resId: string) => {
     try {

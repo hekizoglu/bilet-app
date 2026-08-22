@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { UserPlus, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
@@ -11,7 +11,7 @@ export default function EventStaffPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const fetchStaff = async () => {
+  const fetchStaff = useCallback(async () => {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/events/${id}/staff`, {
         headers: {
@@ -27,11 +27,11 @@ export default function EventStaffPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchStaff();
-  }, [id]);
+  }, [id, fetchStaff]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Save, AlertCircle } from 'lucide-react';
 
 export default function SettingsPage() {
@@ -14,11 +14,13 @@ export default function SettingsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  const fetchProfile = async () => {
+    const getCookie = (name: string) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(';').shift();
+    return null;
+  };
+const fetchProfile = useCallback(async () => {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/users/profile`, {
         headers: {
@@ -39,7 +41,13 @@ export default function SettingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+useEffect(() => {
+    fetchProfile();
+  }, [fetchProfile]);
+
+  
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,12 +79,7 @@ export default function SettingsPage() {
     }
   };
 
-  const getCookie = (name: string) => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(';').shift();
-    return null;
-  };
+
 
   if (loading) return <div className="p-8">Yükleniyor...</div>;
 

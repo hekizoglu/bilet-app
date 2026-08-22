@@ -80,22 +80,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, object>(fun
 
   const SNAP_GRID = 10;
 
-  useEffect(() => {
-    if (hallId) fetchHall(hallId);
-  }, [hallId]);
-
-  useEffect(() => {
-    if (backgroundImage) {
-      const img = new window.Image();
-      img.src = backgroundImage;
-      img.onload = () => setBgImageObj(img);
-      img.onerror = () => setBgImageObj(null);
-    } else {
-      setBgImageObj(null);
-    }
-  }, [backgroundImage]);
-
-  const fetchHall = async (id: string) => {
+  const fetchHall = useCallback(async (id: string) => {
     const token = getCookie('token');
   const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     try {
@@ -139,7 +124,7 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, object>(fun
     } catch (err) {
       console.error(err);
     }
-  };
+  }, []);
 
   const getCookie = (name: string) => {
     const value = `; ${document.cookie}`;
@@ -147,6 +132,22 @@ const HallDesignerCanvasInner = forwardRef<HallDesignerCanvasHandle, object>(fun
     if (parts.length === 2) return parts.pop()?.split(';').shift();
     return null;
   };
+
+  useEffect(() => {
+    if (hallId) fetchHall(hallId);
+  }, [hallId, fetchHall]);
+
+  useEffect(() => {
+    if (backgroundImage) {
+      const img = new window.Image();
+      img.src = backgroundImage;
+      img.onload = () => setBgImageObj(img);
+      img.onerror = () => setBgImageObj(null);
+    } else {
+      setBgImageObj(null);
+    }
+  }, [backgroundImage]);
+
 
   const handleDragStart = (id: string) => {
     const targetIds = selectedIds.includes(id) ? selectedIds : [id];

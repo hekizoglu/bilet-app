@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { MapIcon, ArrowRight, Copy } from 'lucide-react';
 import Link from 'next/link';
@@ -8,7 +8,14 @@ import Link from 'next/link';
 export default function HallsPage() {
   const [halls, setHalls] = useState<{ id: string; name: string; seatCount?: number; calculatedSeatCount?: number; address?: string | null; isGlobal?: boolean; description?: string | null }[]>([]);
 
-  const fetchHalls = async () => {
+  const getCookie = (name: string) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(';').shift();
+    return null;
+  };
+
+  const fetchHalls = useCallback(async () => {
     const token = getCookie('token');
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/halls`, {
@@ -21,18 +28,11 @@ export default function HallsPage() {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchHalls();
-  }, []);
-
-  const getCookie = (name: string) => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(';').shift();
-    return null;
-  };
+  }, [fetchHalls]);
 
   const handleClone = async (id: string) => {
     const token = getCookie('token');

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { Download, UploadCloud, CheckCircle, XCircle, AlertTriangle, Scan, Camera } from 'lucide-react';
@@ -24,27 +24,13 @@ export default function OfflineScannerPage() {
   const [isScanning, setIsScanning] = useState(false);
   const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
-  useEffect(() => {
-    fetchEvents();
-    // Load state from local storage on mount
-    const savedTickets = localStorage.getItem('offline_tickets');
-    if (savedTickets) setTickets(JSON.parse(savedTickets));
-    
-    const savedPending = localStorage.getItem('pending_sync');
-    if (savedPending) setPendingSync(JSON.parse(savedPending));
-    
-    const savedEvent = localStorage.getItem('offline_event_id');
-    if (savedEvent) setSelectedEventId(savedEvent);
-  }, []);
-
-  const getCookie = (name: string) => {
+    const getCookie = (name: string) => {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop()?.split(';').shift();
     return null;
   };
-
-  const fetchEvents = async () => {
+const fetchEvents = useCallback(async () => {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/events`, {
         headers: { 'Authorization': `Bearer ${getCookie('token')}` }
@@ -56,7 +42,24 @@ export default function OfflineScannerPage() {
     } catch (e) {
       console.error("Etkinlikler yüklenemedi", e);
     }
-  };
+  }, []);
+
+useEffect(() => {
+    fetchEvents();
+    // Load state from local storage on mount
+    const savedTickets = localStorage.getItem('offline_tickets');
+    if (savedTickets) setTickets(JSON.parse(savedTickets));
+    
+    const savedPending = localStorage.getItem('pending_sync');
+    if (savedPending) setPendingSync(JSON.parse(savedPending));
+    
+    const savedEvent = localStorage.getItem('offline_event_id');
+    if (savedEvent) setSelectedEventId(savedEvent);
+  }, [fetchEvents]);
+
+
+
+  
 
   const downloadTickets = async () => {
     if (!selectedEventId) toast.error("Lütfen bir etkinlik seçin"); return;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Users, LayoutGrid, Loader2 } from 'lucide-react';
 
 export interface LayoutData {
@@ -23,11 +23,7 @@ export default function StepLayout({ data, onChange, onNext, onBack, setEffectiv
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showDesigner, setShowDesigner] = useState(false);
 
-  useEffect(() => {
-    fetchHalls();
-  }, []);
-
-  const fetchHalls = async () => {
+  const fetchHalls = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
@@ -47,7 +43,13 @@ export default function StepLayout({ data, onChange, onNext, onBack, setEffectiv
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+useEffect(() => {
+    fetchHalls();
+  }, [fetchHalls]);
+
+  
 
   const getEffectiveCapacity = () => {
     if (!data.isSeated) return data.capacity;

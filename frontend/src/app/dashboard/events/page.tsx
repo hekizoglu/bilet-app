@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Calendar, Plus, X, AlertTriangle } from 'lucide-react';
 import AdminEventApprovalModal from '@/components/AdminEventApprovalModal';
@@ -54,7 +54,14 @@ export default function EventsPage() {
   const [visibility, setVisibility] = useState('PUBLIC');
   const [isPubliclyListed, setIsPubliclyListed] = useState(false);
 
-  const fetchEvents = async () => {
+    const getCookie = (name: string) => {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(';').shift();
+    return null;
+  };
+
+const fetchEvents = useCallback(async () => {
     const token = getCookie('token');
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/events`, {
@@ -67,9 +74,9 @@ export default function EventsPage() {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, []);
 
-  const fetchHalls = async () => {
+  const fetchHalls = useCallback(async () => {
     const token = getCookie('token');
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/halls`, {
@@ -82,14 +89,9 @@ export default function EventsPage() {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, []);
 
-  const getCookie = (name: string) => {
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop()?.split(';').shift();
-    return null;
-  };
+
 
   useEffect(() => {
     fetchEvents();
@@ -109,7 +111,7 @@ export default function EventsPage() {
         console.error("Token parse hatası", e);
       }
     }
-  }, []);
+  }, [fetchEvents, fetchHalls]);
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();

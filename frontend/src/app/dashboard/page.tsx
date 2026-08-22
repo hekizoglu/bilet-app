@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Calendar, Users, MapIcon, DollarSign, ArrowRight, Loader2, Award, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { motion, Variants } from 'motion/react';
@@ -40,7 +40,7 @@ export default function AdminDashboard() {
     return null;
   };
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const token = getCookie('token');
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/stats`, {
@@ -55,11 +55,11 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [fetchStats]);
 
   if (loading) {
     return (

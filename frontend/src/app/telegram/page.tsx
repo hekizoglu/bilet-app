@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Head from 'next/head';
 
@@ -20,23 +20,7 @@ export default function TelegramWebAppAuth() {
   const router = useRouter();
   const [status, setStatus] = useState("Telegram WebApp yükleniyor...");
 
-  useEffect(() => {
-    // Load Telegram WebApp Script dynamically if not present
-    if (!window.Telegram) {
-      const script = document.createElement('script');
-      script.src = "https://telegram.org/js/telegram-web-app.js";
-      script.async = true;
-      document.head.appendChild(script);
-
-      script.onload = () => {
-        initTg();
-      };
-    } else {
-      initTg();
-    }
-  }, []);
-
-  const initTg = async () => {
+    const initTg = useCallback(async () => {
     try {
       const tg = window.Telegram?.WebApp;
       if (!tg) {
@@ -79,7 +63,25 @@ export default function TelegramWebAppAuth() {
       console.error(error);
       setStatus("Bir hata oluştu.");
     }
-  };
+  }, [router]);
+
+useEffect(() => {
+    // Load Telegram WebApp Script dynamically if not present
+    if (!window.Telegram) {
+      const script = document.createElement('script');
+      script.src = "https://telegram.org/js/telegram-web-app.js";
+      script.async = true;
+      document.head.appendChild(script);
+
+      script.onload = () => {
+        initTg();
+      };
+    } else {
+      initTg();
+    }
+  }, [initTg]);
+
+
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">

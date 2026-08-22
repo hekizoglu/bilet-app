@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useParams, useRouter } from 'next/navigation';
 import { Calendar, Users, Scan, Link as   ChevronLeft, Ticket, CheckCircle, Clock, Copy, Share2 } from 'lucide-react';
@@ -19,20 +19,14 @@ export default function EventDashboardPage() {
   const [attendees, setAttendees] = useState<{ id: string; isUsed?: boolean; seatName?: string | null; customer?: string; email?: string; ticketCode?: string; status?: string }[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (id) {
-      fetchEventDetails();
-    }
-  }, [id]);
-
-  const getCookie = (name: string) => {
+    const getCookie = (name: string) => {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop()?.split(';').shift();
     return null;
   };
 
-  const fetchEventDetails = async () => {
+const fetchEventDetails = useCallback(async () => {
     try {
       const token = getCookie('token');
       // 1. Fetch Event Info
@@ -59,7 +53,17 @@ export default function EventDashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+useEffect(() => {
+    if (id) {
+      fetchEventDetails();
+    }
+  }, [id, fetchEventDetails]);
+
+
+
+  
 
   if (loading) return (
     <div className="p-8 text-center text-gray-500 animate-pulse">

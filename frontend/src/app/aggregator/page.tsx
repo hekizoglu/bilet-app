@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Calendar, MapPin, Search, Ticket, ArrowRight, Zap, Loader2, Globe } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -19,13 +19,9 @@ export default function AggregatorPortal() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  async function fetchEvents() {
+  const fetchEvents = useCallback(async () => {
     try {
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
       const res = await fetch(`${API_BASE}/api/events/aggregator`);
       if (res.ok) {
         const data = await res.json();
@@ -36,7 +32,11 @@ export default function AggregatorPortal() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
 
   const filteredEvents = events.filter(e => 
     e.name.toLowerCase().includes(searchQuery.toLowerCase()) || 

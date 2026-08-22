@@ -19,11 +19,14 @@ const eslintConfig = defineConfig([
       //    çok yaygın (Ayşe'nin, 30'lu vb.); &apos; kaçışları okunabilirliği bozar.
       "react/no-unescaped-entities": "off",
 
-      // 3) React Compiler kuralları → warn: bu kurallar useEffect içinde
-      //    setState ile veri çekme (standart fetch pattern'i) ve eski state
-      //    tabanlı güncellemelerde yanlış pozitif üretiyor. Kod tabanı kademeli
-      //    olarak React Compiler uyumlu hale getirilirken error yerine warn.
-      "react-hooks/set-state-in-effect": "warn",
+      // 3) React Compiler kuralları → proje kararı:
+      //    - set-state-in-effect: OFF. Veri çekme pattern'i standardize edildi
+      //      (fetchX = useCallback + useEffect(() => { fetchX() }, [fetchX])).
+      //      Kural, async fetch → setState(promise callback) akışını
+      //      "senkron setState" sanıp yanlış pozitif üretir.
+      //    - immutability/purity: warn. Kod tabanı kademeli olarak React
+      //      Compiler uyumlu hale getirilirken bilgi amaçlı.
+      "react-hooks/set-state-in-effect": "off",
       "react-hooks/immutability": "warn",
       "react-hooks/purity": "warn",
     },
